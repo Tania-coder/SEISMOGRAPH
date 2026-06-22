@@ -27,7 +27,7 @@ import json
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-import pytest
+import pytest  # noqa: F401 — used for MonkeyPatch type hint
 from engine.audit import AlertNotFoundError, AuditReportGenerator
 from engine.detector import DriftAlert as DetectorDriftAlert
 from engine.models import TelemetrySignal
@@ -269,15 +269,20 @@ def test_audit_report_checksum_valid() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_audit_endpoint_200() -> None:
-    """AU6: endpoint returns 200 and Content-Disposition attachment header."""
+_VALID_TOKEN = "test-export-token-au6"
+
+
+def test_audit_endpoint_200(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AU6: endpoint returns 200 with valid Bearer token."""
+    monkeypatch.setenv("SEISMOGRAPH_EXPORT_TOKEN", _VALID_TOKEN)
     with patch("gateway.main.verify_signature", return_value=True):
         with TestClient(app) as c:
             repo = app.state.repo
             alert_id = _save_local_alert(repo)
-
-            resp = c.get(f"/v1/alerts/{alert_id}/export")
-
+            resp = c.get(
+                f"/v1/alerts/{alert_id}/export",
+                headers={"Authorization": f"Bearer {_VALID_TOKEN}"},
+            )
     assert resp.status_code == 200, resp.text
     cd = resp.headers.get("content-disposition", "")
     assert "attachment" in cd, (
@@ -297,13 +302,66 @@ def test_audit_endpoint_200() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_audit_endpoint_404() -> None:
+def test_audit_endpoint_404(monkeypatch: pytest.MonkeyPatch) -> None:
     """AU7: endpoint returns 404 when alert_id is not in either table."""
+    monkeypatch.setenv("SEISMOGRAPH_EXPORT_TOKEN", _VALID_TOKEN)
     with patch("gateway.main.verify_signature", return_value=True):
         with TestClient(app) as c:
-            resp = c.get("/v1/alerts/99999/export")
-
+            resp = c.get(
+                "/v1/alerts/99999/export",
+                headers={"Authorization": f"Bearer {_VALID_TOKEN}"},
+            )
     assert resp.status_code == 404, resp.text
+
+
+# ---------------------------------------------------------------------------
+# AU9 — missing Authorization header → 401
+# ---------------------------------------------------------------------------
+
+
+def test_audit_export_no_auth_401(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AU9 (adversarial): missing Authorization header returns 401."""
+    monkeypatch.setenv("SEISMOGRAPH_EXPORT_TOKEN", _VALID_TOKEN)
+    with patch("gateway.main.verify_signature", return_value=True):
+        with TestClient(app) as c:
+            resp = c.get("/v1/alerts/1/export")
+    assert resp.status_code == 401, resp.text
+
+
+# ---------------------------------------------------------------------------
+# AU10 — wrong token → 401
+# ---------------------------------------------------------------------------
+
+
+def test_audit_export_wrong_token_401(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AU10 (adversarial): wrong Bearer token returns 401."""
+    monkeypatch.setenv("SEISMOGRAPH_EXPORT_TOKEN", _VALID_TOKEN)
+    with patch("gateway.main.verify_signature", return_value=True):
+        with TestClient(app) as c:
+            resp = c.get(
+                "/v1/alerts/1/export",
+                headers={"Authorization": "Bearer wrong-token"},
+            )
+    assert resp.status_code == 401, resp.text
+
+
+# ---------------------------------------------------------------------------
+# AU11 — token not configured → 503
+# ---------------------------------------------------------------------------
+
+
+def test_audit_export_token_not_configured_503(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AU11 (adversarial): endpoint returns 503 when token env var unset."""
+    monkeypatch.delenv("SEISMOGRAPH_EXPORT_TOKEN", raising=False)
+    with patch("gateway.main.verify_signature", return_value=True):
+        with TestClient(app) as c:
+            resp = c.get(
+                "/v1/alerts/1/export",
+                headers={"Authorization": f"Bearer {_VALID_TOKEN}"},
+            )
+    assert resp.status_code == 503, resp.text
 
 
 # ---------------------------------------------------------------------------

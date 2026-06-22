@@ -139,6 +139,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import secrets
 import pathlib
 import time
 from contextlib import asynccontextmanager
@@ -178,6 +179,10 @@ _DEFAULT_REDIS_URL: str = "redis://localhost:6379/0"
 # Default admin token for POST /v1/webhooks (development only).
 # Override with ADMIN_TOKEN env var in production.
 _DEFAULT_ADMIN_TOKEN: str = "seismograph-admin"
+
+# Export token sentinel — no default; unset means the endpoint is disabled.
+# Set SEISMOGRAPH_EXPORT_TOKEN in production via the .env file.
+_EXPORT_TOKEN_ENV_VAR: str = "SEISMOGRAPH_EXPORT_TOKEN"
 
 
 # ---------------------------------------------------------------------------
@@ -798,16 +803,46 @@ async def export_audit_report(alert_id: int, request: Request) -> JSONResponse:
     #   | assumption: audit export is low-frequency (on-demand); no
     #     rate-limit required at Phase 3 scale
     #   | test: test_audit_endpoint_200, test_audit_endpoint_404
+    #SG-TRACE: REQ-AUDIT-001
+    #   | assumption: SEISMOGRAPH_EXPORT_TOKEN is a shared secret for
+    #     Phase 3; Phase 4 replaces with per-fleet OAuth scoped tokens
+    #   | test: test_audit_export_no_auth_401, test_audit_export_wrong_token_401,
+    #           test_audit_export_token_not_configured_503
     """
+    # ------------------------------------------------------------------
+    # Auth: Bearer token from SEISMOGRAPH_EXPORT_TOKEN env var.
+    # Unset token → 503 (endpoint administratively disabled).
+    # Missing or wrong Bearer → 401.
+    # ------------------------------------------------------------------
+    export_token: str | None = os.getenv(_EXPORT_TOKEN_ENV_VAR)
+    if not export_token:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Audit export is disabled: "
+                "SEISMOGRAPH_EXPORT_TOKEN is not configured."
+            ),
+        )
+    auth_header: str = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Authorization header required: Bearer <export-token>",
+        )
+    provided: str = auth_header[len("Bearer "):]
+    if not secrets.compare_digest(provided, export_token):
+        raise HTTPException(status_code=401, detail="Invalid export token")
+
     repo: BaseRepository = request.app.state.repo
     generator = AuditReportGenerator(repo)
     try:
         report = generator.generate(alert_id)
-    except AlertNotFoundError as exc:
+    except AlertNotFoundError:
         raise HTTPException(
             status_code=404,
-            detail=f"alert_id={alert_id} not found",
-        ) from exc
+            detail=f"Alert {alert_id} not found in local or public tables.",
+        )
+
     filename = f"seismograph_audit_{alert_id}.json"
     return JSONResponse(
         content=report,
@@ -815,31 +850,3 @@ async def export_audit_report(alert_id: int, request: Request) -> JSONResponse:
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
-
-
-# GET /v1/weather
-
-# ---------------------------------------------------------------------------
-
-
-@app.get("/v1/weather", status_code=200)
-async def model_weather(
-    request: Request,
-) -> list[ModelWeatherResponse]:
-    """Return current drift-weather for all known model_tuples.
-
-    No authentication required -- weather data is aggregated and
-    anonymised (no raw prompts, no client identifiers).
-
-    Status DRIFTING requires a PublicDriftAlert (quorum-verified) within
-    the last 24h.  Private fleet alerts are not reflected here.
-
-    #SG-TRACE: REQ-GW-023
-    #   | assumption: get_all_model_tuples() is cheap for Phase 2
-    #     cardinality; no pagination required
-    #   | test: test_weather_endpoint_empty_returns_200
-    """
-    repo: BaseRepository = request.app.state.repo
-    return [
-        _compute_model_weather(repo, mt) for mt in repo.get_all_model_tuples()
-    ]
