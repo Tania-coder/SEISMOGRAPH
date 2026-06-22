@@ -18,8 +18,10 @@
 
 FROM python:3.11-slim
 
-# Install runtime deps only -- no dev tools, no build cache
-RUN pip install --no-cache-dir httpx>=0.24 cryptography>=41.0
+# Install pinned runtime deps -- no dev tools, no build cache
+# Versions pinned in requirements-fleet.txt (KNOWN-LIMIT-FLEET-002)
+COPY requirements-fleet.txt .
+RUN pip install --no-cache-dir -r requirements-fleet.txt
 
 # Non-root user (uid 1001)
 RUN useradd --uid 1001 --create-home --shell /bin/bash seismograph

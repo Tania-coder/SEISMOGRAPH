@@ -69,13 +69,13 @@ import hashlib
 import json
 import logging
 import os
+import random
 import sys
 import time
 from pathlib import Path
 from typing import NamedTuple
 
 import httpx
-
 from probe.canary import SUITE_VERSION
 from probe.crypto import KeyManager
 from probe.sdk import ProbeConfig, ProbeSDK
@@ -487,12 +487,21 @@ def main() -> None:
                         exc,
                     )
 
+            # KNOWN-LIMIT-FLEET-003: ±5% jitter prevents thundering-herd
+            # alignment when multiple fleet containers start simultaneously.
+            # #SG-TRACE: REQ-FLEET-008
+            #   | assumption: uniform jitter in [0.95, 1.05] is sufficient
+            #     to desynchronise probes from different containers
+            #   | test: manual -- observe staggered log times
+            jitter: float = random.uniform(0.95, 1.05)
+            sleep_seconds: float = PROBE_INTERVAL_SECONDS * jitter
             logger.info(
-                "--- Round complete. Sleeping %ds (%.1f h) ---",
-                PROBE_INTERVAL_SECONDS,
-                PROBE_INTERVAL_SECONDS / 3600,
+                "--- Round complete. Sleeping %.0fs (%.1fh, jitter=%.3fx) ---",
+                sleep_seconds,
+                sleep_seconds / 3600,
+                jitter,
             )
-            time.sleep(PROBE_INTERVAL_SECONDS)
+            time.sleep(sleep_seconds)
 
 
 if __name__ == "__main__":
