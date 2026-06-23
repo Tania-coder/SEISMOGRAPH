@@ -1,5 +1,7 @@
 # SEISMOGRAPH
 
+**Created by [Tatiana Radchenko](https://github.com/Tania-coder)**
+
 **A federated, privacy-preserving early-warning network for silent LLM API drift.**
 
 > Detected the Anthropic Claude 3.5 Sonnet silent degradation on 2025-08-10 --
