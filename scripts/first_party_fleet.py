@@ -78,7 +78,7 @@ from typing import NamedTuple
 import httpx
 from probe.canary import SUITE_VERSION
 from probe.crypto import KeyManager
-from probe.sdk import ProbeConfig, ProbeSDK
+from probe.sdk import FLUSH_EPSILON, ProbeConfig, ProbeSDK
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -101,6 +101,21 @@ GATEWAY_URL: str = os.getenv(
 KEY_DIR: Path = Path(os.getenv("SEISMOGRAPH_KEY_DIR", "/var/seismograph"))
 PROBE_INTERVAL_SECONDS: int = int(
     os.getenv("PROBE_INTERVAL_SECONDS", "14400")
+)
+
+# Per-probe daily epsilon privacy budget (forwarded to each ProbeSDK's
+# DPAccountant).  Each flush() costs FLUSH_EPSILON (2.0), so the budget
+# caps the number of transmissions per 24-hour window:
+#     max_flushes_per_day = floor(DAILY_EPSILON_BUDGET / FLUSH_EPSILON)
+# The fleet flushes once per model per round, so if the probe interval is
+# short relative to this budget, the probe spends its whole day's budget
+# in the first few rounds and then correctly sleeps (budget_exceeded) for
+# the rest of the 24-hour window.  Operators building a continuous
+# baseline should keep PROBE_INTERVAL_SECONDS and this budget consistent
+# (see the cadence sanity-check warning in main()).
+# Default 10.0 matches the SDK default (5 flushes/day) and is unchanged.
+DAILY_EPSILON_BUDGET: float = float(
+    os.getenv("SEISMOGRAPH_DAILY_EPSILON_BUDGET", "10.0")
 )
 
 # Deterministic canary prompt (temperature=0, max_tokens=20).
@@ -315,6 +330,17 @@ def probe_model(
     api_model = _API_MODEL_MAP[model_tuple]
     span = sdk.start_canary_span(prompt_count=1)
 
+    # Track whether the span has already been closed.  flush() runs AFTER
+    # finish_canary_span(), so if flush() raises, the error handlers must
+    # NOT call finish_canary_span() again -- a second close would raise
+    # "No active canary span" and mask the real flush() error.
+    # #SG-TRACE: REQ-FLEET-009
+    #   | assumption: exactly one finish_canary_span() per span; cleanup
+    #     handlers are no-ops once the span is already closed, so a flush()
+    #     failure surfaces its real error instead of a masking span error
+    #   | test: manual -- force flush() to raise, observe real error in log
+    span_finished = False
+
     try:
         if mock:
             result = _mock_result(model_tuple)
@@ -330,6 +356,7 @@ def probe_model(
                 status_code=500,
                 error_message=f"Unknown provider: {provider}",
             )
+            span_finished = True
             return
 
         # Set gen_ai.* span attributes -- these are the ONLY data that
@@ -338,6 +365,7 @@ def probe_model(
         span.attributes["gen_ai.response.json_valid"] = result.json_valid
 
         sdk.finish_canary_span(status_code=200)
+        span_finished = True
         flush_result = sdk.flush()
 
         logger.info(
@@ -353,10 +381,12 @@ def probe_model(
         )
 
     except httpx.HTTPStatusError as exc:
-        sdk.finish_canary_span(
-            status_code=exc.response.status_code,
-            error_message=str(exc),
-        )
+        if not span_finished:
+            sdk.finish_canary_span(
+                status_code=exc.response.status_code,
+                error_message=str(exc),
+            )
+            span_finished = True
         logger.error(
             "HTTP error | model=%s status=%d error=%r",
             model_tuple,
@@ -364,12 +394,16 @@ def probe_model(
             exc,
         )
     except httpx.RequestError as exc:
-        sdk.finish_canary_span(status_code=503, error_message=str(exc))
+        if not span_finished:
+            sdk.finish_canary_span(status_code=503, error_message=str(exc))
+            span_finished = True
         logger.error(
             "Request error | model=%s error=%r", model_tuple, exc
         )
     except Exception as exc:  # noqa: BLE001
-        sdk.finish_canary_span(status_code=500, error_message=str(exc))
+        if not span_finished:
+            sdk.finish_canary_span(status_code=500, error_message=str(exc))
+            span_finished = True
         logger.error(
             "Unhandled error | model=%s error=%r", model_tuple, exc
         )
@@ -448,6 +482,7 @@ def main() -> None:
             model_tuple=model_tuple,
             suite_version_hash=SUITE_VERSION_HASH,
             gateway_endpoint=GATEWAY_URL,
+            daily_epsilon_budget=DAILY_EPSILON_BUDGET,
         )
         sdk = ProbeSDK(config=config, _key_manager=key_manager)
         fleet.append(FleetEntry(model_tuple=model_tuple, sdk=sdk, mock=mock))
@@ -461,6 +496,36 @@ def main() -> None:
         PROBE_INTERVAL_SECONDS,
         GATEWAY_URL,
     )
+
+    # Cadence sanity check: the fleet flushes once per model per round, so
+    # each model spends FLUSH_EPSILON every PROBE_INTERVAL_SECONDS.  If the
+    # configured interval implies more flushes/day than the DP budget
+    # permits, the probe will exhaust its budget early and sleep
+    # (budget_exceeded) for the rest of the 24-hour window -- which looks
+    # like "the probe stopped collecting data".  Surface this up front.
+    # #SG-TRACE: REQ-FLEET-010
+    #   | assumption: one flush per model per round; budget is per-model
+    #   | test: manual -- set a short interval, observe the startup warning
+    max_flushes_per_day = int(DAILY_EPSILON_BUDGET // FLUSH_EPSILON)
+    if PROBE_INTERVAL_SECONDS > 0:
+        implied_flushes_per_day = 86400 // PROBE_INTERVAL_SECONDS
+        if implied_flushes_per_day > max_flushes_per_day:
+            budget_window_seconds = max_flushes_per_day * PROBE_INTERVAL_SECONDS
+            logger.warning(
+                "Cadence exceeds privacy budget: interval=%ds implies ~%d "
+                "flushes/day, but DP budget=%.1f allows only %d "
+                "(FLUSH_EPSILON=%.1f). The probe will collect data for the "
+                "first ~%ds of each 24h window, then sleep "
+                "(budget_exceeded). To collect continuously, raise "
+                "SEISMOGRAPH_DAILY_EPSILON_BUDGET or increase "
+                "PROBE_INTERVAL_SECONDS.",
+                PROBE_INTERVAL_SECONDS,
+                implied_flushes_per_day,
+                DAILY_EPSILON_BUDGET,
+                max_flushes_per_day,
+                FLUSH_EPSILON,
+                budget_window_seconds,
+            )
 
     # ------------------------------------------------------------------
     # Probe loop
