@@ -22,6 +22,10 @@ pip install seismograph-probe   # the probe SDK — Python 3.11+
 > load-balancer escalation became visible. Detection occurred during the
 > 0.8% misrouting window, before any user-visible symptoms appeared.
 
+![SEISMOGRAPH Model Weather dashboard — live drift status for four production LLMs](docs/dashboard.png)
+
+<p align="center"><em>Live "model weather" — <a href="https://seismograph-weather.onrender.com/dashboard">open the public dashboard</a> (no login).</em></p>
+
 ---
 
 ## The problem
