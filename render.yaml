@@ -19,7 +19,7 @@ services:
     region: frankfurt              # closest Render region to Aarhus, DK
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: /bin/sh -c "uvicorn gateway.main:app --host 0.0.0.0 --port $PORT"
+    dockerCommand: uvicorn gateway.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /v1/weather
     autoDeploy: true
     envVars:
