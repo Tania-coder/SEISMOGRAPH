@@ -44,7 +44,9 @@ RUN pip install --no-cache-dir --upgrade pip \
         "redis>=4.0" \
         "fastapi>=0.100" \
         "uvicorn[standard]>=0.23" \
-        "httpx>=0.24"
+        "httpx>=0.24" \
+        "sqlalchemy>=2.0" \
+        "pydantic>=2.0"
 
 # ---------------------------------------------------------------------------
 # Application source
