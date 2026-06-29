@@ -28,6 +28,8 @@ pip install seismograph-probe   # the probe SDK — Python 3.11+
 
 <p align="center"><em>Live "model weather" — <a href="https://seismograph-weather.onrender.com/dashboard">open the public dashboard</a> (no login).</em></p>
 
+**Documentation:** [Whitepaper (PDF)](docs/SEISMOGRAPH_Whitepaper_v1.pdf) · [Roadmap](ROADMAP.md) · [Security & threat model](SECURITY.md) · [Architecture](SEISMOGRAPH_Architecture.md) · [DOI 10.5281/zenodo.21045518](https://doi.org/10.5281/zenodo.21045518)
+
 ---
 
 ## The problem
@@ -268,6 +270,28 @@ Key adversarial tests:
 CUSUM calibration rationale, quorum algorithm, OTel integration plan, security
 model (Ed25519 pseudonymous federation, Sybil resistance design), and open
 decisions with phase assignments.
+
+---
+
+## Citation
+
+If you use SEISMOGRAPH in your work, please cite the archived release:
+
+```bibtex
+@software{radchenko_seismograph_2026,
+  author    = {Radchenko, Tatiana},
+  title     = {{SEISMOGRAPH: A Federated, Privacy-Preserving Early-Warning
+               Network for Silent LLM/Agent API Drift}},
+  year      = {2026},
+  publisher = {Zenodo},
+  version   = {v1.0.0},
+  doi       = {10.5281/zenodo.21045518},
+  url       = {https://doi.org/10.5281/zenodo.21045518}
+}
+```
+
+GitHub also renders a **"Cite this repository"** button from
+[`CITATION.cff`](CITATION.cff).
 
 ---
 
