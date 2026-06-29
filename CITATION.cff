@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use SEISMOGRAPH, please cite it using these metadata."
+title: "SEISMOGRAPH: A Federated, Privacy-Preserving Early-Warning Network for Silent LLM/Agent API Drift"
+abstract: >-
+  SEISMOGRAPH is an open-source, federated early-warning network that detects
+  silent behavioural drift in third-party LLM and agent APIs by correlating
+  lightweight, privacy-preserving canary probe signals across independent
+  observers. Raw prompts and outputs never leave the probe perimeter; only
+  hashes and differentially-private aggregates are transmitted. A two-layer
+  detector (Page-CUSUM plus cross-observer quorum) gates every public drift
+  alert.
+type: software
+authors:
+  - family-names: Radchenko
+    given-names: Tatiana
+    affiliation: "Independent, Aarhus, Denmark"
+version: "1.0.0"
+license: Apache-2.0
+repository-code: "https://github.com/Tania-coder/SEISMOGRAPH"
+keywords:
+  - LLM observability
+  - model drift
+  - change-point detection
+  - differential privacy
+  - federated monitoring
+  - AI safety
