@@ -1,1 +1,543 @@
-{}
+{
+  "schema": "seismograph.depgraph/1",
+  "generated_utc": "2026-06-29T13:20:46Z",
+  "packages": [
+    "probe",
+    "engine",
+    "gateway",
+    "dashboard"
+  ],
+  "module_count": 24,
+  "package_edges": [
+    [
+      "engine",
+      "gateway"
+    ],
+    [
+      "gateway",
+      "engine"
+    ]
+  ],
+  "modules": {
+    "engine": {
+      "path": "engine/__init__.py",
+      "package": "engine",
+      "imports_internal": [],
+      "imports_external": [],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [],
+      "loc": 15
+    },
+    "engine.audit": {
+      "path": "engine/audit.py",
+      "package": "engine",
+      "imports_internal": [
+        "engine"
+      ],
+      "imports_external": [
+        "__future__",
+        "datetime",
+        "hashlib",
+        "json",
+        "logging"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [
+        "AlertNotFoundError",
+        "AuditReportGenerator"
+      ],
+      "loc": 229
+    },
+    "engine.clickhouse": {
+      "path": "engine/clickhouse.py",
+      "package": "engine",
+      "imports_internal": [
+        "engine",
+        "gateway"
+      ],
+      "imports_external": [
+        "__future__",
+        "datetime",
+        "logging",
+        "typing"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [
+        "ClickHouseRepository"
+      ],
+      "loc": 606
+    },
+    "engine.correlation": {
+      "path": "engine/correlation.py",
+      "package": "engine",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "math"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [
+        "AgreementScorer",
+        "BayesianOnlineDetector",
+        "CUSUMDetector",
+        "ChangePointResult",
+        "FeatureVector"
+      ],
+      "loc": 474
+    },
+    "engine.detector": {
+      "path": "engine/detector.py",
+      "package": "engine",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "math",
+        "time"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [
+        "CUSUMDetector",
+        "DriftAlert",
+        "_MetricState"
+      ],
+      "loc": 331
+    },
+    "engine.models": {
+      "path": "engine/models.py",
+      "package": "engine",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "datetime",
+        "sqlalchemy"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [
+        "Base",
+        "LocalDriftAlert",
+        "PublicDriftAlert",
+        "TelemetrySignal",
+        "WebhookConfig"
+      ],
+      "loc": 222
+    },
+    "engine.repository": {
+      "path": "engine/repository.py",
+      "package": "engine",
+      "imports_internal": [
+        "engine",
+        "gateway"
+      ],
+      "imports_external": [
+        "__future__",
+        "abc",
+        "collections",
+        "contextlib",
+        "dataclasses",
+        "datetime",
+        "logging",
+        "os",
+        "sqlalchemy"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [
+        "AlertRow",
+        "BaseRepository",
+        "DatabaseSession",
+        "SignalRepository",
+        "SignalRow"
+      ],
+      "loc": 835
+    },
+    "engine.scorer_redis": {
+      "path": "engine/scorer_redis.py",
+      "package": "engine",
+      "imports_internal": [
+        "engine"
+      ],
+      "imports_external": [
+        "__future__",
+        "typing"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [
+        "_quorum_key"
+      ],
+      "classes": [
+        "RedisAgreementScorer"
+      ],
+      "loc": 268
+    },
+    "engine.webhooks": {
+      "path": "engine/webhooks.py",
+      "package": "engine",
+      "imports_internal": [
+        "engine"
+      ],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "httpx",
+        "logging"
+      ],
+      "imported_by": [
+        "gateway"
+      ],
+      "functions": [],
+      "classes": [
+        "DriftNotification",
+        "WebhookDispatcher"
+      ],
+      "loc": 177
+    },
+    "gateway": {
+      "path": "gateway/__init__.py",
+      "package": "gateway",
+      "imports_internal": [],
+      "imports_external": [],
+      "imported_by": [
+        "engine"
+      ],
+      "functions": [],
+      "classes": [],
+      "loc": 18
+    },
+    "gateway.auth": {
+      "path": "gateway/auth.py",
+      "package": "gateway",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "cryptography",
+        "logging"
+      ],
+      "imported_by": [
+        "engine"
+      ],
+      "functions": [
+        "verify_signature"
+      ],
+      "classes": [],
+      "loc": 102
+    },
+    "gateway.ingest": {
+      "path": "gateway/ingest.py",
+      "package": "gateway",
+      "imports_internal": [
+        "gateway"
+      ],
+      "imports_external": [
+        "__future__",
+        "json",
+        "logging",
+        "pydantic"
+      ],
+      "imported_by": [
+        "engine"
+      ],
+      "functions": [
+        "receive_batch"
+      ],
+      "classes": [],
+      "loc": 128
+    },
+    "gateway.ingestion": {
+      "path": "gateway/ingestion.py",
+      "package": "gateway",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "json",
+        "logging",
+        "typing"
+      ],
+      "imported_by": [
+        "engine"
+      ],
+      "functions": [],
+      "classes": [
+        "IngestionGateway",
+        "ProbeBatch"
+      ],
+      "loc": 205
+    },
+    "gateway.main": {
+      "path": "gateway/main.py",
+      "package": "gateway",
+      "imports_internal": [
+        "engine",
+        "gateway"
+      ],
+      "imports_external": [
+        "__future__",
+        "asyncio",
+        "clickhouse_connect",
+        "contextlib",
+        "datetime",
+        "fastapi",
+        "logging",
+        "os",
+        "pathlib",
+        "pydantic",
+        "redis",
+        "secrets",
+        "time",
+        "typing"
+      ],
+      "imported_by": [
+        "engine"
+      ],
+      "functions": [
+        "_compute_model_weather",
+        "bootstrap_detector",
+        "dashboard_root",
+        "export_audit_report",
+        "ingest_signals",
+        "landing_root",
+        "lifespan",
+        "model_weather",
+        "register_webhook"
+      ],
+      "classes": [],
+      "loc": 882
+    },
+    "gateway.schema": {
+      "path": "gateway/schema.py",
+      "package": "gateway",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "datetime",
+        "pydantic",
+        "re",
+        "typing",
+        "uuid"
+      ],
+      "imported_by": [
+        "engine"
+      ],
+      "functions": [],
+      "classes": [
+        "InboundSignalBatch",
+        "ModelWeatherResponse",
+        "WebhookRegistration"
+      ],
+      "loc": 270
+    },
+    "probe": {
+      "path": "probe/__init__.py",
+      "package": "probe",
+      "imports_internal": [],
+      "imports_external": [],
+      "imported_by": [],
+      "functions": [],
+      "classes": [],
+      "loc": 14
+    },
+    "probe.adapters": {
+      "path": "probe/adapters/__init__.py",
+      "package": "probe",
+      "imports_internal": [],
+      "imports_external": [],
+      "imported_by": [],
+      "functions": [],
+      "classes": [],
+      "loc": 3
+    },
+    "probe.adapters.mcp": {
+      "path": "probe/adapters/mcp.py",
+      "package": "probe",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "httpx",
+        "json",
+        "os",
+        "sys",
+        "typing"
+      ],
+      "imported_by": [],
+      "functions": [
+        "_format_entry",
+        "_parse_weather_list",
+        "_rpc_err",
+        "_rpc_ok",
+        "check_model_weather",
+        "run_mcp_server"
+      ],
+      "classes": [
+        "_WeatherEntry"
+      ],
+      "loc": 332
+    },
+    "probe.adapters.otel": {
+      "path": "probe/adapters/otel.py",
+      "package": "probe",
+      "imports_internal": [
+        "probe"
+      ],
+      "imports_external": [
+        "__future__",
+        "datetime",
+        "hashlib",
+        "opentelemetry",
+        "typing"
+      ],
+      "imported_by": [],
+      "functions": [
+        "_model_tuple_from_attrs",
+        "_response_hash_from_span"
+      ],
+      "classes": [
+        "SeismographSpanProcessor"
+      ],
+      "loc": 212
+    },
+    "probe.canary": {
+      "path": "probe/canary.py",
+      "package": "probe",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "datetime",
+        "hashlib",
+        "json",
+        "re"
+      ],
+      "imported_by": [],
+      "functions": [
+        "_hash_output",
+        "_is_json_valid",
+        "execute_canary"
+      ],
+      "classes": [
+        "CanaryResult"
+      ],
+      "loc": 309
+    },
+    "probe.canary_suite": {
+      "path": "probe/canary_suite.py",
+      "package": "probe",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "hashlib",
+        "json"
+      ],
+      "imported_by": [],
+      "functions": [],
+      "classes": [
+        "CanaryPrompt",
+        "CanarySuiteRegistry",
+        "CanarySuiteVersion"
+      ],
+      "loc": 149
+    },
+    "probe.crypto": {
+      "path": "probe/crypto.py",
+      "package": "probe",
+      "imports_internal": [],
+      "imports_external": [
+        "__future__",
+        "cryptography",
+        "json",
+        "logging",
+        "pathlib"
+      ],
+      "imported_by": [],
+      "functions": [
+        "canonical_json",
+        "sign_payload"
+      ],
+      "classes": [
+        "KeyManager"
+      ],
+      "loc": 193
+    },
+    "probe.privacy": {
+      "path": "probe/privacy.py",
+      "package": "probe",
+      "imports_internal": [
+        "probe"
+      ],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "datetime",
+        "json",
+        "os",
+        "random",
+        "statistics",
+        "typing",
+        "uuid"
+      ],
+      "imported_by": [],
+      "functions": [
+        "_laplace_noise",
+        "recommended_flush_interval_seconds"
+      ],
+      "classes": [
+        "Aggregator",
+        "DPAccountant",
+        "PrivacyBudgetExceededError",
+        "SignalBatch"
+      ],
+      "loc": 629
+    },
+    "probe.sdk": {
+      "path": "probe/sdk.py",
+      "package": "probe",
+      "imports_internal": [
+        "probe"
+      ],
+      "imports_external": [
+        "__future__",
+        "dataclasses",
+        "datetime",
+        "hashlib",
+        "httpx",
+        "logging",
+        "time",
+        "typing",
+        "uuid"
+      ],
+      "imported_by": [],
+      "functions": [],
+      "classes": [
+        "OTelSpanContext",
+        "ProbeConfig",
+        "ProbeSDK"
+      ],
+      "loc": 647
+    }
+  }
+}

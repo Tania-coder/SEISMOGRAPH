@@ -11,13 +11,17 @@
 ---
 
 ## OPEN — Technical
-- [ ] P3-002 Webhooks & Alerting — WH* tests reportedly 8/8 (S021), but sign-off
-      unconfirmed and S022/S023 still list it open. ACTION: verify test state,
-      then close or finish.
+- [x] P3-002 Webhooks & Alerting — VERIFIED & CLOSED (S025, 2026-06-29).
+      test_webhooks.py 8/8 green; engine/webhooks.py complete (fail-safe, Bearer
+      auth never logged, privacy-safe payload); dispatch gated on private-fleet
+      path only (fleet_id not None), never to AgreementScorer / /v1/weather.
+      Correlation-first + privacy invariants hold. "Unclear" status was docs lag.
 - [ ] Live fleet -> hosted dashboard — confirm fleet writes data and dashboard
       shows live models (localhost:8000 + Render).
-- [ ] graph.json — empty {}; constitution references it for dependency mapping.
-      Populate via memory/ast_graph.py or retire the reference.
+- [~] graph.json — generator memory/ast_graph.py written (S025, ruff-clean,
+      stdlib-only AST dep-graph builder). Populate by running it on real disk:
+      py -3.10 memory/ast_graph.py (sandbox mount corrupts correlation.py, so
+      run is Tatiana's). Then commit ast_graph.py + graph.json.
 
 ## OPEN — Infra / Security
 - [ ] PyPI recovery #11202 -> republish seismograph-probe 1.0.1 as sole author
