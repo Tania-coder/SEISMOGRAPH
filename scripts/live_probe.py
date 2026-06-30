@@ -43,9 +43,7 @@ import sys
 # #SG-TRACE: REQ-CANARY-024
 # #   | assumption: the repo root is the parent directory of scripts/
 # #   | test: tests/test_providers.py offline import + manual live run
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from probe.canary import execute_canary  # noqa: E402
 from probe.providers import (  # noqa: E402
