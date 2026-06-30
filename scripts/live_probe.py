@@ -34,8 +34,24 @@ from __future__ import annotations
 import os
 import sys
 
-from probe.canary import execute_canary
-from probe.providers import OpenAICompatibleProvider, ProviderError
+# Make the repository root importable when this file is run directly
+# as a script (``python scripts/live_probe.py``). Run that way,
+# sys.path[0] is the script's own directory (scripts/), not the repo
+# root, so a bare ``import probe`` fails. Inserting the repo root fixes
+# the documented invocation without requiring the caller to set
+# PYTHONPATH.
+# #SG-TRACE: REQ-CANARY-024
+# #   | assumption: the repo root is the parent directory of scripts/
+# #   | test: tests/test_providers.py offline import + manual live run
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+
+from probe.canary import execute_canary  # noqa: E402
+from probe.providers import (  # noqa: E402
+    OpenAICompatibleProvider,
+    ProviderError,
+)
 
 
 def main() -> int:
@@ -48,12 +64,11 @@ def main() -> int:
     )
     max_tokens = int(os.environ.get("SEISMOGRAPH_PROBE_MAX_TOKENS", "64"))
 
-    provider = OpenAICompatibleProvider(
-        base_url=base_url, api_key=api_key, max_tokens=max_tokens
-    )
-
     print(f"Probing {model_tuple} via {base_url} ...\n")
     try:
+        provider = OpenAICompatibleProvider(
+            base_url=base_url, api_key=api_key, max_tokens=max_tokens
+        )
         results = execute_canary(model_tuple, mock=False, provider=provider)
     except ProviderError as exc:
         print(f"Provider call failed: {exc}", file=sys.stderr)

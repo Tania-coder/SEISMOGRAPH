@@ -160,3 +160,14 @@ def test_execute_canary_mock_still_works() -> None:
     results = execute_canary("openai/gpt-4o@2025-08", mock=True)
     assert len(results) == len(CANARY_SUITE_V1)
     assert all(r.latency_ms == -1 for r in results)
+
+
+def test_provider_rejects_non_ascii_api_key() -> None:
+    """Adversarial: a non-ASCII key (e.g. a Cyrillic placeholder)
+    is rejected up front with a clean ProviderError and never
+    reaches urllib (no opaque UnicodeEncodeError).
+    """
+    with pytest.raises(ProviderError):
+        OpenAICompatibleProvider(
+            base_url="http://x/v1", api_key="ключ-placeholder"
+        )

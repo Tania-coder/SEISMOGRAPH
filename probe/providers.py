@@ -128,6 +128,20 @@ class OpenAICompatibleProvider:
         transport: Transport | None = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
+        if api_key is not None and not api_key.isascii():
+            # HTTP headers are latin-1/ASCII only; a non-ASCII key
+            # (e.g. a pasted placeholder) would otherwise crash deep
+            # in urllib with an opaque UnicodeEncodeError. Fail early
+            # with a clear, payload-free message.
+            # #SG-TRACE: REQ-CANARY-025
+            #   | assumption: a valid bearer token is ASCII; non-ASCII
+            #     means a wrong/placeholder value, not a real key
+            #   | test: test_provider_rejects_non_ascii_api_key
+            raise ProviderError(
+                "API key contains non-ASCII characters; this looks "
+                "like a placeholder or the wrong value, not a real "
+                "API key"
+            )
         self._api_key = api_key
         self._max_tokens = max_tokens
         self._timeout = timeout

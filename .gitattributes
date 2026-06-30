@@ -1,0 +1,4 @@
+# Normalize line endings: store LF in the repo and check out LF on all
+# platforms. Kills phantom CRLF-only diffs from the Windows/NTFS
+# working tree (the sandbox-mount artifact we kept seeing).
+* text=auto eol=lf
