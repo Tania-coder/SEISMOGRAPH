@@ -25,6 +25,12 @@
   truncation. The old "engine/gateway read corrupt by mount" lore is RETIRED:
   all modules parse, import, and the gateway runs under uvicorn + TestClient
   in-sandbox. Trust the sandbox full run again.
+- Ruff: run BOTH gates with the PINNED version before ANY handoff ->
+  `pip install ruff==0.15.20 && ruff check . && ruff format --check .`
+  then `pytest -q`. `ruff check` ALONE misses formatting (shipped a red
+  main in S027; CI runs both). 4 CRLF-phantom files trip
+  `ruff format --check` in-sandbox only (LF in git -> green on CI) --
+  ignore until bulk renormalize.
 
 ## HARD RULE — git ONLY from PowerShell (Tatiana)
 - NEVER run git from the sandbox against the mounted repo. The sandbox sees

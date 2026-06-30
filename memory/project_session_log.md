@@ -1627,3 +1627,43 @@ reads as finished to grant reviewers and prospective partners.
 ### Confirmed by Tatiana
 - [x] CONFIRMED 2026-06-30 — merge approved; memory + log to be committed and
   merged to main; Tracks 2/3 deferred to a fresh session.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+---
+
+## Session 027 (cont.) — 2026-06-30 — Track 2 dashboard + CI hotfix
+
+### Track 2 (dashboard half) — DONE, merged to main (41e9659)
+- dashboard/static/index.html: added an explainer panel above the card grid —
+  "What is this?" lead (privacy-preserving drift detector for LLM APIs),
+  "Why it matters", "How to read a card", and a plain-language STABLE vs
+  DRIFTING legend (reuses existing .dot styles; correlation-first point: a
+  single probe never raises DRIFTING). CSS in the existing <style>; app.js
+  untouched; no design-breaking change. Verified in-sandbox: HTML tag-balance
+  OK, /dashboard 200, app.js 200, /v1/weather 200.
+- Landing page (drift-defense, separate Pages repo) NOT done — deferred with
+  Track 3 to a fresh session.
+
+### CI hotfix — main went RED then GREEN again
+- The live-arc + dashboard merges turned main RED (CI run #8): the
+  `ruff format --check .` gate failed on scripts/live_emit.py and
+  scripts/live_probe.py (a manually wrapped sys.path.insert that ruff format
+  wants on one line). ROOT CAUSE on our side: pre-handoff verification ran
+  `ruff check` but NOT `ruff format --check` — the second CI gate.
+- Fix (commit 3a904e5 -> merged 0b26508): `ruff format` both files. Verified
+  the full CI set in-sandbox with the PINNED ruff==0.15.20: `ruff check .`
+  clean, `ruff format --check .` clean except 4 CRLF-only false positives
+  (correlation.py, gateway/main.py, first_party_fleet.py, test_privacy.py —
+  LF in git, so green on CI), pytest 122 passed. Confirmed via GitHub API:
+  CI run #10 on 0b26508 = completed/success. main GREEN.
+
+### Lesson (process)
+- Pre-handoff verification MUST run BOTH ruff gates with the pinned version:
+  `pip install ruff==0.15.20 && ruff check . && ruff format --check .` plus
+  `pytest -q`. `ruff check` alone is insufficient — it misses formatting.
+- The 4 CRLF-phantom files still trip `ruff format --check` in the sandbox
+  (working-tree CRLF) though they are LF in git; bulk renormalize would clear
+  the noise (backlog).
+
+### Confirmed by Tatiana
+- [x] CONFIRMED 2026-06-30 — Track 2 dashboard merged; CI red->green verified
+  (run #10 success). Landing + Track 3 deferred to next session.
