@@ -14,8 +14,10 @@ Only the following are emitted per execution:
 Design notes:
   - All prompts run at temperature=0 for determinism.
   - Prompt texts are frozen; any change increments the suite version.
-  - execute_canary() is a mock in Phase 0.
-    Phase 1 wires real provider calls via probe/sdk.py + OTel spans.
+  - execute_canary(mock=True) uses frozen mock outputs for offline
+    structural testing. execute_canary(mock=False, provider=...) makes
+    real OpenAI-compatible calls via probe/providers.py; raw output is
+    hashed and discarded, never stored or transmitted.
 
 #SG-TRACE: REQ-CANARY-010
 #   | assumption: temperature=0 produces stable outputs per provider
@@ -34,6 +36,8 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+
+from probe.providers import model_name_from_tuple
 
 # ---------------------------------------------------------------------------
 # Suite definition
@@ -198,12 +202,12 @@ def _is_json_valid(raw: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Mock provider responses (Phase 0)
+# Mock provider responses (offline structural testing)
 # ---------------------------------------------------------------------------
 
 # These represent plausible stable outputs from a capable model at temp=0.
-# They are used ONLY for structural/schema testing in Phase 0.
-# Phase 1 replaces this dict with real API calls.
+# They are used ONLY for structural/schema testing (mock=True).
+# Live execution (mock=False) replaces these with real API calls.
 
 # SG-TRACE: REQ-CANARY-016
 #   | assumption: mock outputs are structurally representative;
@@ -246,6 +250,7 @@ def execute_canary(
     model_tuple: str,
     suite: list[dict[str, str]] | None = None,
     mock: bool = True,
+    provider: object | None = None,
 ) -> list[CanaryResult]:
     """Execute all prompts in the canary suite and return results.
 
@@ -256,8 +261,13 @@ def execute_canary(
     suite:
         Prompt list to run. Defaults to CANARY_SUITE_V1.
     mock:
-        If True, use _MOCK_RESPONSES instead of real API calls.
-        Phase 1 sets mock=False and wires provider SDK calls.
+        If True, use _MOCK_RESPONSES instead of real API calls
+        (offline structural testing). If False, a live ``provider``
+        is required.
+    provider:
+        An object exposing ``complete(model, system, user) ->
+        (raw_text, latency_ms)`` (see probe.providers
+        .OpenAICompatibleProvider). Required when mock=False.
 
     Returns
     -------
@@ -267,25 +277,32 @@ def execute_canary(
         are returned.
 
     #SG-TRACE: REQ-CANARY-017
-    #   | assumption: mock=True is the ONLY valid mode in Phase 0;
-    #     Phase 1 must gate real calls behind provider ToS review
-    #   | test: test_execute_canary_mock_returns_all_three_results
+    #   | assumption: live calls require an explicit provider and a
+    #     completed provider ToS review (see docs/PROVIDER_TOS_CHECKS.md)
+    #   | test: test_execute_canary_live_requires_provider
     """
     if suite is None:
         suite = CANARY_SUITE_V1
 
-    if not mock:
-        raise NotImplementedError(
-            "Real provider calls not yet wired. "
-            "Set mock=True for Phase 0 testing."
+    if not mock and provider is None:
+        raise ValueError(
+            "Live execution requires a provider. Pass "
+            "provider=OpenAICompatibleProvider(...) or set mock=True."
         )
 
     results: list[CanaryResult] = []
     ts = datetime.now(tz=timezone.utc).isoformat()
+    model_name = model_name_from_tuple(model_tuple)
 
     for prompt in suite:
         pid = prompt["prompt_id"]
-        raw_output: str = _MOCK_RESPONSES.get(pid, "")
+        if mock:
+            raw_output: str = _MOCK_RESPONSES.get(pid, "")
+            latency_ms = -1
+        else:
+            raw_output, latency_ms = provider.complete(  # type: ignore
+                model_name, prompt["system"], prompt["user"]
+            )
 
         result = CanaryResult(
             timestamp=ts,
@@ -299,7 +316,7 @@ def execute_canary(
                 if prompt.get("category") == "structured_output"
                 else False
             ),
-            latency_ms=-1,  # mock mode
+            latency_ms=latency_ms,
         )
         # raw_output is explicitly NOT stored; discard here
         del raw_output
