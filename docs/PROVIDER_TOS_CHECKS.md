@@ -37,6 +37,8 @@ monitored model tuples.
 | Google (Gemini) | https://ai.google.dev/gemini-api/terms | ✅ YES | No reverse-engineering; no competing model development; safety filters must not be bypassed | 2026-06-16 | SEISMOGRAPH does not develop competing models or extract weights. Deterministic API calls for observability are standard usage. Paid tier recommended for production probing (Unpaid tier allows Google to use prompts for model improvement). |
 | Mistral | https://mistral.ai/terms-of-service | ✅ YES | Standard API usage permitted; users responsible for monitoring own billing | 2026-06-16 | ToS explicitly lists "testing of LLM models" as a core permitted capability. No prohibition on automated observability. |
 | Cohere | https://cohere.com/terms-of-use | ✅ YES | Standard API terms; no reverse-engineering; no scraping | 2026-06-16 | Standard API access for monitoring/observability is permitted. SEISMOGRAPH probes fall within normal API usage patterns. No safety bypass or weight extraction attempted. |
+| Self-hosted (Ollama / vLLM) | n/a (you run the weights) | ✅ YES | No third-party ToS — the model runs on infrastructure you control | 2026-06-29 | Open-weight models served locally. No external provider terms apply; recommended target for the first live probe run. |
+| Groq | https://groq.com/terms-of-use/ | ⚠ VERIFY | Standard API usage; confirm automated-observability + free-tier data-use terms before production probing | 2026-06-29 | OpenAI-compatible endpoint. Deterministic canary calls are standard usage; complete this row's review before pointing production probes at the free tier. |
 
 ---
 
