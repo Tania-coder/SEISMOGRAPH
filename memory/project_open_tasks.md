@@ -1,46 +1,42 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-02 (Session 028 close)
+# Last updated: 2026-07-02 (Session 030 close)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
 
-## DO NEXT (S029) — fix facts FIRST, then content
-- [x] E1 CRITICAL — DONE S029 (commit 0d9c81d, merged to main). Sonnet 4 +
-      3 infra bugs fixed in: backtest script, notebook (regenerated),
-      README, Architecture §12, ROADMAP, landing.html, .zenodo.json,
-      mcp.py docstrings. Detection unchanged: 2025-08-10, lead 38/19 d.
-      122 passed, ruff clean. NOTE: business/, social/, job_search/ still
-      say "3.5 Sonnet" (+ cover_letter says 103 tests) — fix before sending.
-      Zenodo: existing DOI archive immutable; fixed text applies to next
-      version upload. Private session notes added to .gitignore.
-- [ ] dev.to article (Track 3 cont.): connect dev.to (sign in via GitHub =
-      "dev.to OAuth"); Claude drafts a long-form technical article from the
-      README "Technical overview" + CUSUM backtest + architecture; Tatiana
-      publishes. Structure in NEXT_SESSION_PROMPT.md part 2.1.
-- [ ] Track 2 LANDING (drift-defense — SEPARATE GitHub Pages repo): add repo to
-      session; hero = pitch block A + "View live dashboard" CTA; FIX stale
-      "107 tests" -> 122 on the landing graphic.
-- [ ] X thread: Pin to profile; optional first-comment with repo + dashboard links.
+## DO NEXT (S030 close -> S031)
+- [x] E1 CRITICAL — DONE S029 (commit 0d9c81d, merged to main).
+- [x] dev.to article — PUBLISHED S029; S030 added link to README + landing,
+      drafted reply to the 1 comment (Void Stitch) — Tatiana still needs to
+      POST the reply (social/S030_dev_to_reply_and_show_hn.md).
+- [x] Track 2 LANDING — DONE S029 (hero, 122 tests); S030 added Evidence
+      link to dev.to (commit 9c1e9fb).
+- [x] X thread pinned (S029).
+- [ ] Show HN — draft ready (social/S030_dev_to_reply_and_show_hn.md);
+      Tatiana posts AM US time.
 
 ## OPEN — Admin / Security (deadline)
-- [x] GitHub 2FA TOTP — DONE 2026-07-02. Full 6-step security checklist closed
-      (recovery codes regenerated, passwords rotated, sessions/tokens/OAuth
-      pruned, 0 collaborators, org clean, Windows pass + remote-access check).
-- [~] PyPI recovery #11202 IN PROGRESS (2026-07-02): branch lPpHBOqwfdAqYN6j
-      pushed, reply sent. Await 2FA/password reset -> new pass + 2FA + recovery
-      codes -> delete temp branch -> republish 1.0.1 sole author.
+- [x] GitHub 2FA TOTP — DONE 2026-07-02.
+- [~] PyPI recovery #11202 IN PROGRESS: branch pushed, reply sent 2026-07-02
+      10:46 with proof. Awaiting support (S030: re-checked, no reply yet).
+      Then: new pass + 2FA + recovery codes -> delete temp branch
+      lPpHBOqwfdAqYN6j -> republish 1.0.1 sole author.
 
 ## OPEN — Hygiene
-- [ ] Bulk CRLF renormalize of 4 phantom files (correlation.py, gateway/main.py,
-      first_party_fleet.py, test_privacy.py): on a CLEAN tree
-      `git rm --cached -r . ; git reset --hard`. .gitattributes (eol=lf) in place.
+- [x] Bulk CRLF renormalize — DONE S030: clean-tree reset produced zero
+      diff (no real CRLF issue existed). The persistent ruff-check failures
+      on those same 4 files are a CONFIRMED sandbox-mount read artifact
+      (extra NUL bytes on read only, host file + git blob both clean) —
+      not a repo defect, no further action, ignore permanently.
 
 ## OPEN — Growth (PRIVATE detail in business/, gitignored)
 - [ ] Outreach pack ready (business/outreach_pack_S026.md). Tatiana sends from LinkedIn.
+- [x] Zenodo v1.0.1 published S030 (DOI 10.5281/zenodo.21139614) — done,
+      no further action.
 
 ## DEFERRED — Phase 3 future
 - [ ] SSO/RBAC, SOC 2, in-VPC probe, SLAs / canary-gated rollback, hires.

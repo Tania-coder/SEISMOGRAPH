@@ -1827,3 +1827,76 @@ write through the NTFS mount, or route all such writes through bash heredoc.
 
 Accountability: session executed by Claude (Lead Technical Co-Pilot),
 reviewed and committed by Tatiana Radchenko.
+
+---
+
+## Session 030 — 2026-07-02
+
+**Director:** Tatiana
+**Co-pilot:** Claude (Cowork)
+**Phase:** Narrative arc wrap-up (post dev.to publish)
+
+### Done
+- CRLF renormalize: `git rm --cached -r . ; git reset --hard` on clean tree
+  (PowerShell) -> git status stayed clean, nothing to commit. Investigated
+  the "4 phantom files" ruff-format-check failures further than prior
+  sessions: confirmed via direct host file read + `git cat-file -p HEAD:...`
+  that the real file and the git blob are byte-identical and correct
+  (e.g. tests/test_privacy.py = 17021 bytes). The sandbox bash mount reads
+  the same 4 files (engine/correlation.py, gateway/main.py,
+  scripts/first_party_fleet.py, tests/test_privacy.py) with ~400-900 extra
+  trailing NUL bytes, stable across repeated reads -- a read-side artifact
+  of the sandbox mount, not a repo defect. `pytest` in-sandbox is unaffected
+  (122 passed); only `ruff check`/`format --check` trip on it in-sandbox.
+  Conclusion upgraded from "ignore until renormalize" to "confirmed
+  sandbox-mount-only read artifact, not a repo issue" -- no further action
+  needed; CI (outside the mount) stays the ground truth.
+- dev.to post-publication: fetched the article, found 1 comment (Void
+  Stitch, technical question re: first drift signal). Reply drafted (not
+  posted -- no dev.to account access) in
+  social/S030_dev_to_reply_and_show_hn.md. Added dev.to link to README
+  Documentation line and to drift-defense landing Evidence line (both via
+  bash/python heredoc writes, NUL-checked clean). Tatiana committed +
+  pushed both (SEISMOGRAPH a30a604, drift-defense 9c1e9fb).
+- Show HN draft (title + first comment, honest backtest caveat) written to
+  the same social/ file, ready for Tatiana to post AM US time.
+- PyPI #11202: checked Gmail -- support (Thespi-Brain) initiated recovery
+  2026-07-01 22:36, Tatiana already replied 2026-07-02 10:46 with the
+  pushed-branch proof. Nothing further actionable; awaiting support.
+- Zenodo: published new version 1.0.1 (DOI 10.5281/zenodo.21139614, concept
+  DOI unchanged 10.5281/zenodo.21045517) via Claude in Chrome, Tatiana
+  authorized before the irreversible Publish click. Description corrected
+  "Claude 3.5 Sonnet" -> "Claude Sonnet 4" (now matches .zenodo.json and
+  README/landing wording); same v1.0.0 zip re-attached (no code change).
+
+### Defects / notes caught
+- Confirmed (see above) the sandbox-mount NUL-padding artifact is not
+  limited to reads of pre-existing files -- also observed transiently on
+  README.md and drift-defense/index.html right after a bash-side write
+  (grep/wc via mount showed hundreds of phantom NUL bytes; Read tool on
+  the real host path showed the file clean both times). Treat ANY
+  ruff/grep/wc NUL-byte finding via the sandbox mount as suspect first --
+  verify against the host file (Read tool) or `git cat-file` before
+  concluding real corruption.
+- Zenodo "New version" / "Publish" buttons in Claude-in-Chrome intermittently
+  froze `Page.captureScreenshot` (native browser confirm-style overlay
+  blocks CDP screenshot) -- resolved by waiting + retrying screenshot, not
+  by blind Enter-key (first blind Enter did nothing harmful but also
+  didn't confirm; the actual native modal needed a targeted click once
+  visible).
+
+### Verification
+- pytest: 122 passed (sandbox). Both repos confirmed `git status` clean /
+  "up to date with origin/main" after commits.
+- Zenodo record 21139614 fetched post-publish: version 1.0.1, description
+  text verified reading "Claude Sonnet 4".
+
+### Known limitations
+- dev.to reply and Show HN post still need Tatiana to actually post them
+  (no account access from this session).
+- PyPI #11202 still open, external dependency.
+
+### Deferred
+- Outreach sends -- Tatiana, manual, texts already correct since S029.
+
+Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchenko.
