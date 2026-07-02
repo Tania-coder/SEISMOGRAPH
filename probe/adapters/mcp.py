@@ -72,7 +72,7 @@ TOOL_SCHEMA: dict[str, Any] = {
                 "description": (
                     "Model identifier in '<provider>/<model>@<version>'"
                     " format, e.g. 'openai/gpt-4o@2025-08' or"
-                    " 'anthropic/claude-3-5-sonnet@global'."
+                    " 'anthropic/claude-sonnet-4@global'."
                 ),
             }
         },
@@ -175,7 +175,7 @@ def check_model_weather(
     informative "No data found" message rather than raising.
 
     Args:
-        model_tuple: e.g. "anthropic/claude-3-5-sonnet@global".
+        model_tuple: e.g. "anthropic/claude-sonnet-4@global".
         base_url: SEISMOGRAPH gateway base URL.  Defaults to
             localhost for local development.
         http_client: Injectable httpx.Client for testing.  If None,

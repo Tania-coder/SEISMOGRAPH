@@ -20,7 +20,7 @@ components are tested and in use; `hardening` and `planned` items are open work.
 earlier than infrastructure metrics.
 
 - [x] Page-CUSUM change-point detector over standardised observations.
-- [x] Reproducible backtest of the documented Anthropic Claude 3.5 Sonnet
+- [x] Reproducible backtest of the documented Anthropic Claude Sonnet 4
       degradation (Aug–Sep 2025): first alert **38 days before** the official
       postmortem, in the subtle 0.8%-traffic window (fixed seed, assertions pass).
 - [x] Architecture document and calibration record.

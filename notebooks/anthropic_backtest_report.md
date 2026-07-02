@@ -1,16 +1,22 @@
 # SEISMOGRAPH Backtest Report
-## Anthropic Claude 3.5 Sonnet -- Aug-Sep 2025
+## Anthropic Claude Sonnet 4 -- Aug-Sep 2025
 
-**Generated:** 2026-06-10 | **Seed:** 42 | **CUSUM:** h=5.0, k=0.5
+**Generated:** 2026-07-02 | **Seed:** 42 | **CUSUM:** h=5.0, k=0.5
 
 ---
 
 ## The Question
 
-In Q3 2025, Anthropic published a postmortem describing a silent
-degradation in Claude 3.5 Sonnet caused by a load-balancer
-misconfiguration that misrouted a fraction of requests to an
-incompatible model configuration.
+On 2025-09-17, Anthropic published a postmortem describing
+**three infrastructure bugs** that silently degraded Claude
+output quality in Aug-Sep 2025. Anthropic was explicit that
+model quality was never intentionally degraded -- the cause
+was infrastructure, not a model update.
+
+This backtest models the first and longest-lived bug: a
+context-window routing error that misrouted a fraction of
+**Claude Sonnet 4** requests to servers configured for the
+1M-token context window.
 
 The bug was introduced around **2025-08-05** (~0.8% of traffic).
 By **2025-08-29** the misrouting rate had escalated to ~16%,

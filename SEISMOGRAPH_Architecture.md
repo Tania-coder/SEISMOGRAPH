@@ -271,15 +271,17 @@ modifies these files.
 
 ## 12. Phase 0 validation result
 
-**SEISMOGRAPH detected the Anthropic Claude 3.5 Sonnet silent degradation
-38 days before the official postmortem.**
+**SEISMOGRAPH (backtest) detected the Anthropic Claude Sonnet 4 silent
+degradation 38 days before the official postmortem.** The postmortem
+(2025-09-17) describes three infrastructure bugs; the backtest models the
+first: the Sonnet 4 context-window routing error.
 
 Details:
   Script:          scripts/anthropic_backtest.py (SEED=42, reproducible)
   Report:          notebooks/anthropic_backtest_report.md
   Calibration:     data/drift_labels/cusum_phase0_calibration.md
 
-  Model:           anthropic/claude-3-5-sonnet@global
+  Model:           anthropic/claude-sonnet-4@global
   Baseline start:  2025-07-01  (35-day warm-up, baseline_samples=30)
   Bug introduced:  2025-08-05  (~0.8% misrouting -- subtle Phase 1 signal)
   Escalation:      2025-08-29  (~16% misrouting -- visible to users)

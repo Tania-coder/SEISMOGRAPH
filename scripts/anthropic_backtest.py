@@ -3,8 +3,12 @@
 scripts/anthropic_backtest.py
 ==============================
 Phase 0 Backtest: Would SEISMOGRAPH have detected the Anthropic
-Claude 3.5 Sonnet silent degradation (Aug-Sep 2025) before the
+Claude Sonnet 4 silent degradation (Aug-Sep 2025) before the
 official postmortem published on September 17, 2025?
+
+The postmortem describes three infrastructure bugs; this backtest
+models the first and longest-lived one: the context-window routing
+error that misrouted a fraction of Claude Sonnet 4 requests.
 
 Timeline (synthesized from public postmortem):
   Jul  1 2025  Baseline monitoring begins (35-day warm-up)
@@ -44,7 +48,7 @@ BUG_DATE = date(2025, 8, 5)
 ESCALATION_DATE = date(2025, 8, 29)
 POSTMORTEM_DATE = date(2025, 9, 17)
 
-MODEL = "anthropic/claude-3-5-sonnet@global"
+MODEL = "anthropic/claude-sonnet-4@global"
 SEED = 42
 
 # ---------------------------------------------------------------------------
@@ -172,8 +176,8 @@ def run() -> None:
     # ------------------------------------------------------------------
     sep = "=" * 62
     print(sep)
-    print("SEISMOGRAPH Backtest -- Anthropic Claude 3.5 Sonnet")
-    print("Aug-Sep 2025 Silent Model Degradation")
+    print("SEISMOGRAPH Backtest -- Anthropic Claude Sonnet 4")
+    print("Aug-Sep 2025 Silent Degradation (routing bug)")
     print(sep)
     print()
     print(f"  Model:           {MODEL}")
@@ -238,19 +242,25 @@ def run() -> None:
 
     md = [
         "# SEISMOGRAPH Backtest Report",
-        "## Anthropic Claude 3.5 Sonnet -- Aug-Sep 2025",
+        "## Anthropic Claude Sonnet 4 -- Aug-Sep 2025",
         "",
-        f"**Generated:** 2026-06-10 | **Seed:** {SEED} | "
+        f"**Generated:** 2026-07-02 | **Seed:** {SEED} | "
         f"**CUSUM:** h={CUSUM_H}, k={CUSUM_K}",
         "",
         "---",
         "",
         "## The Question",
         "",
-        "In Q3 2025, Anthropic published a postmortem describing a silent",
-        "degradation in Claude 3.5 Sonnet caused by a load-balancer",
-        "misconfiguration that misrouted a fraction of requests to an",
-        "incompatible model configuration.",
+        "On 2025-09-17, Anthropic published a postmortem describing",
+        "**three infrastructure bugs** that silently degraded Claude",
+        "output quality in Aug-Sep 2025. Anthropic was explicit that",
+        "model quality was never intentionally degraded -- the cause",
+        "was infrastructure, not a model update.",
+        "",
+        "This backtest models the first and longest-lived bug: a",
+        "context-window routing error that misrouted a fraction of",
+        "**Claude Sonnet 4** requests to servers configured for the",
+        "1M-token context window.",
         "",
         f"The bug was introduced around **{BUG_DATE}** (~0.8% of traffic).",
         f"By **{ESCALATION_DATE}** the misrouting rate had escalated to ~16%,",

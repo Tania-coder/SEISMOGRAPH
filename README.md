@@ -21,10 +21,11 @@ pip install seismograph-probe   # the probe SDK — Python 3.11+
 
 Teams build on LLM APIs they don't control. Providers update models silently — same name, same endpoint, different behavior — and prompts that worked yesterday break today, with no announcement and no alert. SEISMOGRAPH is the smoke detector for that risk: a privacy-preserving early-warning network that continuously probes models and tells you the moment one drifts from its baseline — before it costs you a customer.
 
-> Detected the Anthropic Claude 3.5 Sonnet silent degradation on 2025-08-10 --
-> **38 days before the official Sep 17 postmortem** and 19 days before the
-> load-balancer escalation became visible. Detection occurred during the
-> 0.8% misrouting window, before any user-visible symptoms appeared.
+> In a reproducible backtest, detected the Anthropic Claude Sonnet 4 silent
+> degradation on 2025-08-10 -- **38 days before the official Sep 17
+> postmortem** and 19 days before the escalation became visible to users.
+> Detection occurred during the 0.8% misrouting window, before any
+> user-visible symptoms appeared.
 
 ![SEISMOGRAPH Model Weather dashboard — live drift status for four production LLMs](docs/dashboard.png)
 
@@ -63,15 +64,17 @@ single bad actor -- or noisy probe -- can trigger a false alarm.
 
 ## The proof: Phase 0 backtest
 
-Anthropic published a postmortem on 2025-09-17 describing a silent
-context-routing degradation introduced around 2025-08-05. The degradation
-began as 0.8% misrouting (Phase 1) and escalated to ~16% on 2025-08-29
-(Phase 2) before detection.
+Anthropic published a postmortem on 2025-09-17 describing three
+infrastructure bugs that silently degraded output quality (no intentional
+model change). The first and longest-lived: a context-window routing error
+introduced 2025-08-05 that misrouted a fraction of **Claude Sonnet 4**
+requests. It began as 0.8% misrouting (Phase 1) and escalated to ~16% on
+2025-08-29 (Phase 2). This backtest models that first bug.
 
 **SEISMOGRAPH (simulated, SEED=42, reproducible) would have alerted on 2025-08-10:**
 
 ```
-CUSUM S- trace -- json_success_rate (anthropic/claude-3-5-sonnet@global)
+CUSUM S- trace -- json_success_rate (anthropic/claude-sonnet-4@global)
   Baseline: mu0=0.9903, sigma0=0.00437, h=5.0, k=0.5
 
   Date        Phase          rate    S-      note

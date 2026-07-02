@@ -47,3 +47,10 @@ banner_gradient_mesh.png
 linkedin_banner.png
 
 data/*.db
+
+# Private session notes — never publish
+SESSION_022_SUMMARY.md
+SESSION_SUMMARY_017_018_019.md
+LinkedIn_Session_Recap.md
+memory/SESSION_023_SUMMARY.md
+memory/SESSION_SUMMARY_2026-07-02.md

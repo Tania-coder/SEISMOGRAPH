@@ -1,7 +1,7 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-06-30 (Session 027)
+# Last updated: 2026-07-02 (Session 028: review + security)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -50,10 +50,11 @@
   _OnePager.pdf (all committed to main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- Track 2 -- first-touch clarity: dashboard "what is this / STABLE vs
-  DRIFTING" panel (dashboard/static, in-repo) + landing legibility
-  (drift-defense, separate Pages repo).
-- Track 3 -- plain-language narrative (who/what/why) for partners + grant.
+- Track 2: dashboard explainer panel DONE (in main). LANDING (drift-defense,
+  separate Pages repo) NOT done -- hero = pitch block A + CTA; fix "107 tests"
+  -> 122 on the landing graphic.
+- Track 3: README hero + Technical overview DONE (in main). NEXT: dev.to
+  long-form article (connect account via GitHub; Claude drafts; Tatiana posts).
 - Track 1b real-Mistral local run (nice-to-see): pipeline proven (mock batch
   accepted on Tatiana's local gateway + 122 tests); a real Mistral emission
   to the LOCAL dashboard still pending (Mistral API-key friction deferred it;
@@ -61,8 +62,12 @@
   the org UUID from admin.mistral.ai).
 - Hygiene: bulk CRLF renormalize of ~10 phantom files (.gitattributes eol=lf
   added S027; run git rm --cached -r . && git reset --hard on a CLEAN tree).
-- Infra/security (deadline): GitHub 2FA TOTP before 2026-07-30; PyPI 1.0.1
-  sole-author republish (#11202); dev.to OAuth.
+- Infra/security: 2FA + full 6-step security checklist DONE 2026-07-02.
+  PyPI #11202 IN PROGRESS: verification branch lPpHBOqwfdAqYN6j pushed, reply
+  sent; await 2FA/password reset, then 1.0.1 republish + delete temp branch.
+- E1 CRITICAL (S029 FIRST, before dev.to/landing): backtest/notebook/README
+  say claude-3-5-sonnet; real postmortem = Claude Sonnet 4, 3 infra bugs.
+  Dates correct. Fix model tuple + narrative, then publish.
 - Go-to-market (private, business/): outreach pack ready; Tatiana sends.
 
 ## Last sessions

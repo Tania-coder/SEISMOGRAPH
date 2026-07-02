@@ -1667,3 +1667,99 @@ reads as finished to grant reviewers and prospective partners.
 ### Confirmed by Tatiana
 - [x] CONFIRMED 2026-06-30 — Track 2 dashboard merged; CI red->green verified
   (run #10 success). Landing + Track 3 deferred to next session.
+
+---
+
+## Session 027 (cont. 3) — 2026-06-30 — Track 3 README + content/marketing + close
+
+### Track 3 (README) — DONE, merged to main (8a25d14)
+- README.md: Hero = pitch block B (hook "Your LLM didn't get worse. It changed
+  — and nobody told you." + business-risk paragraph). New "## Technical
+  overview" = block C (semantic drift, canary, ε=2.0 DP, Ed25519, quorum,
+  CUSUM+Bayesian, 122 tests, 38-day backtest, vendor-anonymized "a major
+  provider"). Synced test count 107 -> 122 (badge + Test suite section).
+- The proof / detection-quote sections still name Anthropic explicitly
+  (factual reproducible backtest) — Tatiana chose to keep, not anonymize.
+
+### Content / marketing (Tatiana, manual — Claude drafted copy)
+- LinkedIn: published the silent-drift hook post (hook + risk + how-it-works
+  bullets + repo/dashboard links). Existing account, not first post.
+- X/Twitter (@tatyanti): published a 4-tweet thread WITH a fresh screenshot of
+  the LIVE dashboard showing the new Track-2 explainer panel. Earlier posts
+  (Jun 23-24) are historical (cite 99/107 tests — accurate then, NOT edited).
+- Pitch variants A/B/C drafted in EN (recruiter / investor / social hook).
+
+### Verification (triple-checked at close)
+- README markers, dashboard panel, all Track 1/1b/hardening files, memory S027
+  entries: all present. ruff check . clean; ruff format --check . clean except
+  4 CRLF-phantoms (LF in git -> green on CI); pytest 122 passed.
+- main GREEN (API-confirmed at bb5fc4a; README merge 8a25d14 is docs-only and
+  cannot fail the ruff/pytest gates).
+
+### Open / deferred to S028 (see NEXT_SESSION_PROMPT.md, gitignored)
+- dev.to: NOT started. Needs account OAuth (sign in via GitHub) + a long-form
+  article (Claude drafts from README technical overview + backtest + arch).
+- Track 2 LANDING (drift-defense, separate Pages repo): not started; landing
+  graphic still says "107 tests" -> update to 122.
+- Admin: GitHub 2FA TOTP (DEADLINE 2026-07-30); PyPI 1.0.1 (#11202).
+- Hygiene: bulk CRLF renormalize of the 4 phantom files.
+
+### Confirmed by Tatiana
+- [x] CONFIRMED 2026-06-30 — session saved at her request; tomorrow's plan in
+  NEXT_SESSION_PROMPT.md. Tracks: dev.to article + landing + admin next.
+
+
+---
+
+## Session 028 — 2026-07-02 (review + security; no code changes)
+
+### Review / audit (Claude, verified by running, not by reading reports)
+- Tatiana uploaded 12 session-report PDFs feeling lost in the process. Audit
+  found: PDFs dated 2026-07-02 are EXPORTS of June sessions (file mtimes
+  Jun 10); two different "session 022" reports exist. Source of truth remains
+  memory/CURRENT_STATE.md + project_open_tasks.md (both accurate).
+- In-sandbox verification: 122/122 pytest, ruff check clean, ruff format clean
+  except 4 known CRLF phantoms, anthropic_backtest.py reproduces 38-day lead
+  (first alert 2025-08-10).
+- E1 CRITICAL fact error found: backtest/notebook/README name
+  anthropic/claude-3-5-sonnet; real Sep-2025 Anthropic postmortem concerned
+  Claude Sonnet 4 (+Claude Code), cause = 3 infra bugs. Dates are correct.
+  MUST fix before dev.to article / Show HN. -> S029 task.
+- Deliverable: business/REVIEW_AND_PLAN_2026-07-02.md (private, gitignored) —
+  full review + goals + step-by-step plan.
+
+### Security checklist (Tatiana executed, Claude guided; all 6 steps CLOSED)
+1. GitHub 2FA already configured; recovery codes REGENERATED (old invalidated),
+   saved off-machine. Jul-30 deadline closed.
+2. Gmail + GitHub passwords rotated.
+3. Sessions revoked (Google: stale iPhone/Windows sessions signed out;
+   GitHub: single current web session; GitHub Mobile confirmed hers).
+4. Tokens/keys: 0 PATs, 0 SSH/GPG keys. OAuth apps pruned 7 -> 4
+   (kept DEV, Zenodo, Git Credential Manager, GitHub iOS; revoked
+   DigitalOcean, OpenRouter, Tavily).
+5. Collaborators: SEISMOGRAPH + drift-defense = 0; org seismograph-network =
+   Tatiana only (Owner), no repos.
+6. Computer: Windows password changed, no remote-access software, RDP off,
+   Credential Manager clean; stale git:https://github.com credential deleted
+   (GCM will re-auth with new password + 2FA on next push).
+
+### PyPI recovery #11202 — moved forward
+- support@pypi.org verification email received (PyPI username: Kapibara).
+- Verification branch lPpHBOqwfdAqYN6j pushed from PowerShell
+  (git push origin main:lPpHBOqwfdAqYN6j). NOTE: name starts with lowercase L
+  (screenshot font suggested uppercase I — read via Gmail connector).
+- Reply draft created in Gmail; Tatiana sends. Next: PyPI resets 2FA + sends
+  password-reset -> set new password + new 2FA + save recovery codes ->
+  delete temp branch (git push origin --delete lPpHBOqwfdAqYN6j) ->
+  republish 1.0.1 sole-author.
+
+### Open / deferred to S029 (Tatiana confirmed defer)
+- E1 fix (model name claude-3-5-sonnet -> claude-sonnet-4 in backtest,
+  notebook, README "The proof") — FIRST, before any publishing.
+- Landing drift-defense "107 tests" -> 122. dev.to article after E1.
+- Memory-file edits this session (open_tasks, log) are uncommitted — commit
+  from PowerShell at next session start.
+
+### Confirmed by Tatiana
+- [x] CONFIRMED 2026-07-02 — security checklist complete; E1 + landing +
+  dev.to deferred to S029 at her request.
