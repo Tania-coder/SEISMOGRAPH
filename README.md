@@ -31,7 +31,7 @@ Teams build on LLM APIs they don't control. Providers update models silently —
 
 <p align="center"><em>Live "model weather" — <a href="https://seismograph-weather.onrender.com/dashboard">open the public dashboard</a> (no login).</em></p>
 
-**Documentation:** [Whitepaper (PDF)](docs/SEISMOGRAPH_Whitepaper_v1.pdf) · [Roadmap](ROADMAP.md) · [Security & threat model](SECURITY.md) · [Architecture](SEISMOGRAPH_Architecture.md) · [DOI 10.5281/zenodo.21045518](https://doi.org/10.5281/zenodo.21045518)
+**Documentation:** [Whitepaper (PDF)](docs/SEISMOGRAPH_Whitepaper_v1.pdf) · [Roadmap](ROADMAP.md) · [Security & threat model](SECURITY.md) · [Architecture](SEISMOGRAPH_Architecture.md) · [dev.to: Your LLM didn't get worse](https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl) · [DOI 10.5281/zenodo.21045518](https://doi.org/10.5281/zenodo.21045518)
 
 ---
 
