@@ -1,7 +1,7 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-02 (Session 028: review + security)
+# Last updated: 2026-07-02 (Session 029: E1 facts + dev.to + landing)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -11,71 +11,65 @@
 - Branch convention: seismograph/task-{id}.
 
 ## Phase
-- Phase 0 thesis VALIDATED (38-day lead). Phases 1-2 core complete; Phase 3
-  partial. Product-realism pass: Track 1 (live probe) + Track 1b (live
-  signed signal -> gateway -> dashboard) DONE and MERGED to main (S027).
-  NEXT: Track 2 (first-touch clarity) + Track 3 (plain-language narrative).
+- Phase 0 thesis VALIDATED (38-day lead, backtest). Phases 1-2 core complete;
+  Phase 3 partial. Product-realism Tracks 1/1b/2/3 DONE. Narrative arc DONE:
+  README + landing + LinkedIn + X (pinned) + dev.to article published.
+
+## Facts canon (E1, fixed S029 — use ONLY these)
+- Incident: Anthropic postmortem 2025-09-17, THREE infra bugs, NOT a model
+  update (Anthropic explicit). Backtest models bug #1: context-window
+  routing error, Claude Sonnet 4 (NOT 3.5 Sonnet), 0.8% from 2025-08-05,
+  ~16% from 2025-08-29.
+- Model tuple: anthropic/claude-sonnet-4@global.
+- Detection (SEED=42): first alert 2025-08-10; lead 38 d over postmortem,
+  19 d over escalation. ALWAYS say "reproducible/seeded backtest", never
+  imply a live catch. Tests count: 122.
+- Zenodo DOI archive still has old wording (immutable) — fixed .zenodo.json
+  applies to next version upload.
 
 ## Baseline (re-verify at session start)
-- Tests: 122 passed (was 118; +1 non-ASCII key guard, +3 Track 1b). Run from
-  repo root: py -3.10 -m pytest -q.
-- Sandbox CAN run the FULL suite now. Install deps first: opentelemetry-sdk
-  (otel) + fastapi/uvicorn/sqlalchemy/cryptography/httpx + pytest/ruff. The
-  ONLY full-suite blocker was test_adapters importing opentelemetry, NOT file
-  truncation. The old "engine/gateway read corrupt by mount" lore is RETIRED:
-  all modules parse, import, and the gateway runs under uvicorn + TestClient
-  in-sandbox. Trust the sandbox full run again.
-- Ruff: run BOTH gates with the PINNED version before ANY handoff ->
-  `pip install ruff==0.15.20 && ruff check . && ruff format --check .`
-  then `pytest -q`. `ruff check` ALONE misses formatting (shipped a red
-  main in S027; CI runs both). 4 CRLF-phantom files trip
-  `ruff format --check` in-sandbox only (LF in git -> green on CI) --
-  ignore until bulk renormalize.
+- Tests: 122 passed. From repo root: py -3.10 -m pytest -q.
+- Sandbox runs the FULL suite (install: opentelemetry-sdk fastapi uvicorn
+  sqlalchemy cryptography httpx pytest).
+- Ruff BOTH gates, pinned: pip install ruff==0.15.20 && ruff check . &&
+  ruff format --check . — then pytest. 4 CRLF phantoms trip format-check
+  in-sandbox only (LF in git, CI green) — ignore until renormalize.
+- NEW HARD RULE (S029): after ANY Edit-tool write through the mount, check
+  the file for NUL bytes (Edit appended \x00s twice: mcp.py, landing).
+  Prefer bash heredoc for all writes.
 
 ## HARD RULE — git ONLY from PowerShell (Tatiana)
-- NEVER run git from the sandbox against the mounted repo. The sandbox sees
-  .git through the mount inconsistently (branch reads "seism", log empty) and
-  any write (status/add/commit) leaves a .git/index.lock the sandbox cannot
-  unlink -- which BLOCKS Tatiana's PowerShell git. If a lock appears:
-  Remove-Item .git\index.lock -Force. (Burned once in S027.)
-- Sandbox is for: writing files (heredoc, LF), running pytest / ruff /
-  uvicorn. Commits, merges, deletes, pushes, status = Tatiana in PowerShell.
+- NEVER run git from the sandbox (mount leaves index.lock, blocks Tatiana;
+  if lock: Remove-Item .git\index.lock -Force).
+- Каждое новое окно PowerShell: FIRST cd D:\Dev\Projects\SEISMOGRAPH.
+- git add -A CAN sweep private notes — 5 files now gitignored; verify
+  commit file list before push anyway.
 
 ## Live assets
-- Dashboard: https://seismograph-weather.onrender.com/dashboard (Render)
-- Landing:   https://tania-coder.github.io/drift-defense/
+- Dashboard: https://seismograph-weather.onrender.com/dashboard
+- Landing:   https://tania-coder.github.io/drift-defense/ (repo clone:
+  D:\Dev\Projects\drift-defense)
+- dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
 - PyPI:      https://pypi.org/project/seismograph-probe/1.0.0/
 - DOI:       https://doi.org/10.5281/zenodo.21045518 (concept; cite for grant)
-- Grant/market pack: docs/SEISMOGRAPH_Whitepaper_v1.pdf, _Pitch_Deck.pptx/pdf,
-  _OnePager.pdf (all committed to main).
+- Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- Track 2: dashboard explainer panel DONE (in main). LANDING (drift-defense,
-  separate Pages repo) NOT done -- hero = pitch block A + CTA; fix "107 tests"
-  -> 122 on the landing graphic.
-- Track 3: README hero + Technical overview DONE (in main). NEXT: dev.to
-  long-form article (connect account via GitHub; Claude drafts; Tatiana posts).
-- Track 1b real-Mistral local run (nice-to-see): pipeline proven (mock batch
-  accepted on Tatiana's local gateway + 122 tests); a real Mistral emission
-  to the LOCAL dashboard still pending (Mistral API-key friction deferred it;
-  API key is the long no-dash string from console.mistral.ai -> API Keys, NOT
-  the org UUID from admin.mistral.ai).
-- Hygiene: bulk CRLF renormalize of ~10 phantom files (.gitattributes eol=lf
-  added S027; run git rm --cached -r . && git reset --hard on a CLEAN tree).
-- Infra/security: 2FA + full 6-step security checklist DONE 2026-07-02.
-  PyPI #11202 IN PROGRESS: verification branch lPpHBOqwfdAqYN6j pushed, reply
-  sent; await 2FA/password reset, then 1.0.1 republish + delete temp branch.
-- E1 CRITICAL (S029 FIRST, before dev.to/landing): backtest/notebook/README
-  say claude-3-5-sonnet; real postmortem = Claude Sonnet 4, 3 infra bugs.
-  Dates correct. Fix model tuple + narrative, then publish.
-- Go-to-market (private, business/): outreach pack ready; Tatiana sends.
+- PyPI #11202: awaiting support; then new pass + 2FA + recovery codes ->
+  delete temp branch lPpHBOqwfdAqYN6j -> republish 1.0.1 sole author.
+- CRLF bulk renormalize (deferred S029): on CLEAN tree
+  git rm --cached -r . ; git reset --hard (.gitattributes in place).
+- Outreach pack ready (business/, fixed facts S029) — Tatiana sends.
+- Track 1b nice-to-have: real Mistral emission to LOCAL dashboard (API key =
+  long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
+- Zenodo: upload new version to refresh archived description (optional).
 
 ## Last sessions
-- S027 (2026-06-30): committed + pushed + MERGED live arc to main. First live
-  Mistral probe run. Probe hardening (sys.path bootstrap, non-ASCII key
-  guard, .gitattributes). Track 1b: live signed signal -> gateway ->
-  dashboard (scripts/live_emit.py + tests/test_live_emit.py, 3 integration
-  tests). Untracked runtime data/seismograph.db. Keystone S026 addendum +
-  S027. 122 passed. Lore retired (sandbox full suite); git-only-PowerShell.
-- S026 (2026-06-29): re-verify + grant/market pack + Zenodo DOI +
-  ROADMAP/SECURITY + README; live-probe code (then uncommitted). See log.
+- S029 (2026-07-02): E1 facts fixed everywhere public (commit 0d9c81d,
+  main); private-notes near-leak caught pre-push + gitignored; 29 fixes in
+  business/social/job_search; dev.to article PUBLISHED (tags OK); landing
+  redesigned hero + facts (fb9018b, verified live); X thread pinned.
+  Defects: Edit-tool NUL bytes (x2), form_input vs dev.to tags widget.
+  122 passed, both ruff gates.
+- S028 (2026-07-02): review + security checklist closed; PyPI #11202 reply.
+- S027 (2026-06-30): live arc merged to main; first live Mistral probe run.

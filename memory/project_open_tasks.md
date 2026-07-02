@@ -9,10 +9,14 @@
 ---
 
 ## DO NEXT (S029) — fix facts FIRST, then content
-- [ ] E1 CRITICAL: model name claude-3-5-sonnet -> claude-sonnet-4 in
-      scripts/anthropic_backtest.py + notebooks/anthropic_backtest_report.md +
-      README "The proof" (real postmortem = Sonnet 4, 3 infra bugs; dates OK).
-      Do BEFORE dev.to / Show HN.
+- [x] E1 CRITICAL — DONE S029 (commit 0d9c81d, merged to main). Sonnet 4 +
+      3 infra bugs fixed in: backtest script, notebook (regenerated),
+      README, Architecture §12, ROADMAP, landing.html, .zenodo.json,
+      mcp.py docstrings. Detection unchanged: 2025-08-10, lead 38/19 d.
+      122 passed, ruff clean. NOTE: business/, social/, job_search/ still
+      say "3.5 Sonnet" (+ cover_letter says 103 tests) — fix before sending.
+      Zenodo: existing DOI archive immutable; fixed text applies to next
+      version upload. Private session notes added to .gitignore.
 - [ ] dev.to article (Track 3 cont.): connect dev.to (sign in via GitHub =
       "dev.to OAuth"); Claude drafts a long-form technical article from the
       README "Technical overview" + CUSUM backtest + architecture; Tatiana

@@ -1627,7 +1627,7 @@ reads as finished to grant reviewers and prospective partners.
 ### Confirmed by Tatiana
 - [x] CONFIRMED 2026-06-30 — merge approved; memory + log to be committed and
   merged to main; Tracks 2/3 deferred to a fresh session.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+
 ---
 
 ## Session 027 (cont.) — 2026-06-30 — Track 2 dashboard + CI hotfix
@@ -1763,3 +1763,67 @@ reads as finished to grant reviewers and prospective partners.
 ### Confirmed by Tatiana
 - [x] CONFIRMED 2026-07-02 — security checklist complete; E1 + landing +
   dev.to deferred to S029 at her request.
+
+---
+
+## Session 029 — 2026-07-02
+
+### Done
+- E1 CRITICAL (facts): claude-3-5-sonnet -> claude-sonnet-4; cause -> three
+  infra bugs (routing misconfig modeled), "silent model update" framing
+  removed. Files: scripts/anthropic_backtest.py, notebooks report
+  (regenerated, SEED=42), README (hero + The proof + trace), Architecture
+  §12, ROADMAP, dashboard/static/landing.html, .zenodo.json, mcp.py
+  docstrings. Detection UNCHANGED: first alert 2025-08-10, lead 38/19 days.
+  Commit 0d9c81d, merged fast-forward to main, pushed.
+- Private-leak catch: git add -A swept 5 private session notes
+  (incl. SESSION_022 authorship/security details) into the E1 commit;
+  removed via rm --cached + amend BEFORE push; added to .gitignore.
+- business/, social/, job_search/ (all gitignored): 29 fact fixes —
+  Sonnet 4, 103/107 tests -> 122, "38-day backtest" -> "seeded backtest",
+  overclaim in job_shortlist qualified with "(reproducible backtest)".
+  Monitored-model lists (3.5 Sonnet legit) and REVIEW_AND_PLAN untouched.
+- dev.to PUBLISHED (via Claude in Chrome, Tatiana authorized):
+  https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
+  Tags #ai #python #opensource #observability. Draft kept at
+  social/devto_article_S029.md. Honest framing: backtest-not-live-catch
+  section included.
+- Track 2 LANDING (drift-defense repo, cloned to D:\Dev\Projects\drift-defense):
+  hero -> pitch block A, 107 -> 122 tests, Sonnet 4 + backtest qualifier
+  in receipt/quote/FAQ. Commit fb9018b pushed; live page fetched and
+  verified.
+- X thread pinned to profile (Tatiana, manual).
+
+### Defects caught
+- Edit tool appended NUL bytes via NTFS mount (4 in probe/adapters/mcp.py,
+  10 in drift-defense/index.html). Caught by ruff invalid-syntax / grep
+  binary-match. Fix: strip NULs in bash; ALL edited files now NUL-checked
+  after every Edit-tool pass.
+- form_input could not set dev.to tags widget; fixed post-publish via
+  Edit page + real keystrokes.
+- Single-line replace missed 2 line-wrapped "3.5 Sonnet silent\ndegradation"
+  phrases; caught by residual grep.
+
+### Verification
+- py: 122 passed (sandbox full suite). ruff==0.15.20: check clean;
+  format --check trips only the 4 known CRLF phantoms (LF in git, CI green).
+- Backtest re-run: assertions pass, report regenerated deterministically.
+- Landing verified via live fetch post-deploy.
+
+### Known limitations
+- Zenodo DOI archive is immutable — archived description still says
+  3.5 Sonnet until a new version is uploaded (.zenodo.json fixed for next).
+- Live dashboard still monitors claude-3-5-sonnet tuple (legitimate as a
+  monitored model; not an incident claim).
+
+### Deferred
+- CRLF bulk renormalize (needs clean tree) — next session.
+- PyPI #11202 — awaiting support (external).
+- Outreach sends — Tatiana.
+
+### Methodology note
+Add a mandatory NUL-byte check to the post-edit routine for any Edit-tool
+write through the NTFS mount, or route all such writes through bash heredoc.
+
+Accountability: session executed by Claude (Lead Technical Co-Pilot),
+reviewed and committed by Tatiana Radchenko.
