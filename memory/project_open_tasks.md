@@ -1,7 +1,7 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-02 (Session 030 close)
+# Last updated: 2026-07-03 (Session 030 close)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
@@ -11,13 +11,12 @@
 ## DO NEXT (S030 close -> S031)
 - [x] E1 CRITICAL — DONE S029 (commit 0d9c81d, merged to main).
 - [x] dev.to article — PUBLISHED S029; S030 added link to README + landing,
-      drafted reply to the 1 comment (Void Stitch) — Tatiana still needs to
-      POST the reply (social/S030_dev_to_reply_and_show_hn.md).
+      reply to Void Stitch's comment POSTED.
 - [x] Track 2 LANDING — DONE S029 (hero, 122 tests); S030 added Evidence
       link to dev.to (commit 9c1e9fb).
 - [x] X thread pinned (S029).
-- [ ] Show HN — draft ready (social/S030_dev_to_reply_and_show_hn.md);
-      Tatiana posts AM US time.
+- [x] Show HN — POSTED S030 (no "Show HN:" prefix, blocked for low karma):
+      news.ycombinator.com/item?id=48773957. First comment posted.
 
 ## OPEN — Admin / Security (deadline)
 - [x] GitHub 2FA TOTP — DONE 2026-07-02.
@@ -34,7 +33,15 @@
       not a repo defect, no further action, ignore permanently.
 
 ## OPEN — Growth (PRIVATE detail in business/, gitignored)
-- [ ] Outreach pack ready (business/outreach_pack_S026.md). Tatiana sends from LinkedIn.
+- [~] Outreach batch 1 SENT S030 (2026-07-03): Corti/Lars (Pending from
+      S029), Legora/Sebastian, Nabla/Delphine, Sana/Joel, Poolside/Jose
+      (all sent). PAUSED per playbook — wait for replies, track in
+      business/outreach_pack_S026.md, before sending batch 2 (remaining
+      Tier-A: Ultimate/Zendesk AI, Parloa; then Tier B).
+      LESSON LOCKED: connection notes must say "a seeded backtest flags it
+      38 days before the postmortem" — never "caught ... early" (3 of 4
+      new notes went out with the wrong version before this was caught;
+      unfixable post-send, but follow-up messages are correct).
 - [x] Zenodo v1.0.1 published S030 (DOI 10.5281/zenodo.21139614) — done,
       no further action.
 

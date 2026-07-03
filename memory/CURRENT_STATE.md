@@ -1,7 +1,7 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-02 (Session 030: dev.to follow-up + Zenodo 1.0.1 + CRLF closed)
+# Last updated: 2026-07-03 (Session 030: dev.to/HN/Zenodo/CRLF + outreach batch 1 sent)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -24,6 +24,13 @@
 - Detection (SEED=42): first alert 2025-08-10; lead 38 d over postmortem,
   19 d over escalation. ALWAYS say "reproducible/seeded backtest", never
   imply a live catch. Tests count: 122.
+- LOCKED PHRASING (S030, Tatiana caught it mutating in LinkedIn notes): the
+  ONLY approved short form is "a seeded backtest flags it 38 days before the
+  postmortem" (or equivalent explicit "backtest/flags" wording). NEVER
+  compress to "caught ... 38 days early" or "caught ... before the
+  postmortem" -- even though it reads punchier, it implies a live catch and
+  is false. This applies everywhere, including char-limited contexts like
+  LinkedIn connection notes (300 char) -- trim other words, not this one.
 - Zenodo DOI archive: v1.0.1 published S030 (DOI 10.5281/zenodo.21139614,
   concept DOI unchanged 10.5281/zenodo.21045517) with corrected "Claude
   Sonnet 4" wording. v1.0.0 record itself stays immutable/stale, but the
@@ -62,7 +69,8 @@
 - Landing:   https://tania-coder.github.io/drift-defense/ (repo clone:
   D:\Dev\Projects\drift-defense)
 - dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
-  (1 comment awaiting reply -- draft in social/S030_dev_to_reply_and_show_hn.md)
+  (reply posted to Void Stitch's comment)
+- Show HN:   https://news.ycombinator.com/item?id=48773957 (posted + first comment)
 - PyPI:      https://pypi.org/project/seismograph-probe/1.0.0/ (1.0.1 republish pending #11202)
 - DOI:       https://doi.org/10.5281/zenodo.21045517 (concept; cite for grant) ->
   currently resolves to v1.0.1 (10.5281/zenodo.21139614), Sonnet-4 wording fixed
@@ -72,20 +80,32 @@
 - PyPI #11202: awaiting support reply (Tatiana already replied 2026-07-02
   10:46 with pushed-branch proof); then new pass + 2FA + recovery codes ->
   delete temp branch lPpHBOqwfdAqYN6j -> republish 1.0.1 sole author.
-- dev.to: post the drafted reply to Void Stitch's comment (Tatiana, manual;
-  draft in social/S030_dev_to_reply_and_show_hn.md).
-- Show HN: post the drafted title + first comment, AM US time (Tatiana,
-  manual; same file).
-- Outreach pack ready (business/, fixed facts S029) — Tatiana sends.
+- dev.to: reply posted (Void Stitch thread). Done.
+- Show HN: posted (without "Show HN:" prefix -- blocked for low-karma
+  accounts). Live: news.ycombinator.com/item?id=48773957. First comment
+  posted. Done.
+- Outreach batch 1 SENT (2026-07-03): Corti/Lars (already Pending, S029),
+  Legora/Sebastian, Nabla/Delphine, Poolside/Jose (all sent), Sana/Joel
+  (probably sent). PAUSED per playbook -- wait for replies before batch 2
+  (Ultimate/Zendesk AI, Parloa = remaining Tier-A; then Tier B). Track
+  replies in business/outreach_pack_S026.md.
+- LESSON: 3 of 4 new connection notes went out saying "caught ... 38 days
+  early" before the phrasing lock was written down -- see LOCKED PHRASING
+  above. Can't be undone (LinkedIn notes aren't editable post-send);
+  follow-up messages are unaffected and already correct.
 - Track 1b nice-to-have: real Mistral emission to LOCAL dashboard (API key =
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
-- S030 (2026-07-02): CRLF sandbox-mount artifact fully diagnosed and closed
-  (not a repo bug); dev.to link added to README + landing (a30a604 /
-  9c1e9fb); dev.to reply + Show HN drafts written; PyPI #11202 status
-  checked (waiting on support); Zenodo v1.0.1 published with Sonnet-4
-  wording fix (DOI 10.5281/zenodo.21139614). 122 passed.
+- S030 (2026-07-02/03): CRLF sandbox-mount artifact fully diagnosed and
+  closed (not a repo bug); dev.to link added to README + landing (a30a604 /
+  9c1e9fb); Zenodo v1.0.1 published with Sonnet-4 wording fix (DOI
+  10.5281/zenodo.21139614); dev.to reply posted; Show HN posted (item
+  48773957); PyPI #11202 status checked (waiting on support); outreach
+  batch 1 sent to 4/5 Tier-A targets (paused for replies per playbook).
+  Lesson: locked the "seeded backtest flags... 38 days" phrasing after 3
+  connection notes went out with an imprecise "caught... early" variant.
+  122 passed.
 - S029 (2026-07-02): E1 facts fixed everywhere public (commit 0d9c81d,
   main); private-notes near-leak caught pre-push + gitignored; 29 fixes in
   business/social/job_search; dev.to article PUBLISHED (tags OK); landing
