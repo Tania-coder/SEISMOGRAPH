@@ -1,7 +1,7 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-06 (Session 031: Sebastian follow-up sent + status sweep)
+# Last updated: 2026-07-06 (Session 032: drift-defense Pages fixed + sweep)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -67,7 +67,8 @@
 ## Live assets
 - Dashboard: https://seismograph-weather.onrender.com/dashboard
 - Landing:   https://tania-coder.github.io/drift-defense/ (repo clone:
-  D:\Dev\Projects\drift-defense)
+  D:\Dev\Projects\drift-defense) — LIVE and current as of S032 (3aceaf0),
+  Evidence row includes the dev.to writeup link (verified).
 - dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
   (reply posted to Void Stitch's comment)
 - Show HN:   https://news.ycombinator.com/item?id=48773957 (posted + first comment)
@@ -78,30 +79,32 @@
 
 ## Open now (full backlog: project_open_tasks.md)
 - PyPI #11202: still awaiting support reply (proof email sent 2026-07-02
-  10:46; re-checked 07-06, silence). Ping the issue if nothing by
-  2026-07-09/10. Then: new pass + 2FA + recovery codes -> delete temp
+  10:46; re-checked 07-06 evening, silence). Ping the issue 2026-07-09/10
+  if still silent. Then: new pass + 2FA + recovery codes -> delete temp
   branch lPpHBOqwfdAqYN6j -> republish 1.0.1 sole author.
 - HN item 48773957: first comment still [flagged] (post 1 point, no
-  external comments). Mod email DRAFTED in Gmail 07-06 ("Flagged comment
-  on item 48773957...") -- ACTION Tatiana: send it (delete stale 07-03
-  draft). Plan B: proper "Show HN:" repost in 2-3 weeks once karma allows.
-- Outreach: Sebastian (Legora) follow-up SENT 07-03 16:45 (role-tailored:
-  client complaints vs green dashboards + platform-team escape hatch). No
-  reply as of 07-06; ONE follow-up, not before Thu 07-09. Other 6 invites
-  all Pending (Jose/Joel/Delphine since 07-03; Sigge/Martin/Lars ~1.5 w --
-  if silent by ~07-17, withdraw). NOTE: Delphine's note also went out with
-  old "caught" wording -> 4 of 6 pending notes imprecise; fix = locked
-  phrasing in first message upon acceptance, never withdraw+resend.
-  Batch 2 still PAUSED per playbook.
-- Void Stitch (dev.to commenter): assessed 07-03 -- very likely AI/
-  engagement-bot account (67 posts in 6 wks, formulaic comments, obsolete
-  model comparisons, no bio). One reply given; invest NO further time.
-- drift-defense: GitHub Pages build FAILED 07-02 on 9c1e9fb (the dev.to
-  link commit) -- live landing may be stale. Investigate + fix.
+  external comments). Mod email SENT by Tatiana 07-06 15:03. ACTION
+  Tatiana: delete the stale 07-06 14:32 draft in Gmail. Plan B: proper
+  "Show HN:" repost in 2-3 weeks once karma allows.
+- Outreach: Sebastian (Legora) ACCEPTED the invite 07-03 20:52 but has
+  NOT replied to the 07-03 16:45 message (checked 07-06). ONE follow-up,
+  not before Thu 07-09, then stop. Other 6 invites all Pending
+  (Jose/Joel/Delphine since 07-03; Sigge/Martin/Lars ~1.5 w — if silent
+  by ~07-17, withdraw). On ANY acceptance: first message uses locked
+  phrasing (esp. Sigge/Martin/Lars/Delphine — their notes carry old
+  "caught" wording). Batch 2 still PAUSED per playbook.
 - Track 1b nice-to-have: real Mistral emission to LOCAL dashboard (API key =
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S032 (2026-07-06): status sweep (PyPI silent; hn@ mod email sent by
+  Tatiana 15:03, stale draft left to delete; Sebastian accepted invite
+  07-03 but no reply; all 6 invites Pending; HN comment still flagged);
+  drift-defense Pages build FIXED — transient Pages infra error on the
+  9c1e9fb deploy (build was green, NOT a repo defect); UI re-run stuck
+  in queue, fixed via empty commit 3aceaf0 (Tatiana, PowerShell), run #7
+  green in 48s; live landing verified showing the dev.to Evidence link.
+  No code changes.
 - S031 (2026-07-03..06): Sebastian follow-up sent (07-03, authorized);
   invite statuses swept twice -- all 6 Pending, Delphine's note found to
   carry old "caught" wording (4/6 total imprecise, mitigation = correct
@@ -125,5 +128,3 @@
   redesigned hero + facts (fb9018b, verified live); X thread pinned.
   Defects: Edit-tool NUL bytes (x2), form_input vs dev.to tags widget.
   122 passed, both ruff gates.
-- S028 (2026-07-02): review + security checklist closed; PyPI #11202 reply.
-- S027 (2026-06-30): live arc merged to main; first live Mistral probe run.

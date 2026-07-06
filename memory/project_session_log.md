@@ -2016,3 +2016,48 @@ Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchen
 - Track 1b Mistral live emission: untouched.
 
 Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchenko.
+
+## Session 032 — 2026-07-06 (Cowork, evening)
+
+### Done
+- Status sweep (Gmail + LinkedIn):
+  - PyPI #11202: still silent (last event: Tatiana's 2026-07-02 10:46
+    proof email). Ping due 2026-07-09/10.
+  - hn@ycombinator.com mod email SENT by Tatiana 2026-07-06 15:03.
+    Stale draft ("A few hours ago...", 07-06 14:32) still in Gmail --
+    Tatiana to delete manually (Claude has no draft-delete tool).
+  - Sebastian Peters (Legora) ACCEPTED the invitation 2026-07-03 20:52
+    (email notification; also gone from LinkedIn pending list). No reply
+    to the 07-03 16:45 message as of 07-06 evening. ONE follow-up not
+    before Thu 2026-07-09.
+  - All 6 invites still Pending (Jose/Joel/Delphine 3 days;
+    Sigge/Martin/Lars ~1.5 weeks, withdraw ~07-17 if silent). No
+    acceptances from the six. Unrelated acceptance: Bethina Frostad.
+  - HN item 48773957: first comment still [flagged], post 1 point, no
+    external comments.
+- drift-defense Pages build FIXED:
+  - Root cause: NOT a repo defect. Run #6 (9c1e9fb, 07-02 20:54):
+    build + report-build-status green, deploy failed in 10s with
+    "Error: Deployment failed, try again later" (transient GitHub Pages
+    infrastructure error).
+  - UI re-run (attempt #2) stayed Queued 14+ min (re-runs of the dynamic
+    pages workflow are flaky) -- abandoned.
+  - Fix: empty commit 3aceaf0 pushed by Tatiana from PowerShell ->
+    run #7 green in 48s.
+  - Verified live: tania-coder.github.io/drift-defense Evidence row now
+    includes "dev.to writeup" -> correct href (dev.to/taniacoder/
+    your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl),
+    target _blank. Landing facts wording checked against E1 canon --
+    compliant.
+  - Harmless leftover: run #6 attempt #2 still Queued, not cancellable
+    from UI; if it ever runs it deploys an identical tree (3aceaf0 is
+    empty on top of 9c1e9fb).
+- No repo code changes this session (ops only); tests not re-run
+  (nothing to verify), git untouched by Claude (single push by Tatiana).
+
+### Deferred (confirmed by Tatiana)
+- PyPI #11202 ping -> 2026-07-09/10 if still silent.
+- Sebastian follow-up -> not before Thu 2026-07-09, once.
+
+Accountability: session executed by Claude (Cowork), reviewed and
+confirmed by Tatiana Radchenko.
