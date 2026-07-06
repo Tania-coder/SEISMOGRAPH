@@ -1954,3 +1954,65 @@ Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchen
   paused for replies per outreach_playbook.md's own guidance.
 
 Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchenko.
+
+---
+
+## Session 031 — 2026-07-03 .. 2026-07-06 (Cowork, интервал с паузой)
+
+### Done
+- Legora/Sebastian follow-up SENT (2026-07-03 16:45) via Claude in Chrome,
+  Tatiana explicitly authorized the send. Framing rebuilt for his actual
+  role (lawyer-turned-legal-engineering, NOT a platform buyer): client
+  "answers feel worse" vs green dashboards, canon backtest phrasing, dual
+  low-friction ask (15-min look OR intro to platform team). No reply yet
+  as of 2026-07-06 (sent Fri, checked Mon) -- follow-up not before Thu
+  2026-07-09, once.
+- Invitation statuses re-checked (Jul 3 + Jul 6): all 6 still Pending
+  (Jose, Joel, Delphine -- sent Jul 3; Sigge, Martin, Lars -- ~1.5 weeks).
+  Found: Delphine's note ALSO went out with the old "caught a real one"
+  wording, so 4 of 6 pending notes carry the imprecise variant (Jose and
+  Joel got the locked phrasing). Decision: do NOT withdraw (LinkedIn
+  blocks re-invite ~3 weeks after withdraw); on any acceptance the first
+  message immediately uses the locked backtest phrasing. If the week-old
+  three stay silent until ~2026-07-17, withdraw to keep pending queue
+  clean.
+- Void Stitch (the dev.to commenter) profile assessed on request: very
+  likely an AI/engagement-farming account (joined 2026-05-17, 67 posts in
+  ~6 weeks, formulaic praise+nuance comments several/day, June 2026 posts
+  comparing obsolete models, no bio). Decision: one polite reply was
+  enough; invest no further time in that thread. His "we've been
+  documenting incidents" framing treated as unverified.
+- HN item 48773957: first comment still [flagged] (checked Jul 3 + Jul 6;
+  post 1 point, no external comments). Escalation prepared: email to
+  hn@ycombinator.com drafted in Gmail (fresh draft 2026-07-06, subject
+  "Flagged comment on item 48773957 (new account, not spam)"; stale Jul 3
+  draft superseded -- delete). ACTION Tatiana: send it. Plan B unchanged:
+  proper "Show HN:" repost in 2-3 weeks once karma allows.
+- PyPI #11202: inbox re-checked -- no support reply since Tatiana's
+  2026-07-02 10:46 proof email. Ping the issue if still silent by
+  2026-07-09/10. Temp branch lPpHBOqwfdAqYN6j stays until recovery fully
+  completes.
+- GitHub security triage: Jul 2 email trail (2FA reconfigured 09:37,
+  password changed 09:51, address blog66005@gmail.com added 10:08) --
+  flagged to Tatiana as possible compromise; she confirmed ALL are her own
+  actions. False alarm, closed.
+- LinkedIn outreach texts hardened during the session: Sana/Joel 300-char
+  note rewritten pre-send with locked phrasing (260 chars); Poolside/Jose
+  note rewritten pre-send with locked phrasing (289 chars); both sent by
+  Tatiana Jul 3. Rule reconfirmed in practice: "caught ... early" variants
+  kept re-emerging in drafts and were caught before send each time this
+  session.
+
+### Found / open
+- drift-defense: GitHub Pages build FAILED 2026-07-02 (main, 9c1e9fb --
+  the commit adding the dev.to link). The live landing may be serving the
+  pre-9c1e9fb version. Investigate + fix next session (repo:
+  D:\Dev\Projects\drift-defense).
+- dev.to: still exactly 2 comments (Void Stitch + reply). No new
+  engagement to act on.
+
+### Deferred
+- Outreach batch 2: still paused per playbook (no replies yet).
+- Track 1b Mistral live emission: untouched.
+
+Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchenko.

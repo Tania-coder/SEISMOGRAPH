@@ -1,7 +1,7 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-03 (Session 030: dev.to/HN/Zenodo/CRLF + outreach batch 1 sent)
+# Last updated: 2026-07-06 (Session 031: Sebastian follow-up sent + status sweep)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -77,26 +77,39 @@
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- PyPI #11202: awaiting support reply (Tatiana already replied 2026-07-02
-  10:46 with pushed-branch proof); then new pass + 2FA + recovery codes ->
-  delete temp branch lPpHBOqwfdAqYN6j -> republish 1.0.1 sole author.
-- dev.to: reply posted (Void Stitch thread). Done.
-- Show HN: posted (without "Show HN:" prefix -- blocked for low-karma
-  accounts). Live: news.ycombinator.com/item?id=48773957. First comment
-  posted. Done.
-- Outreach batch 1 SENT (2026-07-03): Corti/Lars (already Pending, S029),
-  Legora/Sebastian, Nabla/Delphine, Poolside/Jose (all sent), Sana/Joel
-  (probably sent). PAUSED per playbook -- wait for replies before batch 2
-  (Ultimate/Zendesk AI, Parloa = remaining Tier-A; then Tier B). Track
-  replies in business/outreach_pack_S026.md.
-- LESSON: 3 of 4 new connection notes went out saying "caught ... 38 days
-  early" before the phrasing lock was written down -- see LOCKED PHRASING
-  above. Can't be undone (LinkedIn notes aren't editable post-send);
-  follow-up messages are unaffected and already correct.
+- PyPI #11202: still awaiting support reply (proof email sent 2026-07-02
+  10:46; re-checked 07-06, silence). Ping the issue if nothing by
+  2026-07-09/10. Then: new pass + 2FA + recovery codes -> delete temp
+  branch lPpHBOqwfdAqYN6j -> republish 1.0.1 sole author.
+- HN item 48773957: first comment still [flagged] (post 1 point, no
+  external comments). Mod email DRAFTED in Gmail 07-06 ("Flagged comment
+  on item 48773957...") -- ACTION Tatiana: send it (delete stale 07-03
+  draft). Plan B: proper "Show HN:" repost in 2-3 weeks once karma allows.
+- Outreach: Sebastian (Legora) follow-up SENT 07-03 16:45 (role-tailored:
+  client complaints vs green dashboards + platform-team escape hatch). No
+  reply as of 07-06; ONE follow-up, not before Thu 07-09. Other 6 invites
+  all Pending (Jose/Joel/Delphine since 07-03; Sigge/Martin/Lars ~1.5 w --
+  if silent by ~07-17, withdraw). NOTE: Delphine's note also went out with
+  old "caught" wording -> 4 of 6 pending notes imprecise; fix = locked
+  phrasing in first message upon acceptance, never withdraw+resend.
+  Batch 2 still PAUSED per playbook.
+- Void Stitch (dev.to commenter): assessed 07-03 -- very likely AI/
+  engagement-bot account (67 posts in 6 wks, formulaic comments, obsolete
+  model comparisons, no bio). One reply given; invest NO further time.
+- drift-defense: GitHub Pages build FAILED 07-02 on 9c1e9fb (the dev.to
+  link commit) -- live landing may be stale. Investigate + fix.
 - Track 1b nice-to-have: real Mistral emission to LOCAL dashboard (API key =
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S031 (2026-07-03..06): Sebastian follow-up sent (07-03, authorized);
+  invite statuses swept twice -- all 6 Pending, Delphine's note found to
+  carry old "caught" wording (4/6 total imprecise, mitigation = correct
+  first message); Void Stitch classified as likely bot (disengage); HN
+  comment still [flagged], mod email drafted in Gmail (Tatiana to send);
+  PyPI silent since 07-02 (ping 07-09/10); GitHub Jul-2 security events
+  (2FA/password/new email) confirmed as Tatiana's own -- false alarm;
+  found drift-defense Pages build failure on 9c1e9fb. No code changes.
 - S030 (2026-07-02/03): CRLF sandbox-mount artifact fully diagnosed and
   closed (not a repo bug); dev.to link added to README + landing (a30a604 /
   9c1e9fb); Zenodo v1.0.1 published with Sonnet-4 wording fix (DOI

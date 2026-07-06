@@ -1,14 +1,29 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-03 (Session 030 close)
+# Last updated: 2026-07-06 (Session 031 close)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
 
-## DO NEXT (S030 close -> S031)
+## DO NEXT (S031 close -> S032)
+- [ ] TATIANA: send the Gmail draft to hn@ycombinator.com (created 07-06,
+      "Flagged comment on item 48773957..."); delete the stale 07-03 draft.
+- [ ] PyPI #11202: if no support reply by 2026-07-09/10, post a polite ping
+      in the issue.
+- [ ] Sebastian (Legora): if no reply by Thu 2026-07-09, ONE follow-up
+      message, then stop.
+- [ ] drift-defense: Pages build failed 07-02 on 9c1e9fb (dev.to link
+      commit) -- check gh-pages status, fix, verify live landing shows the
+      dev.to Evidence link.
+- [ ] On ANY invite acceptance: first message immediately uses locked
+      phrasing (esp. the 4 targets whose notes carry old "caught" wording:
+      Sigge, Martin, Lars, Delphine). If Sigge/Martin/Lars silent by
+      ~07-17: withdraw those invites.
+
+## DONE S030 -> S031 (history)
 - [x] E1 CRITICAL — DONE S029 (commit 0d9c81d, merged to main).
 - [x] dev.to article — PUBLISHED S029; S030 added link to README + landing,
       reply to Void Stitch's comment POSTED.
@@ -17,6 +32,11 @@
 - [x] X thread pinned (S029).
 - [x] Show HN — POSTED S030 (no "Show HN:" prefix, blocked for low karma):
       news.ycombinator.com/item?id=48773957. First comment posted.
+      NOTE (verified same session): the first comment shows "[flagged]" --
+      likely an anti-spam heuristic (new/low-karma account posting 4 links
+      in one comment), not necessarily a person. Not fixable directly;
+      watch it, could ask on HN's own "flagged" self-help thread if it
+      doesn't clear on its own.
 
 ## OPEN — Admin / Security (deadline)
 - [x] GitHub 2FA TOTP — DONE 2026-07-02.
@@ -42,6 +62,14 @@
       38 days before the postmortem" — never "caught ... early" (3 of 4
       new notes went out with the wrong version before this was caught;
       unfixable post-send, but follow-up messages are correct).
+- [x] Sebastian Peters (Legora) follow-up SENT 2026-07-03 16:45 (S031,
+      Tatiana authorized; role-tailored framing + platform-team escape
+      hatch). Awaiting reply; see DO NEXT for the follow-up rule.
+      All other invites (Jose/Joel/Delphine/Sigge/Martin/Lars) still
+      Pending as of 07-06. Delphine's note also went out with old "caught"
+      wording (4/6 imprecise total) -- mitigation via first message only.
+- [x] Void Stitch triage (S031): likely AI/engagement bot -- disengage,
+      no further replies in that dev.to thread.
 - [x] Zenodo v1.0.1 published S030 (DOI 10.5281/zenodo.21139614) — done,
       no further action.
 
