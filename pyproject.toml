@@ -10,7 +10,7 @@ description = "Federated, privacy-preserving LLM semantic drift detection"
 dependencies = [
     "clickhouse-connect>=0.7",
     "cryptography>=41.0",
-    "opentelemetry-sdk>=1.20",
+    "opentelemetry-sdk>=1.43.0",
     "redis>=4.0",
     "httpx>=0.26",
 ]
