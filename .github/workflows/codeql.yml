@@ -1,0 +1,55 @@
+name: codeql
+
+# Static security analysis (SAST) for the two languages present in the repo.
+# Rationale: a project whose pitch is "audit us line by line" should run the
+# same class of scanning it asks adopters to trust. Complements (does not
+# replace) the ruff/pytest gates in ci.yml.
+#SG-TRACE: [INFRA-4] | assumption: python + one dashboard JS file are the only
+#          scannable languages | test: Security tab shows a completed CodeQL
+#          scan for both languages after merge
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly re-scan (Mon 05:23 UTC) so new CodeQL query releases get applied
+    # even in weeks with no commits. Odd minute to avoid top-of-hour load spikes.
+    - cron: "23 5 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Required to upload SARIF results to the Security tab.
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["python", "javascript-typescript"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # security-extended adds lower-severity queries; noise is manageable
+          # at this repo size and matches the security-first positioning.
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
