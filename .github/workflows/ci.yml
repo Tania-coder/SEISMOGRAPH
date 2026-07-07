@@ -5,7 +5,7 @@ name: ci
 # "0 violations" rule was only ever checked by hand):
 #   - ruff check      -> 0 lint violations
 #   - ruff format     -> already-formatted
-#   - pytest          -> full suite green (107 at time of writing)
+#   - pytest          -> full suite green (122 at time of writing)
 #
 # ruff is pinned so a future ruff release adding new rules cannot turn a green
 # main red without an explicit, reviewed bump here.
@@ -16,6 +16,12 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch: {}
+
+# Least privilege: this workflow only reads the repo to lint and test.
+# Without this block the job token gets the repo-default (write) scope.
+#SG-TRACE: [INFRA-2] | assumption: no CI step needs write access | test: CI run green on this commit
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}

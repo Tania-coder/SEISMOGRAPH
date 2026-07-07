@@ -17,6 +17,12 @@ on:
     - cron: "*/10 * * * *"   # every 10 minutes (UTC)
   workflow_dispatch: {}
 
+# Least privilege: the ping job needs no repo access at all; contents:read
+# is the minimum grantable scope (it never checks out the repo).
+#SG-TRACE: [INFRA-2] | assumption: curl-only job, no checkout | test: next scheduled keep-warm run green
+permissions:
+  contents: read
+
 # Avoid piling up runs if one is slow.
 concurrency:
   group: keep-warm
