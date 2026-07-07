@@ -1,0 +1,26 @@
+# Dependabot: weekly dependency-freshness watch.
+# Scope note: this only RAISES PRs; nothing merges without CI (ruff+pytest)
+# and Tatiana's review. Cadence is weekly to keep noise near zero.
+#SG-TRACE: [INFRA-3] | assumption: pip manifests at repo root (pyproject.toml,
+#          requirements-fleet.txt) are the authoritative dependency lists |
+#          test: Dependabot tab shows both ecosystems checked after merge
+version: 2
+updates:
+  # Python deps (reads pyproject.toml + requirements*.txt at repo root).
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    # Security updates are always created regardless of this schedule.
+
+  # GitHub Actions (ci.yml, keep-warm.yml action versions).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "ci"]
