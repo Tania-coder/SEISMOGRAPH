@@ -8,7 +8,7 @@ version = "0.0.1"
 requires-python = ">=3.11"
 description = "Federated, privacy-preserving LLM semantic drift detection"
 dependencies = [
-    "clickhouse-connect>=0.7",
+    "clickhouse-connect>=1.4.2",
     "cryptography>=41.0",
     "opentelemetry-sdk>=1.20",
     "redis>=4.0",
