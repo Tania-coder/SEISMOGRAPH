@@ -5,4 +5,4 @@
 #
 # DO NOT add dev/test dependencies here. This file is used by Dockerfile.fleet only.
 httpx==0.28.1
-cryptography==48.0.0
+cryptography==49.0.0
