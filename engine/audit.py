@@ -147,7 +147,7 @@ class AuditReportGenerator:
         # debug/info log calls below (CodeQL py/log-injection) and rejects
         # a non-integer id before any lookup or logging happens. FastAPI
         # already coerces the path param, so this is defense in depth.
-        #SG-TRACE: REQ-AUDIT-001 (hardening)
+        # SG-TRACE: REQ-AUDIT-001 (hardening)
         #   | assumption: alert_id is an int primary key; a non-int value
         #     is a programming/abuse error and must not reach a log call
         #   | test: test_generate_rejects_non_int_alert_id
