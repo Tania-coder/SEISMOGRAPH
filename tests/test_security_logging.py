@@ -31,7 +31,6 @@ import pytest
 from engine.audit import AuditReportGenerator
 from gateway.auth import _sanitize_for_log, verify_signature
 
-
 # ---------------------------------------------------------------------------
 # SL1 — _sanitize_for_log unit behaviour
 # ---------------------------------------------------------------------------
