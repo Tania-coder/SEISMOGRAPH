@@ -1,26 +1,30 @@
-# Dependabot: weekly dependency-freshness watch.
-# Scope note: this only RAISES PRs; nothing merges without CI (ruff+pytest)
-# and Tatiana's review. Cadence is weekly to keep noise near zero.
-#SG-TRACE: [INFRA-3] | assumption: pip manifests at repo root (pyproject.toml,
-#          requirements-fleet.txt) are the authoritative dependency lists |
-#          test: Dependabot tab shows both ecosystems checked after merge
+# Dependabot policy (S032): SECURITY-ONLY for pip, weekly version bumps for
+# GitHub Actions.
+# Rationale: seismograph-probe is a LIBRARY -- version floors in pyproject
+# stay permissive so consumers' environments aren't forced onto newest
+# majors; compatibility with latest releases is already validated in CI,
+# which installs unpinned latest. Version-update PRs #4-#8 were closed under
+# this policy on 2026-07-06.
+#SG-TRACE: [INFRA-3] | assumption: open-pull-requests-limit: 0 disables
+#          version updates while security updates keep coming (documented
+#          Dependabot behavior) | test: no new pip version PRs appear;
+#          security advisories still raise PRs
 version: 2
 updates:
-  # Python deps (reads pyproject.toml + requirements*.txt at repo root).
+  # Python deps: security updates ONLY (limit 0 disables version updates;
+  # security-update PRs ignore this limit by design).
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
-    labels: ["dependencies"]
-    # Security updates are always created regardless of this schedule.
+    open-pull-requests-limit: 0
 
-  # GitHub Actions (ci.yml, keep-warm.yml action versions).
+  # GitHub Actions (ci.yml, keep-warm.yml, codeql.yml action versions):
+  # CI-only surface, safe to keep on weekly version bumps.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
-    labels: ["dependencies", "ci"]
