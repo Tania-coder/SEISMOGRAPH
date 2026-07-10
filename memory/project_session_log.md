@@ -2061,3 +2061,61 @@ Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchen
 
 Accountability: session executed by Claude (Cowork), reviewed and
 confirmed by Tatiana Radchenko.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+## Session 033 — 2026-07-10 (Cowork): S033 timers + infra tail + SEC-1
+
+### Done
+- Status sweep: PyPI #11202 still no staff reply (recovery moved to
+  "Verification in Process" by @Thespi-Brain on the original issue; my
+  July-2 proof reply unanswered). Sebastian (Legora) still no reply to
+  the 07-03 message.
+- PyPI #11202: posted the gentle ping in the issue (addressed
+  @Thespi-Brain), authorized by Tatiana. Next escalation if silent ~1 wk:
+  re-reply to the verification email in Gmail.
+- Sebastian: ONE light-touch follow-up SENT (LinkedIn, 07-10 15:11,
+  authorized). Canon respected (no "caught"). This was the single
+  allowed follow-up -- no more; only a trigger event would justify
+  another message.
+- dependabot.yml security-only policy: committed + merged (PR #10, squash)
+  after rebuilding the branch off main (initial branch was cut from
+  task-infra-2 and carried a stale CodeQL commit -> conflict; fixed via
+  reset --hard origin/main + cherry-pick of dependabot.yml, force-with-lease).
+- Dependabot's first run under the new policy behaved correctly: opened
+  only an actions bump (github/codeql-action 3->4, PR #11, merged) and no
+  pip version PRs.
+- SEC-1 COMPLETE (PR #12, squash-merged): fixed the 5 CodeQL
+  py/log-injection Medium alerts.
+  - gateway/auth.py: _sanitize_for_log() escapes control chars
+    (truncate-after-escape); applied to both logger.warning calls in
+    verify_signature. Root cause: bytes.fromhex ignores ASCII whitespace,
+    so a newline-injected hex key reached a raw log call (CR/LF forge).
+  - engine/audit.py: alert_id = int(alert_id) taint break at top of
+    generate().
+  - tests/test_security_logging.py: +5 tests (SL1-SL5, 2 adversarial).
+  - Verified: 127 passed (122+5) locally on host AND on CI (3.10+3.11);
+    ruff check + ruff format clean; CodeQL green on PR diff. The 5 alerts
+    expected to auto-close on the post-merge main scan (queued at close --
+    CONFIRM next session).
+  - Two CI failures caught + fixed deterministically: ruff I001 import
+    order (ruff check --fix, commit 04de724 -- removed a blank line; a
+    blind manual guess would have added one), then ruff format on
+    audit.py (commit 299e029). Full green gate re-run on host before the
+    final push.
+  - Keystone Report written: KEYSTONE_REPORT_SEC-1.md (repo root) --
+    awaiting Tatiana's signature line.
+  - Process lesson (in the Keystone): run `ruff format . ; ruff check . ;
+    pytest` on the HOST before opening a PR; do not trust the sandbox
+    mount (it served truncated reads of freshly-written files this
+    session, causing a misleading local SyntaxError).
+
+### Known state / open at close
+- Post-merge CodeQL scan of main: confirm the 5 log-injection alerts show
+  0 open (was queued when the session ended).
+- KEYSTONE_REPORT_SEC-1.md needs Tatiana's signature.
+- memory/* edits from S032 close were still uncommitted on main earlier;
+  fold into the next memory commit along with this S033 entry + the
+  Keystone file.
+- All infra branches (task-infra-1/2/3, task-sec-1) deleted after merge.
+
+Accountability: session executed by Claude (Cowork); all git ops, tooling
+passes, sends, and merges authorized/performed by Tatiana Radchenko.

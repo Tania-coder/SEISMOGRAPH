@@ -1,7 +1,8 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-06 (Session 032: drift-defense Pages fixed + sweep)
+# Last updated: 2026-07-10 (Session 033: SEC-1 log-injection fix; S033
+# timers sent; dependabot policy + codeql-action bump merged)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -37,7 +38,7 @@
   concept DOI now resolves to the fixed version.
 
 ## Baseline (re-verify at session start)
-- Tests: 122 passed. From repo root: py -3.10 -m pytest -q.
+- Tests: 127 passed (was 122; +5 from SEC-1). From repo root: py -3.10 -m pytest -q.
 - Sandbox runs the FULL suite (install: opentelemetry-sdk fastapi uvicorn
   sqlalchemy cryptography httpx pytest).
 - Ruff BOTH gates, pinned: pip install ruff==0.15.20 && ruff check . &&
@@ -78,25 +79,43 @@
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- PyPI #11202: still awaiting support reply (proof email sent 2026-07-02
-  10:46; re-checked 07-06 evening, silence). Ping the issue 2026-07-09/10
-  if still silent. Then: new pass + 2FA + recovery codes -> delete temp
-  branch lPpHBOqwfdAqYN6j -> republish 1.0.1 sole author.
-- HN item 48773957: first comment still [flagged] (post 1 point, no
-  external comments). Mod email SENT by Tatiana 07-06 15:03. ACTION
-  Tatiana: delete the stale 07-06 14:32 draft in Gmail. Plan B: proper
-  "Show HN:" repost in 2-3 weeks once karma allows.
-- Outreach: Sebastian (Legora) ACCEPTED the invite 07-03 20:52 but has
-  NOT replied to the 07-03 16:45 message (checked 07-06). ONE follow-up,
-  not before Thu 07-09, then stop. Other 6 invites all Pending
-  (Jose/Joel/Delphine since 07-03; Sigge/Martin/Lars ~1.5 w — if silent
-  by ~07-17, withdraw). On ANY acceptance: first message uses locked
-  phrasing (esp. Sigge/Martin/Lars/Delphine — their notes carry old
-  "caught" wording). Batch 2 still PAUSED per playbook.
+- FIRST ACTION S034: confirm the 5 CodeQL py/log-injection alerts are 0
+  open after the post-merge main scan (queued at S033 close); sign
+  KEYSTONE_REPORT_SEC-1.md; commit pending memory/* + Keystone to main.
+- SEC-1 DONE (PR #12, squash): _sanitize_for_log in gateway/auth.py +
+  int() taint break in engine/audit.py + 5 tests. 127 passed host & CI;
+  ruff/format/CodeQL green. Keystone at repo root awaits signature.
+- PyPI #11202: proof sent 2026-07-02 10:46; issue moved to "Verification
+  in Process"; gentle ping posted 07-10. If silent ~1 wk, re-reply to the
+  verification email. Then: new pass + 2FA + recovery codes -> delete temp
+  branch lPpHBOqwfdAqYN6j -> republish 1.0.1 -> Trusted Publishing (OIDC).
+- HN item 48773957: first comment still [flagged]. Mod email SENT 07-06
+  15:03 (stale 07-06 14:32 draft still to delete). Plan B: "Show HN:"
+  repost in 2-3 weeks.
+- Outreach: Sebastian (Legora) ACCEPTED 07-03; single light-touch
+  follow-up SENT 07-10 15:11 (no reply yet) -- no more messages unless a
+  trigger event. Other 6 invites Pending (Sigge/Martin/Lars withdraw
+  ~07-17 if silent). On ANY acceptance: first message uses locked
+  phrasing. Batch 2 PAUSED.
+- Second GitHub verified email still not added (single-email warning) --
+  closes the account-loss scenario that hit PyPI.
 - Track 1b nice-to-have: real Mistral emission to LOCAL dashboard (API key =
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S033 (2026-07-10): S033 timers sent (PyPI #11202 gentle ping posted;
+  Sebastian single light-touch follow-up 15:11) -- both authorized, canon
+  respected. dependabot security-only pip policy merged (PR #10); Dependabot
+  codeql-action 3->4 bump merged (PR #11), no pip version PRs (correct).
+  SEC-1 COMPLETE (PR #12): fixed 5 CodeQL py/log-injection alerts --
+  _sanitize_for_log in gateway/auth.py (root cause: bytes.fromhex ignores
+  ASCII whitespace -> newline-injected key reached raw log call) + int()
+  taint break in engine/audit.py + 5 tests (SL1-SL5). 127 passed host & CI;
+  ruff/format/CodeQL green. Two CI fails caught + fixed (ruff I001 import
+  order via --fix; ruff format on audit.py). Keystone written
+  (KEYSTONE_REPORT_SEC-1.md, needs signature). Lesson: run the full gate
+  (ruff format/check + pytest) on HOST before opening a PR -- sandbox mount
+  served truncated reads of freshly-written files this session.
 - S032 (2026-07-06): status sweep (PyPI silent; hn@ mod email sent by
   Tatiana 15:03, stale draft left to delete; Sebastian accepted invite
   07-03 but no reply; all 6 invites Pending; HN comment still flagged);
@@ -128,3 +147,4 @@
   redesigned hero + facts (fb9018b, verified live); X thread pinned.
   Defects: Edit-tool NUL bytes (x2), form_input vs dev.to tags widget.
   122 passed, both ruff gates.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
