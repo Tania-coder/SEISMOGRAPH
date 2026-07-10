@@ -143,6 +143,15 @@ class AuditReportGenerator:
         #   | test: test_audit_export_local_alert,
         #           test_audit_export_public_alert
         """
+        # Coerce to int at the boundary: breaks any taint path into the
+        # debug/info log calls below (CodeQL py/log-injection) and rejects
+        # a non-integer id before any lookup or logging happens. FastAPI
+        # already coerces the path param, so this is defense in depth.
+        # SG-TRACE: REQ-AUDIT-001 (hardening)
+        #   | assumption: alert_id is an int primary key; a non-int value
+        #     is a programming/abuse error and must not reach a log call
+        #   | test: test_generate_rejects_non_int_alert_id
+        alert_id = int(alert_id)
         local = self._repo.get_local_alert_by_id(alert_id)
         if local is not None:
             alert_details = {

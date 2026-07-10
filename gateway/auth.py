@@ -47,6 +47,31 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_for_log(value: object, max_len: int = 64) -> str:
+    """Neutralize a value before it is written to a log record.
+
+    Escapes every ASCII control character (0x00-0x1F and 0x7F) as ``\\xNN``
+    so that attacker-influenced input cannot forge new log lines
+    (CR/LF injection) or smuggle terminal escapes. Truncation is applied
+    AFTER escaping, so the length bound is measured in emitted characters
+    and never leaves a dangling half-escaped sequence.
+
+    #SG-TRACE: REQ-AUTH-002 (hardening)
+    #   | assumption: bytes.fromhex silently ignores ASCII whitespace, so a
+    #     public_key_hex like "dead..\\n<forged line>" can reach a log call;
+    #     escaping control chars closes that at the logging boundary
+    #   | test: test_sanitize_escapes_and_truncates_after_escaping,
+    #           test_verify_log_injection_cannot_forge_line
+    """
+    text = str(value)
+    escaped = "".join(
+        ch if 0x20 <= ord(ch) < 0x7F else f"\\x{ord(ch):02x}" for ch in text
+    )
+    if len(escaped) > max_len:
+        return escaped[:max_len] + "..."
+    return escaped
+
+
 def verify_signature(
     payload_bytes: bytes,
     signature_hex: str,
@@ -92,10 +117,13 @@ def verify_signature(
     except InvalidSignature:
         logger.warning(
             "verify_signature: signature mismatch -- rejected (key=%s...)",
-            public_key_hex[:16],
+            _sanitize_for_log(public_key_hex, max_len=16),
         )
         return False
 
     except (ValueError, Exception) as exc:  # noqa: BLE001
-        logger.warning("verify_signature: validation error -- %s", exc)
+        logger.warning(
+            "verify_signature: validation error -- %s",
+            _sanitize_for_log(exc),
+        )
         return False
