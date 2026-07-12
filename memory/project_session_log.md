@@ -2213,7 +2213,16 @@ signature entered on her explicit instruction.
 - README refreshed in the same commit: tests badge + overview + test
   suite block 122 -> 127 (+ CodeQL 0 open alerts line), phase roadmap
   rows 2/3 updated (CORE COMPLETE / In progress).
-- FLAGGED for S035: README/citation use DOI ...21045518 while
-  CURRENT_STATE says concept DOI is ...21045517 (v1.0.1 = 21139614).
-  One of them is imprecise -- verify against Zenodo before citing
-  anywhere new (grant!).
+- DOI discrepancy RESOLVED (same addendum, verified live on Zenodo):
+  ...21045517 is the CONCEPT DOI (resolves to latest = v1.0.1/21139614);
+  ...21045518 is the v1.0.0 VERSION DOI -- a stale record carrying the
+  pre-E1-fix wording. Every public citation pointed readers at the stale
+  record. Fixed to concept DOI: README (badge, docs line, bibtex ->
+  version v1.0.1), SECURITY.md, ROADMAP.md, CITATION.cff (doi: field
+  added, version -> 1.0.1). Root cause: S026 log entry recorded
+  "concept DOI ...21045518" -- the version DOI was mistaken for the
+  concept DOI at minting time and propagated to every doc since.
+  Auto-memory reference_zenodo_doi.md carries the same error (path
+  unreachable this session -- fix next session). REMAINS: dev.to
+  article (Tatiana, 2 edits) + drift-defense landing "122 tests"
+  (repo not mounted).

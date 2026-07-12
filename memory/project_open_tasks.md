@@ -36,9 +36,20 @@
       "Show HN:" repost in 2-3 weeks.
 - [ ] TATIANA (carryover): delete the stale hn@ Gmail draft (07-06 14:32);
       the mod email itself was SENT 07-06 15:03.
-- [ ] S035: verify Zenodo DOI discrepancy -- README/citation say
-      ...21045518, CURRENT_STATE says concept = ...21045517 (v1.0.1 =
-      21139614). Check zenodo.org record before any new citation (grant).
+- [x] DOI discrepancy RESOLVED S034 addendum: verified live --
+      ...21045517 = concept DOI (resolves to latest v1.0.1/21139614);
+      ...21045518 = v1.0.0 VERSION DOI (stale record, old wording).
+      Fixed to concept DOI in README (badge + docs line + bibtex ->
+      v1.0.1), SECURITY.md, ROADMAP.md, CITATION.cff (doi: added,
+      version 1.0.1). NOTE: auto-memory reference_zenodo_doi.md says
+      concept = ...518 -- WRONG, fix next session. Session-log line
+      S026 "concept DOI ...518 minted" was the original error
+      (append-only, stands corrected here).
+- [ ] TATIANA: dev.to article -- 2 edits in the editor (122 tests ->
+      127; footer DOI ...21045518 -> ...21045517 x2). Instructions
+      given S034.
+- [ ] S035: drift-defense landing says "122 tests" -- update to 127
+      (repo D:\Dev\Projects\drift-defense, not mounted this session).
 - [x] (S034 addendum) LICENSE added (052918d): GitHub now detects
       Apache-2.0 (was Other/NOASSERTION -- no LICENSE file existed).
       README refreshed: 127 tests, CodeQL line, roadmap rows 2/3.

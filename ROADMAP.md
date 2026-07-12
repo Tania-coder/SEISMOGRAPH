@@ -26,7 +26,7 @@ earlier than infrastructure metrics.
 - [x] Architecture document and calibration record.
 
 **Outcome:** thesis validated on a synthetic reconstruction of a public incident.
-Permanently archived: [doi.org/10.5281/zenodo.21045518](https://doi.org/10.5281/zenodo.21045518).
+Permanently archived: [doi.org/10.5281/zenodo.21045517](https://doi.org/10.5281/zenodo.21045517).
 
 ## Phase 1 — Solo MVP / public good ✅
 

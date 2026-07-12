@@ -14,7 +14,8 @@ authors:
   - family-names: Radchenko
     given-names: Tatiana
     affiliation: "Independent, Aarhus, Denmark"
-version: "1.0.0"
+version: "1.0.1"
+doi: 10.5281/zenodo.21045517
 license: Apache-2.0
 repository-code: "https://github.com/Tania-coder/SEISMOGRAPH"
 keywords:

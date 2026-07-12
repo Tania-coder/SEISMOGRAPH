@@ -20,7 +20,7 @@ to acknowledge within a few business days and will coordinate disclosure with yo
 
 Phase 0/1 is pre-1.x in spirit; security fixes target the latest release on
 `main`. Pin to a tagged release for reproducibility
-(see [doi.org/10.5281/zenodo.21045518](https://doi.org/10.5281/zenodo.21045518)).
+(see [doi.org/10.5281/zenodo.21045517](https://doi.org/10.5281/zenodo.21045517)).
 
 ---
 
