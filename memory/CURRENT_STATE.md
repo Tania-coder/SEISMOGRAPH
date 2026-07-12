@@ -1,8 +1,9 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-12 (Session 034: SEC-1b merged PR #13, CodeQL
-# 0 Open / 6 Closed confirmed, Keystone SEC-1 signed)
+# Last updated: 2026-07-12 (Session 034, TWO sprints: morning = SEC-1b
+# closed + SAST clean + Keystone signed + DOI/LICENSE consistency;
+# afternoon = driftdefense.dev live, landing v2, analytics, Track 1b)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -67,9 +68,13 @@
 
 ## Live assets
 - Dashboard: https://seismograph-weather.onrender.com/dashboard
-- Landing:   https://tania-coder.github.io/drift-defense/ (repo clone:
-  D:\Dev\Projects\drift-defense) — LIVE and current as of S032 (3aceaf0),
-  Evidence row includes the dev.to writeup link (verified).
+- Landing:   https://driftdefense.dev (custom domain S034, Porkbun,
+  auto-renew, exp 2027-07-12; old github.io URL redirects; repo clone:
+  D:\Dev\Projects\drift-defense) — landing v2: client path, 5 CTA
+  click-events, JSON-LD. Brand rule: SEISMOGRAPH = engine,
+  Drift Defense = service.
+- Analytics: https://driftdefense.goatcounter.com (GoatCounter, free
+  tier, code driftdefense). Adblockers undercount — lower bound only.
 - dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
   (reply posted to Void Stitch's comment)
 - Show HN:   https://news.ycombinator.com/item?id=48773957 (posted + first comment)
@@ -83,9 +88,29 @@
   key_sha256 hash-prefix logging, digest over parsed key bytes). CodeQL
   0 Open / 6 Closed visually confirmed on scan #17. 127 passed host & CI.
   Keystone SEC-1 signed (2026-07-12). No SAST debt.
-- FIRST CANDIDATES S035: PyPI #11202 re-reply if silent (~07-17);
-  Sigge/Martin/Lars withdraw if Pending (~07-17); second GitHub verified
-  email (5 min); stale hn@ draft (Tatiana).
+- S035 PLAN (scheduled reminder fires 17.07 09:00; session may start
+  earlier for content posts):
+  1. TIMERS 17.07: check PyPI #11202 for a reply (re-reply already SENT
+     07-12 — HARD no-touch until they answer); withdraw Sigge/Martin/
+     Lars invites if still Pending (3 clicks, also removes old bad-
+     phrasing notes). On ANY acceptance: locked phrasing first message.
+  2. CONTENT (may run before 17.07, drafts in business/marketing_pack_
+     S034.md): Tue 14.07 CUSUM explainer post; Fri 17.07 "Model Weather
+     Briefing #1" (start of weekly series); live-run portfolio post
+     (business/portfolio_post_live_run_S034.md) — needs Tatiana's
+     dashboard screenshot first (business/live_run_S034.png).
+  3. HN repost ~21-22.07 Tue/Wed 14-15 UTC if mod still silent (title +
+     first comment ready in the pack). Meet it with GoatCounter open.
+  4. IF PyPI resolves: new pass + 2FA + recovery codes -> delete temp
+     branch lPpHBOqwfdAqYN6j -> republish 1.0.1 -> Trusted Publishing.
+  5. Batch 2 outreach (Zendesk AI, Parloa) AFTER 17.07 cleanup; notes
+     ready, 2-3/week max.
+  6. Second GitHub verified email (5 min, still open, no deadline).
+  7. Claude housekeeping: fix auto-memory reference_zenodo_doi.md
+     (says concept=...518, WRONG — concept is ...21045517); review
+     first GoatCounter week (visitors, CTA clicks, sources).
+  8. STRETCH (only if timers are quick): methodology paper outline
+     (Phase 2 tail) — needed for grant credibility + Tier-A outreach.
 - PyPI #11202: proof sent 2026-07-02 10:46; issue moved to "Verification
   in Process"; gentle ping posted 07-10. If silent ~1 wk, re-reply to the
   verification email. Then: new pass + 2FA + recovery codes -> delete temp
@@ -104,6 +129,17 @@
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S034b (2026-07-12, afternoon sprint): driftdefense.dev bought + live
+  (HTTPS, www redirect, old URL redirects); landing v2 (client path,
+  mid-CTA, 5 CTA events, JSON-LD); GoatCounter analytics live; README->
+  landing UTM bridge; marketing pack (HN repost + batch 2 notes +
+  2-week content plan, weekly "Model Weather Briefing" anchor; NO paid
+  ads until analytics 2wk + HN + 1 organic request); Track 1b DONE —
+  3 live Mistral emissions accepted, json_rate converging 0.203->0.291
+  (DP averaging demo); portfolio post drafted. dev.to fixed by Tatiana
+  (127 + concept DOI, API-verified). PyPI re-reply sent 07-12 (Tatiana
+  chose early send) — no-touch rule until reply. hn@ stale draft
+  deleted. Scheduled reminder 17.07 09:00 created (one-time).
 - S034 (2026-07-12): SEC-1b -- alert #6 closed via key_sha256 hash-prefix
   logging (digest over PARSED key bytes = canonical identity;
   _sanitize_for_log kept for exc branch). SL2 rewritten. Host gate 127

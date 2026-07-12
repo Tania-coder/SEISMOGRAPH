@@ -1,14 +1,28 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-12 (Session 034 in progress)
+# Last updated: 2026-07-12 (Session 034 CLOSED, both sprints)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
 
-## DO NEXT (S033 close -> S034)
+## DO NEXT — S035 (reminder fires 17.07 09:00; full plan in
+## CURRENT_STATE.md "S035 PLAN"; content posts may start 14.07)
+- [ ] 17.07: PyPI reply check (NO touches) + withdraw Sigge/Martin/Lars
+      if Pending. On acceptance: locked phrasing.
+- [ ] Content: 14.07 CUSUM explainer; 17.07 Model Weather Briefing #1;
+      live-run post after Tatiana's screenshot (drafts in business/).
+- [ ] HN repost ~21-22.07 if mod silent (pack ready).
+- [ ] If PyPI resolves: recovery chain -> republish 1.0.1 -> OIDC.
+- [ ] Batch 2 (Zendesk AI, Parloa) after 17.07 cleanup.
+- [ ] Second GitHub verified email (5 min).
+- [ ] Claude: fix auto-memory zenodo ref (concept = ...517, not ...518);
+      GoatCounter week-1 review.
+- [ ] STRETCH: methodology paper outline.
+
+## ARCHIVE — S034 items (all closed)
 - [x] SEC-1b (alert #6) CLOSED S034: PR #13 squash-merged (b6388b8).
       gateway/auth.py InvalidSignature branch logs
       sha256(pub_bytes).hexdigest()[:12] (key_sha256=..., digest over
