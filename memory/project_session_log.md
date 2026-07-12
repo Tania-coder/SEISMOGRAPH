@@ -2119,3 +2119,38 @@ confirmed by Tatiana Radchenko.
 
 Accountability: session executed by Claude (Cowork); all git ops, tooling
 passes, sends, and merges authorized/performed by Tatiana Radchenko.
+
+## Session 033 — CORRECTION (post-merge CodeQL verification)
+
+CORRECTION to the S033 entry's SEC-1 claim. After the post-merge scan of
+main completed:
+- The 4 engine/audit.py alerts CLOSED (int() is a CodeQL-recognized taint
+  barrier -- genuine fix).
+- The auth.py public_key_hex path did NOT clear: it re-appears as a NEW
+  alert #6 (Medium, py/log-injection) at gateway/auth.py:120 -- the
+  `_sanitize_for_log(public_key_hex, max_len=16)` call in the
+  InvalidSignature branch. Root cause: CodeQL does not recognize the
+  custom `_sanitize_for_log` as a sanitizer, so it treats the function as
+  taint-preserving and the flow public_key_hex -> log still looks tainted.
+- Net CodeQL state: 5 Closed, 1 Open (#6). The exc-branch was never
+  flagged (fromhex ValueError doesn't echo input), consistent with SL3.
+
+IMPORTANT: the fix is FUNCTIONALLY correct -- the adversarial tests (SL2)
+prove the newline is escaped, so a real forged-log-line attack is
+neutralized. But it is NOT CodeQL-clean. "Verified" was overclaimed in the
+first S033 entry; this corrects it.
+
+S034 options for alert #6 (Tatiana to choose):
+  (a) Dismiss #6 in the Security tab as "won't fix / false positive" with
+      a justification citing the SL2 adversarial test. Honest + fast, but
+      leaves a standing dismissal.
+  (b) BETTER (recommended): stop logging raw key material -- log a
+      hash prefix instead, e.g.
+      hashlib.sha256(public_key_hex.encode()).hexdigest()[:12]. A hex
+      digest can only contain [0-9a-f] (no control chars, unforgeable),
+      which satisfies CodeQL AND is better practice (don't log secrets).
+      Small follow-up PR; keep _sanitize_for_log for the exc branch.
+  (c) Model _sanitize_for_log as a CodeQL sanitizer (heaviest; overkill).
+
+KEYSTONE_REPORT_SEC-1.md section 4 (Known limitations) should be amended
+to record alert #6 before Tatiana signs.

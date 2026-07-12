@@ -1,7 +1,7 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-10 (Session 033 close)
+# Last updated: 2026-07-12 (Session 034 in progress)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
@@ -9,12 +9,21 @@
 ---
 
 ## DO NEXT (S033 close -> S034)
-- [ ] Confirm the 5 CodeQL py/log-injection alerts show 0 open after the
-      post-merge main scan (were queued at S033 close). If any remain,
-      re-open SEC-1.
-- [ ] Sign KEYSTONE_REPORT_SEC-1.md (Tatiana signature line, section 5).
-- [ ] Commit pending memory/* edits (S032 close + S033 entry) + the
-      Keystone file to main. Verify commit file list before push.
+- [~] SEC-1b (alert #6) IMPLEMENTED S034, awaiting host gate + PR:
+      gateway/auth.py InvalidSignature branch now logs
+      sha256(pub_bytes).hexdigest()[:12] (key_sha256=...) -- digest over
+      PARSED key bytes (canonical identity), not the raw hex string.
+      _sanitize_for_log kept for exc branch (SL3). SL2 rewritten (digest
+      asserted, attacker hex absent). Sandbox gate green on clean /tmp
+      copy: ruff check + format --check + 127 passed (mount again served
+      a corrupted read -- NUL padding; host/CI = ground truth).
+      REMAINS: Tatiana host gate -> branch seismograph/task-sec-1b ->
+      PR -> merge -> confirm alert #6 auto-closes on next main scan.
+- [~] KEYSTONE_REPORT_SEC-1.md amended S034: section 2 SAST outcome
+      corrected, section 4 records #6 unsoftened, new section 7 addendum
+      (SEC-1b). REMAINS: Tatiana signature (section 5, dated 07-12).
+- [ ] (DONE 07-10) memory/* S033 + Keystone committed to main (0433f44);
+      this correction commit pending.
 - [ ] PyPI #11202: ping posted 07-10. If still silent ~1 week, re-reply to
       the verification email in Gmail. On resolution: new pass + 2FA +
       recovery codes -> delete temp branch lPpHBOqwfdAqYN6j -> republish
@@ -31,11 +40,12 @@
       the mod email itself was SENT 07-06 15:03.
 
 ## DONE S033 (detail in log)
-- [x] SEC-1: fixed 5 CodeQL py/log-injection alerts (PR #12, squash).
-      _sanitize_for_log in gateway/auth.py + int() taint break in
-      engine/audit.py + 5 tests (SL1-SL5). 127 passed on host & CI
-      (3.10+3.11); ruff check/format + CodeQL green. Keystone written
-      (KEYSTONE_REPORT_SEC-1.md, needs signature).
+- [~] SEC-1: PR #12 squash-merged; 127 passed host & CI, ruff/format
+      green. Post-merge CodeQL: 4 audit.py alerts CLOSED (int() barrier),
+      but auth.py path re-opened as alert #6 (custom sanitizer not
+      recognized). Functionally fixed (SL2 proves it) but not CodeQL-clean
+      -- see DO NEXT follow-up. Keystone written (needs #6 amendment +
+      signature).
 - [x] dependabot.yml security-only pip policy merged (PR #10, squash).
 - [x] Dependabot codeql-action 3->4 bump merged (PR #11); no pip version
       PRs opened under the new policy (correct behavior).

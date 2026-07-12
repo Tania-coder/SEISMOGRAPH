@@ -79,12 +79,16 @@
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- FIRST ACTION S034: confirm the 5 CodeQL py/log-injection alerts are 0
-  open after the post-merge main scan (queued at S033 close); sign
-  KEYSTONE_REPORT_SEC-1.md; commit pending memory/* + Keystone to main.
-- SEC-1 DONE (PR #12, squash): _sanitize_for_log in gateway/auth.py +
-  int() taint break in engine/audit.py + 5 tests. 127 passed host & CI;
-  ruff/format/CodeQL green. Keystone at repo root awaits signature.
+- FIRST ACTION S034: resolve CodeQL alert #6 (gateway/auth.py:120). Post-
+  merge scan CLOSED the 4 audit.py alerts (int() barrier) but RE-OPENED the
+  auth.py public_key_hex path as #6 -- CodeQL doesn't recognize the custom
+  _sanitize_for_log. Fix is functionally correct (SL2 proves escaping) but
+  not CodeQL-clean. Recommended: log a sha256 hex-prefix of the key instead
+  of raw bytes (no control chars, unforgeable, stops logging key material)
+  -- small follow-up PR; or dismiss #6 citing SL2. Then amend Keystone
+  section 4 + sign.
+- SEC-1 (PR #12, squash): 127 passed host & CI, ruff/format green.
+  audit.py alerts fixed; auth.py residual = alert #6 (above).
 - PyPI #11202: proof sent 2026-07-02 10:46; issue moved to "Verification
   in Process"; gentle ping posted 07-10. If silent ~1 wk, re-reply to the
   verification email. Then: new pass + 2FA + recovery codes -> delete temp
@@ -111,7 +115,10 @@
   _sanitize_for_log in gateway/auth.py (root cause: bytes.fromhex ignores
   ASCII whitespace -> newline-injected key reached raw log call) + int()
   taint break in engine/audit.py + 5 tests (SL1-SL5). 127 passed host & CI;
-  ruff/format/CodeQL green. Two CI fails caught + fixed (ruff I001 import
+  ruff/format green. Post-merge CodeQL: 4 audit.py alerts closed, auth.py
+  path re-opened as alert #6 (custom sanitizer unrecognized) -- functionally
+  fixed (SL2) but not CodeQL-clean; S034 follow-up. Two CI fails caught +
+  fixed (ruff I001 import
   order via --fix; ruff format on audit.py). Keystone written
   (KEYSTONE_REPORT_SEC-1.md, needs signature). Lesson: run the full gate
   (ruff format/check + pytest) on HOST before opening a PR -- sandbox mount
