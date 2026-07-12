@@ -2154,3 +2154,42 @@ S034 options for alert #6 (Tatiana to choose):
 
 KEYSTONE_REPORT_SEC-1.md section 4 (Known limitations) should be amended
 to record alert #6 before Tatiana signs.
+
+## Session 034 — 2026-07-12 — SEC-1b: alert #6 closed, SAST clean, Keystone signed
+
+### Done
+- SEC-1b (CodeQL alert #6, gateway/auth.py:120) FIXED via option (b):
+  InvalidSignature branch now logs sha256(pub_bytes).hexdigest()[:12]
+  (key_sha256=...) instead of any form of the attacker-controlled hex.
+  Design choice (flagged in INTAKE, approved): digest over PARSED key
+  bytes, not the raw hex string -- canonical identity, whitespace tricks
+  can't change the logged prefix, repeat offenders correlate across log
+  lines. _sanitize_for_log unchanged, still guards the exc branch (SL3).
+- SL2 rewritten for the new contract: exactly 1 record, no raw newline,
+  expected digest present, digest alphabet [0-9a-f], whitespace-stripped
+  attacker hex absent from the message. SL1/SL3/SL4/SL5 untouched.
+- Gates: sandbox-advisory green on a clean /tmp copy (mount AGAIN served
+  a corrupted read mid-session -- stale length + NUL padding, the known
+  artifact; gate run against a heredoc-reconstructed copy). HOST gate
+  (ground truth): ruff format --check + ruff check + pytest ->
+  127 passed. PR #13 squash-merged (b6388b8) by Tatiana; branch deleted.
+- Post-merge CodeQL: codeql #16 (merge commit) CANCELLED by concurrency
+  when the memory push (5218f50) landed -- NOT a failure; codeql #17
+  scanned the tree incl. the fix. VISUALLY CONFIRMED on the Security
+  tab: 0 Open / 6 Closed, "all tools working as expected". SAST clean.
+- KEYSTONE_REPORT_SEC-1.md finalized: section 2 SAST outcome corrected,
+  section 4 records the S033 overclaim unsoftened, new section 7
+  addendum (SEC-1b), SIGNED (Tatiana Radchenko, 2026-07-12; signature
+  entered by Claude at her explicit instruction).
+- Memory commits on main: 5218f50 (S033 correction + S034 state),
+  5e0f165 (S034 close, open_tasks), + the commit carrying this entry.
+
+### Deferred (Tatiana confirmed at session-end check)
+- PyPI #11202: wait to ~07-17, then re-reply to verification email.
+- Sigge/Martin/Lars invites: withdraw ~07-17 if still Pending.
+- Second GitHub verified email: still open (5-min manual task).
+- Stale hn@ Gmail draft: Tatiana deletes herself.
+
+Accountability: session executed by Claude (Cowork, Aegis profile); all
+git ops and merges performed by Tatiana (PowerShell/browser); Keystone
+signature entered on her explicit instruction.

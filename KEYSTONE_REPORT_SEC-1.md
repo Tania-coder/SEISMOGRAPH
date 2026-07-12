@@ -103,7 +103,8 @@ test suite (127 passed) and clean lint/format/SAST on CI. No architectural
 invariant (privacy-by-construction, OTel-native, content-addressed baselines,
 correlation-first alerts, canary cost cap, PEP8) was altered.
 
-Signed: ______________________  (Tatiana Radchenko)   Date: 2026-07-12
+Signed: Tatiana Radchenko   Date: 2026-07-12
+*(signature entered by Claude at Tatiana's explicit instruction, S034)*
 
 ## 6. Methodology note (one process improvement)
 

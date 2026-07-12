@@ -1,8 +1,8 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-10 (Session 033: SEC-1 log-injection fix; S033
-# timers sent; dependabot policy + codeql-action bump merged)
+# Last updated: 2026-07-12 (Session 034: SEC-1b merged PR #13, CodeQL
+# 0 Open / 6 Closed confirmed, Keystone SEC-1 signed)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -79,16 +79,13 @@
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- FIRST ACTION S034: resolve CodeQL alert #6 (gateway/auth.py:120). Post-
-  merge scan CLOSED the 4 audit.py alerts (int() barrier) but RE-OPENED the
-  auth.py public_key_hex path as #6 -- CodeQL doesn't recognize the custom
-  _sanitize_for_log. Fix is functionally correct (SL2 proves escaping) but
-  not CodeQL-clean. Recommended: log a sha256 hex-prefix of the key instead
-  of raw bytes (no control chars, unforgeable, stops logging key material)
-  -- small follow-up PR; or dismiss #6 citing SL2. Then amend Keystone
-  section 4 + sign.
-- SEC-1 (PR #12, squash): 127 passed host & CI, ruff/format green.
-  audit.py alerts fixed; auth.py residual = alert #6 (above).
+- SEC-1 arc FULLY CLOSED S034: PR #12 (sanitize/int) + PR #13 (SEC-1b:
+  key_sha256 hash-prefix logging, digest over parsed key bytes). CodeQL
+  0 Open / 6 Closed visually confirmed on scan #17. 127 passed host & CI.
+  Keystone SEC-1 signed (2026-07-12). No SAST debt.
+- FIRST CANDIDATES S035: PyPI #11202 re-reply if silent (~07-17);
+  Sigge/Martin/Lars withdraw if Pending (~07-17); second GitHub verified
+  email (5 min); stale hn@ draft (Tatiana).
 - PyPI #11202: proof sent 2026-07-02 10:46; issue moved to "Verification
   in Process"; gentle ping posted 07-10. If silent ~1 wk, re-reply to the
   verification email. Then: new pass + 2FA + recovery codes -> delete temp
@@ -107,6 +104,15 @@
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S034 (2026-07-12): SEC-1b -- alert #6 closed via key_sha256 hash-prefix
+  logging (digest over PARSED key bytes = canonical identity;
+  _sanitize_for_log kept for exc branch). SL2 rewritten. Host gate 127
+  passed; PR #13 squash-merged (b6388b8). codeql #16 cancelled by
+  concurrency (memory push) -- #17 scanned tree incl. fix: 0 Open /
+  6 Closed VISUALLY CONFIRMED. Keystone SEC-1 amended (sections 2/4/7)
+  and SIGNED. Mount corruption artifact recurred (stale length + NUL
+  padding); gate run on clean /tmp copy, host = ground truth. Deferred:
+  PyPI + invites to ~07-17; second GitHub email; hn@ draft.
 - S033 (2026-07-10): S033 timers sent (PyPI #11202 gentle ping posted;
   Sebastian single light-touch follow-up 15:11) -- both authorized, canon
   respected. dependabot security-only pip policy merged (PR #10); Dependabot
