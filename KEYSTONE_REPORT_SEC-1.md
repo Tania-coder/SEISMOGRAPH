@@ -34,9 +34,11 @@ the first CodeQL scan of `main` (introduced with the CodeQL workflow in PR #9).
 - **Lint/format:** `ruff check .` → All checks passed; `ruff format --check .`
   → clean. Both gates green on CI.
 - **SAST:** CodeQL (python + javascript-typescript, security-extended) green on
-  the PR diff. The 5 `py/log-injection` alerts are expected to auto-close on the
-  next `main` scan (post-merge scan was still queued at report time —
-  **follow-up: confirm 0 open alerts**).
+  the PR diff. **Post-merge outcome (S033 correction / S034):** 4 of 5 alerts
+  closed (`int()` in `engine/audit.py` is a CodeQL-recognized taint barrier);
+  the `auth.py` path re-opened as **alert #6** (Medium, `gateway/auth.py:120`)
+  because CodeQL does not model the custom `_sanitize_for_log` as a sanitizer.
+  Resolved by the SEC-1b follow-up (see addendum, §7).
 - **Tooling note:** the in-sandbox pytest/ruff could not be trusted here (known
   mount read-truncation artifact — the sandbox served a 139-line view of a
   154-line file). Verification was therefore done (a) in isolation against exact
@@ -81,8 +83,18 @@ the first CodeQL scan of `main` (introduced with the CodeQL workflow in PR #9).
 - **Scope is the logging boundary only.** No change to crypto verdicts,
   statistical logic, or report contents (Aegis bound honored). Other modules
   were not swept for the same pattern beyond the 5 flagged sites.
-- **Post-merge alert closure not yet visually confirmed** (scan queued at
-  report time). Listed as a follow-up, not asserted as done.
+- **Post-merge scan did NOT fully clear (S033 correction).** 4 of 5 alerts
+  closed; the `auth.py` key path re-opened as alert #6 because CodeQL treats
+  the custom `_sanitize_for_log` as taint-preserving. The original fix was
+  functionally correct (SL2 proved the escaping) but the first S033 report
+  overclaimed "expected to auto-close" for all 5 — recorded here unsoftened.
+  Remediated in SEC-1b (§7): the `InvalidSignature` branch now logs
+  `sha256(pub_bytes)[:12]` instead of any form of the attacker-controlled hex,
+  severing the taint path at the source and — better practice regardless of
+  CodeQL — no longer logging key material at all. `_sanitize_for_log` remains
+  on the exception branch (defense in depth, SL3).
+- **Alert #6 auto-close is expected, not yet confirmed** — verify on the first
+  `main` CodeQL scan after the SEC-1b merge before treating SAST as clean.
 
 ## 5. Accountability statement
 
@@ -91,7 +103,7 @@ test suite (127 passed) and clean lint/format/SAST on CI. No architectural
 invariant (privacy-by-construction, OTel-native, content-addressed baselines,
 correlation-first alerts, canary cost cap, PEP8) was altered.
 
-Signed: ______________________  (Tatiana Radchenko)   Date: 2026-07-10
+Signed: ______________________  (Tatiana Radchenko)   Date: 2026-07-12
 
 ## 6. Methodology note (one process improvement)
 
@@ -104,6 +116,31 @@ PR, rather than relying on the sandbox and discovering `ruff`/format issues via
 CI round-trips. Adopted mid-task here (it caught the format issue and confirmed
 127 passed in a single pass); recommend making it the default pre-push step for
 all future code tasks.
+
+## 7. Addendum — SEC-1b (S034, 2026-07-12): alert #6 remediation
+
+- **Change (AI-generated, minimal diff):** in `gateway/auth.py`, the
+  `InvalidSignature` branch now logs `hashlib.sha256(pub_bytes).hexdigest()[:12]`
+  (`key_sha256=…`) instead of a sanitized slice of `public_key_hex`. Rationale:
+  a hex digest is pure `[0-9a-f]` (physically cannot carry control characters,
+  so the CodeQL taint path is severed at the source, no sanitizer modeling
+  needed) and it stops logging key material — correct practice independent of
+  SAST. Design choice: the digest is computed over the **parsed key bytes**,
+  not the raw hex string, so whitespace tricks in the hex representation
+  cannot change the logged identity and repeat offenders correlate across
+  log lines. `_sanitize_for_log` is unchanged and still guards the exception
+  branch (SL3).
+- **Tests:** SL2 rewritten for the new contract — asserts exactly one log
+  record, no raw newline, the expected digest present, digest alphabet
+  `[0-9a-f]`, and that the whitespace-stripped attacker hex prefix does not
+  appear anywhere in the message. SL1/SL3/SL4/SL5 unchanged and green.
+- **Verification:** `ruff check` + `ruff format --check` + `pytest` →
+  **127 passed** on a clean sandbox copy (the repo mount again served a
+  corrupted read — stale length, NUL padding — mid-session, consistent with
+  the S033 methodology note; the gate was therefore run against an exact
+  heredoc-reconstructed copy). **Host gate + CI remain ground truth and must
+  be green before merge.** Alert #6 closure to be confirmed on the post-merge
+  `main` scan.
 
 ---
 *Constitution adversarial cases (Sybil probe; silent semantic drift with no
