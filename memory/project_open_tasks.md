@@ -108,8 +108,32 @@
 - [x] Zenodo v1.0.1 published S030 (DOI 10.5281/zenodo.21139614).
 
 ## NICE-TO-HAVE
-- [ ] Track 1b: real Mistral emission to LOCAL dashboard (API key = long
-      no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
+- [x] Track 1b DONE S034 (afternoon sprint): 3 live emissions
+      mistral/mistral-small-latest -> local gateway, all accepted
+      (Ed25519 key d0d81dfe86d9..., batches 420d6f59/bd1e2a3a/f3ebca96).
+      Rolling json_rate converged 0.203 -> 0.252 -> 0.291 (DP noise
+      averaging as designed). New Mistral key seismograph-probe-local in
+      business/mistral_key.txt (gitignored); OLD key untouched (Render).
+
+## DONE S034 afternoon sprint (marketing/infra)
+- [x] Landing v2 LIVE on https://driftdefense.dev (8f2a07c + 9b6b055):
+      topbar CTA, client-path section, mid-CTA, mailto mini-form,
+      JSON-LD, canonical on new domain. Enforce HTTPS ON.
+- [x] Domain driftdefense.dev bought (Porkbun, ~$8.75/yr, WHOIS privacy,
+      auto-renew, exp 2027-07-12). DNS: 4xA GitHub Pages IPs + CNAME www.
+      Strategy: SEISMOGRAPH = engine brand, Drift Defense = service brand.
+- [x] GoatCounter analytics LIVE (driftdefense.goatcounter.com, email
+      verified, site domain set): pageviews + 5 CTA click events
+      (cta-topbar/hero/baseline/mid/final). Tatiana's ABP blocks own
+      visits -- stats are a lower bound.
+- [x] README -> landing funnel link (df235d6, utm_source=github).
+- [x] Marketing pack: business/marketing_pack_S034.md (HN repost draft,
+      batch 2 notes, 2-week content plan w/ weekly "Model Weather
+      Briefing", UTM registry, paid-spend rules: NO ads until analytics
+      2wk + HN repost + 1 organic scan request).
+- [ ] TATIANA: dashboard screenshot -> business/live_run_S034.png, then
+      post business/portfolio_post_live_run_S034.md (LinkedIn+X drafts
+      ready; may post early, else slot Wed 22.07).
 
 ## DEFERRED — Phase 3 future
 - [ ] SSO/RBAC, SOC 2, in-VPC probe, SLAs / canary-gated rollback, hires.

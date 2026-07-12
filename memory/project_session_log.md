@@ -2226,3 +2226,38 @@ signature entered on her explicit instruction.
   unreachable this session -- fix next session). REMAINS: dev.to
   article (Tatiana, 2 edits) + drift-defense landing "122 tests"
   (repo not mounted).
+- (both later DONE same day: dev.to edited by Tatiana, verified via
+  API; landing fixed after folder mount, 4dc5ece.)
+
+### S034 addendum 2 (afternoon sprint: commercialization, Tatiana-led)
+- Tatiana directed a marketing push; paid ads explicitly REJECTED for
+  now (rules in business/marketing_pack_S034.md); approved spend:
+  domain only.
+- driftdefense.dev bought (Porkbun, WHOIS privacy, auto-renew,
+  exp 2027-07-12). DNS 4xA + www CNAME -> GitHub Pages custom domain,
+  Enforce HTTPS ON, verified live over HTTPS. Brand split codified:
+  SEISMOGRAPH = OSS engine, Drift Defense = commercial service.
+- Landing v2 shipped (8f2a07c, 9b6b055): client-path section, mid-CTA,
+  topbar CTA, mailto mini-form, JSON-LD, canonical -> driftdefense.dev.
+  Caught + fixed a canon slip pre-commit ("ran 38 days at 0.8%" ->
+  approved backtest phrasing only).
+- GoatCounter analytics live (code driftdefense, verified by a real
+  visit): pageviews + 5 CTA click events. Known limit: adblockers
+  (incl. Tatiana's own ABP) undercount -- treat stats as lower bound.
+- README -> landing funnel bridge (df235d6, UTM-tagged): GitHub was
+  our top-traffic property with NO path to the landing until today.
+- Marketing pack (business/marketing_pack_S034.md): HN repost draft +
+  first comment, batch 2 connection notes (canon-locked), 2-week
+  content plan anchored on weekly "Model Weather Briefing" (Fridays),
+  UTM registry, KPI targets (300+ uniques/2wk, 1-3 scan requests).
+- Track 1b DONE: 3 live Mistral emissions -> local gateway, all
+  accepted (key d0d81dfe86d9...); rolling json_rate 0.203 -> 0.252 ->
+  0.291 -- live demo of DP noise averaging. New API key
+  seismograph-probe-local in business/mistral_key.txt (gitignored);
+  old Render key untouched. Portfolio post drafted
+  (business/portfolio_post_live_run_S034.md), honest
+  no-drift-claimed framing. Remains on Tatiana: dashboard screenshot
+  (business/live_run_S034.png) + posting.
+- Assist pattern that worked: Claude navigates and prepares
+  everything; Tatiana performs all account creation, payments and
+  sends herself -- one step per message when she asked to slow down.
