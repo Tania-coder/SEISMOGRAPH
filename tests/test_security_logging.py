@@ -9,7 +9,8 @@ Coverage
 SL1  _sanitize_for_log escapes control chars, truncates AFTER escaping,
      leaves clean hex untouched (unit)
 SL2  verify_signature: a public key carrying CR/LF cannot forge a new log
-     line (adversarial)
+     line -- since SEC-1b the InvalidSignature branch logs only a sha256
+     prefix of the parsed key, never raw attacker hex (adversarial)
 SL3  verify_signature: the exception branch cannot forge a new log line
      via a control-char-laden hex string (adversarial)
 SL4  verify_signature return value is unchanged for a normal invalid
@@ -25,6 +26,7 @@ SL5  AuditReportGenerator.generate coerces alert_id to int and rejects a
 
 from __future__ import annotations
 
+import hashlib
 import logging
 
 import pytest
@@ -64,24 +66,33 @@ def test_sanitize_escapes_and_truncates_after_escaping() -> None:
 def test_verify_log_injection_cannot_forge_line(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """SL2: a key whose hex carries an embedded newline early enough to
-    land in the logged slice must not produce a second physical log line.
+    """SL2 (SEC-1b): a key whose hex carries an embedded newline must not
+    produce a second physical log line -- and no raw key material may
+    appear in the log at all.
 
     bytes.fromhex ignores ASCII whitespace, so "00" + "\\n" + "00"*31 still
     parses to a valid 32-byte key. The signature won't match, so this
-    reaches the InvalidSignature branch which logs public_key_hex[:16].
-    The newline sits at position 4 -- inside that slice -- so without the
-    fix the raw slice would contain a line break."""
+    reaches the InvalidSignature branch, which since SEC-1b logs a sha256
+    prefix of the PARSED key bytes. The digest is pure [0-9a-f] -- it
+    physically cannot carry control characters -- and is canonical: the
+    whitespace trick cannot change the logged identity."""
     forged = "00" + "\n" + "00" * 31  # 64 hex digits -> 32 bytes, +1 newline
+    expected = hashlib.sha256(bytes.fromhex(forged)).hexdigest()[:12]
     with caplog.at_level(logging.WARNING, logger="gateway.auth"):
         result = verify_signature(b"payload", "aa" * 64, forged)
     assert result is False
-    # Exactly one record; no raw newline; the newline was escaped, proving
-    # the sanitizer ran on the slice that used to be logged raw.
     messages = [r.getMessage() for r in caplog.records]
     assert len(messages) == 1
+    # No raw newline, no forged second line.
     assert "\n" not in messages[0]
-    assert "\\x0a" in messages[0]
+    # The logged identity is the digest of the parsed key bytes...
+    assert expected in messages[0]
+    # ...and the digest alphabet cannot smuggle control chars by design.
+    assert set(expected) <= set("0123456789abcdef")
+    # The attacker-controlled hex string itself never reaches the log
+    # (check the whitespace-stripped form too, not just the raw one).
+    stripped_prefix = forged.replace("\n", "")[:16]
+    assert stripped_prefix not in messages[0].replace(expected, "")
 
 
 # ---------------------------------------------------------------------------

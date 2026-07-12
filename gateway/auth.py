@@ -37,6 +37,7 @@ Security contract
 
 from __future__ import annotations
 
+import hashlib
 import logging
 
 from cryptography.exceptions import InvalidSignature
@@ -57,11 +58,11 @@ def _sanitize_for_log(value: object, max_len: int = 64) -> str:
     and never leaves a dangling half-escaped sequence.
 
     #SG-TRACE: REQ-AUTH-002 (hardening)
-    #   | assumption: bytes.fromhex silently ignores ASCII whitespace, so a
-    #     public_key_hex like "dead..\\n<forged line>" can reach a log call;
-    #     escaping control chars closes that at the logging boundary
-    #   | test: test_sanitize_escapes_and_truncates_after_escaping,
-    #           test_verify_log_injection_cannot_forge_line
+    #   | assumption: since SEC-1b the key branch logs a sha256 prefix, so
+    #     this sanitizer guards only the exception branch (defense in
+    #     depth against a future change that logs raw user-carrying data)
+    #   | test: test_sanitize_escapes_and_truncates_after_escaping (SL1),
+    #           test_verify_exception_branch_is_sanitized (SL3)
     """
     text = str(value)
     escaped = "".join(
@@ -115,9 +116,21 @@ def verify_signature(
         return True
 
     except InvalidSignature:
+        # SEC-1b: never log raw key material. A sha256 prefix of the PARSED
+        # key bytes is (a) pure [0-9a-f] -- physically cannot carry control
+        # chars, so the CodeQL taint path public_key_hex -> log is severed
+        # at the source, and (b) canonical -- whitespace tricks in the hex
+        # representation cannot change the logged identity, so repeat
+        # offenders correlate across log lines.
+        # SG-TRACE: REQ-AUTH-002 (hardening, SEC-1b)
+        #   | assumption: pub_bytes is always bound here because
+        #     Ed25519PublicKey.verify() is the only raiser of
+        #     InvalidSignature and it runs after bytes.fromhex succeeded
+        #   | test: test_verify_log_injection_cannot_forge_line (SL2)
+        key_digest = hashlib.sha256(pub_bytes).hexdigest()[:12]
         logger.warning(
-            "verify_signature: signature mismatch -- rejected (key=%s...)",
-            _sanitize_for_log(public_key_hex, max_len=16),
+            "verify_signature: signature mismatch -- rejected (key_sha256=%s)",
+            key_digest,
         )
         return False
 
