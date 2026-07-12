@@ -22,10 +22,13 @@
       07-12). REMAINS ONLY: Tatiana signature (section 5).
 - [ ] (DONE 07-10) memory/* S033 + Keystone committed to main (0433f44);
       this correction commit pending.
-- [ ] PyPI #11202: ping posted 07-10. If still silent ~1 week, re-reply to
-      the verification email in Gmail. On resolution: new pass + 2FA +
-      recovery codes -> delete temp branch lPpHBOqwfdAqYN6j -> republish
-      1.0.1 -> set up Trusted Publishing (OIDC).
+- [~] PyPI #11202: re-reply to verification email SENT 07-12 09:01
+      (Tatiana chose to send ahead of the ~07-17 plan). HARD RULE now:
+      NO further touches (no emails, no issue pings) until they respond.
+      If total silence persists, next escalation ~end of July via
+      admin@pypi.org (different channel), not another follow-up.
+      On resolution: new pass + 2FA + recovery codes -> delete temp
+      branch lPpHBOqwfdAqYN6j -> republish 1.0.1 -> Trusted Publishing.
 - [ ] Sebastian (Legora): single follow-up SENT 07-10. Do NOT message
       again unless a trigger event (provider incident / Legora news / his
       post) makes it relevant.
@@ -34,8 +37,8 @@
       old "caught" wording).
 - [ ] HN 48773957: waiting on mod reply to the 07-06 email. Else proper
       "Show HN:" repost in 2-3 weeks.
-- [ ] TATIANA (carryover): delete the stale hn@ Gmail draft (07-06 14:32);
-      the mod email itself was SENT 07-06 15:03.
+- [x] Stale hn@ Gmail draft DELETED (verified S034: drafts search for
+      to:hn@ycombinator.com returns zero).
 - [x] DOI discrepancy RESOLVED S034 addendum: verified live --
       ...21045517 = concept DOI (resolves to latest v1.0.1/21139614);
       ...21045518 = v1.0.0 VERSION DOI (stale record, old wording).
@@ -94,7 +97,8 @@
       a repo defect; ignore permanently, CI is ground truth).
 
 ## OPEN — Growth (PRIVATE detail in business/, gitignored)
-- [~] Outreach batch 1 (2026-07-03): 6 invites still Pending as of S033
+- [~] Outreach batch 1 (2026-07-03): 6 invites still Pending as of S034
+      (07-12, verified in Invitation Manager)
       (Jose/Joel/Delphine; Sigge/Martin/Lars). Sebastian ACCEPTED 07-03,
       single follow-up sent 07-10 (no reply yet). PAUSED per playbook;
       batch 2 (Ultimate/Zendesk AI, Parloa; then Tier B) waits for replies.
