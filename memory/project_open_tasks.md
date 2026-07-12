@@ -9,19 +9,17 @@
 ---
 
 ## DO NEXT (S033 close -> S034)
-- [~] SEC-1b (alert #6) IMPLEMENTED S034, awaiting host gate + PR:
-      gateway/auth.py InvalidSignature branch now logs
-      sha256(pub_bytes).hexdigest()[:12] (key_sha256=...) -- digest over
-      PARSED key bytes (canonical identity), not the raw hex string.
-      _sanitize_for_log kept for exc branch (SL3). SL2 rewritten (digest
-      asserted, attacker hex absent). Sandbox gate green on clean /tmp
-      copy: ruff check + format --check + 127 passed (mount again served
-      a corrupted read -- NUL padding; host/CI = ground truth).
-      REMAINS: Tatiana host gate -> branch seismograph/task-sec-1b ->
-      PR -> merge -> confirm alert #6 auto-closes on next main scan.
-- [~] KEYSTONE_REPORT_SEC-1.md amended S034: section 2 SAST outcome
-      corrected, section 4 records #6 unsoftened, new section 7 addendum
-      (SEC-1b). REMAINS: Tatiana signature (section 5, dated 07-12).
+- [x] SEC-1b (alert #6) CLOSED S034: PR #13 squash-merged (b6388b8).
+      gateway/auth.py InvalidSignature branch logs
+      sha256(pub_bytes).hexdigest()[:12] (key_sha256=..., digest over
+      PARSED key bytes = canonical identity). _sanitize_for_log kept for
+      exc branch (SL3). SL2 rewritten. Host gate: ruff x2 + 127 passed.
+      Post-merge CodeQL scan #17 (5218f50) VISUALLY CONFIRMED:
+      0 Open / 6 Closed -- SAST fully clean. (codeql #16 on the merge
+      commit was cancelled by concurrency when the memory push landed;
+      #17 scanned the tree incl. the fix -- expected behavior.)
+- [ ] KEYSTONE_REPORT_SEC-1.md fully amended (sections 2/4/7, dated
+      07-12). REMAINS ONLY: Tatiana signature (section 5).
 - [ ] (DONE 07-10) memory/* S033 + Keystone committed to main (0433f44);
       this correction commit pending.
 - [ ] PyPI #11202: ping posted 07-10. If still silent ~1 week, re-reply to
