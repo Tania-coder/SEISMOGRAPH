@@ -3,7 +3,7 @@
 [![CI](https://github.com/Tania-coder/SEISMOGRAPH/actions/workflows/ci.yml/badge.svg)](https://github.com/Tania-coder/SEISMOGRAPH/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/seismograph-probe.svg)](https://pypi.org/project/seismograph-probe/)
 [![Python](https://img.shields.io/pypi/pyversions/seismograph-probe.svg)](https://pypi.org/project/seismograph-probe/)
-[![Tests](https://img.shields.io/badge/tests-122%20passing-brightgreen.svg)](#test-suite)
+[![Tests](https://img.shields.io/badge/tests-127%20passing-brightgreen.svg)](#test-suite)
 [![Lint](https://img.shields.io/badge/ruff-0%20violations-brightgreen.svg)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](#license)
 [![Live Demo](https://img.shields.io/badge/live%20demo-Model%20Weather-8A2BE2.svg)](https://seismograph-weather.onrender.com/dashboard)
@@ -37,7 +37,7 @@ Teams build on LLM APIs they don't control. Providers update models silently —
 
 ## Technical overview
 
-SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest, 122 tests). Apache-2.0. In backtest, it flagged a major provider's drift **38 days before the public postmortem**.
+SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL, 127 tests). Apache-2.0. In backtest, it flagged a major provider's drift **38 days before the public postmortem**.
 
 ---
 
@@ -254,8 +254,9 @@ tests/
 ## Test suite
 
 ```
-122 passed, 0 failed
+127 passed, 0 failed
 ruff: 0 violations across all Python files
+CodeQL (security-extended): 0 open alerts
 ```
 
 Key adversarial tests:
@@ -270,8 +271,8 @@ Key adversarial tests:
 |-------|--------|-----------|
 | 0 -- Validation | **COMPLETE** | 38-day backtest lead time validated |
 | 1 -- Solo MVP | **COMPLETE** | FastAPI + SQLite + dashboard + quorum live |
-| 2 -- Network growth | Upcoming | Ed25519 Sybil resistance, ClickHouse, DP hardening |
-| 3 -- Enterprise | Planned | Multi-tenant, SOC 2, in-VPC probe, SLAs |
+| 2 -- Network growth | **CORE COMPLETE** | Ed25519 signing, ClickHouse layer, DP noise + quorum gating live |
+| 3 -- Enterprise | In progress | Multi-tenant + audit + webhooks shipped; SOC 2, in-VPC probe, SLAs planned |
 
 ---
 
