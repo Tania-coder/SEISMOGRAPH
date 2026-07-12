@@ -36,6 +36,12 @@
       "Show HN:" repost in 2-3 weeks.
 - [ ] TATIANA (carryover): delete the stale hn@ Gmail draft (07-06 14:32);
       the mod email itself was SENT 07-06 15:03.
+- [ ] S035: verify Zenodo DOI discrepancy -- README/citation say
+      ...21045518, CURRENT_STATE says concept = ...21045517 (v1.0.1 =
+      21139614). Check zenodo.org record before any new citation (grant).
+- [x] (S034 addendum) LICENSE added (052918d): GitHub now detects
+      Apache-2.0 (was Other/NOASSERTION -- no LICENSE file existed).
+      README refreshed: 127 tests, CodeQL line, roadmap rows 2/3.
 
 ## DONE S033 (detail in log)
 - [~] SEC-1: PR #12 squash-merged; 127 passed host & CI, ruff/format

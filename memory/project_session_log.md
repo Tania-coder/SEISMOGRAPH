@@ -2193,3 +2193,27 @@ to record alert #6 before Tatiana signs.
 Accountability: session executed by Claude (Cowork, Aegis profile); all
 git ops and merges performed by Tatiana (PowerShell/browser); Keystone
 signature entered on her explicit instruction.
+
+### S034 addendum (post-close, same day)
+- Constitution updated by Tatiana (project instructions): stale "Current
+  phase: 0" replaced with the phase-2/3-boundary summary + pointer to
+  memory/CURRENT_STATE.md as authoritative.
+- GitHub activity sweep: notifications all known/stale; PyPI #11202 no
+  reply since the 07-10 ping. Traffic 14d: 84 unique visitors (spike =
+  Show HN 07-06), referrers HN 10 / LinkedIn 5 / Kagi 4 (organic search
+  appearing); 3 stars, 0 forks. Clone counts inflated by own Actions
+  (keep-demo-warm checkouts) -- do not quote them as adoption.
+- FIX (docs commit 052918d, main): repo had NO LICENSE file (only
+  COPYRIGHT with an Apache notice) -> GitHub license = Other/NOASSERTION,
+  invisible to license:apache-2.0 search filters. Added canonical
+  Apache-2.0 LICENSE (201 lines, appendix carries Tatiana's copyright);
+  detection VERIFIED (file view renders "Apache License 2.0" header).
+  Side effect: pyproject_probe.toml's "LICENSE" file reference now
+  resolves for the future 1.0.1 sdist.
+- README refreshed in the same commit: tests badge + overview + test
+  suite block 122 -> 127 (+ CodeQL 0 open alerts line), phase roadmap
+  rows 2/3 updated (CORE COMPLETE / In progress).
+- FLAGGED for S035: README/citation use DOI ...21045518 while
+  CURRENT_STATE says concept DOI is ...21045517 (v1.0.1 = 21139614).
+  One of them is imprecise -- verify against Zenodo before citing
+  anywhere new (grant!).
