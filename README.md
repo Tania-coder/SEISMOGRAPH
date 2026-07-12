@@ -33,6 +33,8 @@ Teams build on LLM APIs they don't control. Providers update models silently —
 
 **Documentation:** [Whitepaper (PDF)](docs/SEISMOGRAPH_Whitepaper_v1.pdf) · [Roadmap](ROADMAP.md) · [Security & threat model](SECURITY.md) · [Architecture](SEISMOGRAPH_Architecture.md) · [dev.to: Your LLM didn't get worse](https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl) · [DOI 10.5281/zenodo.21045517](https://doi.org/10.5281/zenodo.21045517)
 
+**Want this watched for you?** I run [Drift Defense](https://driftdefense.dev/?utm_source=github&utm_medium=readme) on top of this engine — a free Drift Exposure Scan maps where a silent model change would hit your stack first.
+
 ---
 
 ## Technical overview
