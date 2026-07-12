@@ -48,8 +48,9 @@
 - [ ] TATIANA: dev.to article -- 2 edits in the editor (122 tests ->
       127; footer DOI ...21045518 -> ...21045517 x2). Instructions
       given S034.
-- [ ] S035: drift-defense landing says "122 tests" -- update to 127
-      (repo D:\Dev\Projects\drift-defense, not mounted this session).
+- [x] drift-defense landing "122 tests" -> 127 FIXED S034 addendum
+      (folder mounted mid-session; single occurrence in index.html;
+      no DOI references on the landing).
 - [x] (S034 addendum) LICENSE added (052918d): GitHub now detects
       Apache-2.0 (was Other/NOASSERTION -- no LICENSE file existed).
       README refreshed: 127 tests, CodeQL line, roadmap rows 2/3.
