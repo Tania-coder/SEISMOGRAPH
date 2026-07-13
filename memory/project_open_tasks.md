@@ -1,26 +1,34 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-12 (Session 034 CLOSED, both sprints)
+# Last updated: 2026-07-13 (Session 035 CLOSED, early content sprint)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
 
-## DO NEXT — S035 (reminder fires 17.07 09:00; full plan in
-## CURRENT_STATE.md "S035 PLAN"; content posts may start 14.07)
+## DO NEXT — S036 (reminder fires 17.07 09:00)
 - [ ] 17.07: PyPI reply check (NO touches) + withdraw Sigge/Martin/Lars
       if Pending. On acceptance: locked phrasing.
-- [ ] Content: 14.07 CUSUM explainer; 17.07 Model Weather Briefing #1;
-      live-run post after Tatiana's screenshot (drafts in business/).
+- [ ] TATIANA 14.07: post CUSUM explainer — text READY
+      (business/content_post_cusum_S035.md) + chart READY
+      (business/chart_cusum_S035.png). UTM per posting notes.
+- [ ] 17.07: Model Weather Briefing #1; live-run post READY too
+      (screenshot live_run_S034.png exists; slot 22.07, may go early).
 - [ ] HN repost ~21-22.07 if mod silent (pack ready).
 - [ ] If PyPI resolves: recovery chain -> republish 1.0.1 -> OIDC.
 - [ ] Batch 2 (Zendesk AI, Parloa) after 17.07 cleanup.
 - [ ] Second GitHub verified email (5 min).
-- [ ] Claude: fix auto-memory zenodo ref (concept = ...517, not ...518);
-      GoatCounter week-1 review.
+- [ ] GoatCounter week-1 review (17.07, week completes).
 - [ ] STRETCH: methodology paper outline.
+
+## ARCHIVE — S035 items (2026-07-13, early content sprint)
+- [x] CUSUM explainer drafted + chart generated from fresh SEED=42
+      backtest run (alert 2025-08-10 re-confirmed). 2 defects caught
+      (chart scale hid alert; "error rate" -> "JSON success rate").
+- [x] Auto-memory zenodo ref FIXED (concept = ...21045517; ...518
+      marked stale version DOI). Closes the S034 addendum follow-up.
 
 ## ARCHIVE — S034 items (all closed)
 - [x] SEC-1b (alert #6) CLOSED S034: PR #13 squash-merged (b6388b8).

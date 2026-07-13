@@ -2261,3 +2261,67 @@ signature entered on her explicit instruction.
 - Assist pattern that worked: Claude navigates and prepares
   everything; Tatiana performs all account creation, payments and
   sends herself -- one step per message when she asked to slow down.
+
+## Session 035 — 2026-07-13 (Cowork): early content sprint (CUSUM explainer)
+
+### Done
+- Session-start verification, two-pass: CURRENT_STATE + open_tasks vs
+  session log tail via host Read — no drift found except the known
+  auto-memory Zenodo error (below). S034 state confirmed accurate.
+- Claude auto-memory FIXED (S035 plan item 7a): reference_zenodo_doi.md
+  + MEMORY.md index now record concept DOI = 10.5281/zenodo.21045517;
+  ...21045518 explicitly marked "stale v1.0.0 version DOI, do not cite".
+- CUSUM explainer (Tue 14.07 content slot) DRAFTED:
+  business/content_post_cusum_S035.md (LinkedIn primary + X thread of 2
+  + posting notes with UTM rules). Every number verified against a
+  fresh SEED=42 run of scripts/anthropic_backtest.py executed this
+  session (/tmp copy, read-only): first alert 2025-08-10, S-=7.278 vs
+  h=5.0, mu0=0.9903, sigma0=0.00437, leads 38 d (postmortem) / 19 d
+  (escalation). Canon: locked backtest phrasing verbatim;
+  "infrastructure bug, not a model update" explicit; synthetic/seeded
+  status spelled out; no live-catch implication anywhere.
+- Chart GENERATED: business/chart_cusum_S035.png (two panels: "what
+  your dashboard sees" vs "what CUSUM sees", annotated bug/alert/
+  escalation/postmortem, footer marks seeded backtest + synthetic
+  data). Data reproduced exactly by importing simulate_day +
+  CUSUMDetector with SEED=42; plot script asserts alert date ==
+  2025-08-10 (would fail loudly on any divergence).
+- Defects caught + fixed this session:
+  (1) chart v1: post-escalation S- (~683) crushed the alert moment to
+      the axis floor; postmortem label collided with footer -- fixed
+      (y clipped to 30 with off-scale note, labels relaid).
+  (2) post draft said "error rate sat at 98.2%" -- it is the SUCCESS
+      rate; fixed to "JSON success rate".
+  (3) SEVERE, caught in close-out pre-check: a bash-heredoc APPEND to
+      this log went through a STALE sandbox mount cache and OVERWROTE
+      the original lines 2158-2207 (S034 header + Done + Deferred +
+      start of addendum 1, cut mid-word "kee|p-demo-warm"). Detected
+      because the pre-check greps found duplicate/missing headers.
+      Fully restored via Edit tool (host-side) from the verbatim copy
+      read earlier this session; S034 entry also exists in git history
+      (5218f50 et al.) as an independent backup. NEW HARD RULE: never
+      append to existing memory/log files via sandbox heredoc -- use
+      the host-side Edit tool; heredoc only for NEW files. (Existing
+      NUL-padding rule covered stale READS; this is the write-path
+      counterpart.)
+- Noted: business/live_run_S034.png IS present (Tatiana's screenshot
+  done) -- live-run portfolio post fully unblocked (slot Wed 22.07,
+  may post earlier per pack).
+
+### Not done / deferred (Tatiana closed the session)
+- 17.07 timer tasks (PyPI #11202 check under no-touch rule, Sigge/
+  Martin/Lars withdrawal, Model Weather Briefing #1) -- on schedule,
+  reminder fires 17.07 09:00. Next session (S036) picks these up.
+- GoatCounter week-1 review -- defer to 17.07 (week completes).
+- Second GitHub verified email -- still open (manual, 5 min).
+- STRETCH methodology paper outline -- not started.
+- Posting the CUSUM post -- Tatiana, Tue 14.07 (attach the chart).
+
+No repo code changes (business/ + memory/ only; business/ gitignored).
+Tests not re-run (no executable changes). Git untouched by Claude --
+memory commit is Tatiana's (PowerShell).
+
+Accountability: session executed by Claude (Cowork); log-corruption
+incident caused by Claude's sandbox write and fully repaired by Claude,
+verified against in-context verbatim copy; close confirmed by Tatiana
+Radchenko.

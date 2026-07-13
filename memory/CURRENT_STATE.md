@@ -1,9 +1,9 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-12 (Session 034, TWO sprints: morning = SEC-1b
-# closed + SAST clean + Keystone signed + DOI/LICENSE consistency;
-# afternoon = driftdefense.dev live, landing v2, analytics, Track 1b)
+# Last updated: 2026-07-13 (Session 035, early content sprint: CUSUM
+# explainer post + chart READY for 14.07; auto-memory zenodo ref fixed.
+# Timer tasks untouched — next session S036 on the 17.07 reminder.)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -58,6 +58,11 @@
   Read tool (host path) or `git cat-file -p HEAD:<path>` -- those are
   ground truth. Prefer bash heredoc for writes (still fewer surprises),
   but the verification step is the part that actually matters.
+- HARD RULE (S035, write-path counterpart): NEVER append to an EXISTING
+  memory/log file via sandbox heredoc — a stale mount cache made a
+  heredoc append OVERWRITE the S034 log entry (restored same session
+  from in-context copy; git had it too). Appends/edits to existing
+  files: host-side Edit tool ONLY. Heredoc remains fine for NEW files.
 
 ## HARD RULE — git ONLY from PowerShell (Tatiana)
 - NEVER run git from the sandbox (mount leaves index.lock, blocks Tatiana;
@@ -88,17 +93,17 @@
   key_sha256 hash-prefix logging, digest over parsed key bytes). CodeQL
   0 Open / 6 Closed visually confirmed on scan #17. 127 passed host & CI.
   Keystone SEC-1 signed (2026-07-12). No SAST debt.
-- S035 PLAN (scheduled reminder fires 17.07 09:00; session may start
-  earlier for content posts):
-  1. TIMERS 17.07: check PyPI #11202 for a reply (re-reply already SENT
-     07-12 — HARD no-touch until they answer); withdraw Sigge/Martin/
-     Lars invites if still Pending (3 clicks, also removes old bad-
-     phrasing notes). On ANY acceptance: locked phrasing first message.
-  2. CONTENT (may run before 17.07, drafts in business/marketing_pack_
-     S034.md): Tue 14.07 CUSUM explainer post; Fri 17.07 "Model Weather
-     Briefing #1" (start of weekly series); live-run portfolio post
-     (business/portfolio_post_live_run_S034.md) — needs Tatiana's
-     dashboard screenshot first (business/live_run_S034.png).
+- S036 PLAN (scheduled reminder fires 17.07 09:00):
+  1. TIMERS 17.07: check PyPI #11202 for a reply (re-reply SENT 07-12 —
+     HARD no-touch until they answer); withdraw Sigge/Martin/Lars
+     invites if still Pending (3 clicks, also removes old bad-phrasing
+     notes). On ANY acceptance: locked phrasing first message.
+  2. CONTENT: Tue 14.07 CUSUM explainer — READY (S035:
+     business/content_post_cusum_S035.md + chart_cusum_S035.png),
+     Tatiana posts. Fri 17.07 "Model Weather Briefing #1" (weekly
+     series start). Live-run post READY incl. screenshot
+     (business/portfolio_post_live_run_S034.md + live_run_S034.png),
+     slot 22.07, may go early.
   3. HN repost ~21-22.07 Tue/Wed 14-15 UTC if mod still silent (title +
      first comment ready in the pack). Meet it with GoatCounter open.
   4. IF PyPI resolves: new pass + 2FA + recovery codes -> delete temp
@@ -106,9 +111,8 @@
   5. Batch 2 outreach (Zendesk AI, Parloa) AFTER 17.07 cleanup; notes
      ready, 2-3/week max.
   6. Second GitHub verified email (5 min, still open, no deadline).
-  7. Claude housekeeping: fix auto-memory reference_zenodo_doi.md
-     (says concept=...518, WRONG — concept is ...21045517); review
-     first GoatCounter week (visitors, CTA clicks, sources).
+  7. GoatCounter week-1 review (visitors, CTA clicks, sources).
+     [S035 DONE: auto-memory zenodo ref fixed — concept ...517.]
   8. STRETCH (only if timers are quick): methodology paper outline
      (Phase 2 tail) — needed for grant credibility + Tier-A outreach.
 - PyPI #11202: proof sent 2026-07-02 10:46; issue moved to "Verification
@@ -129,6 +133,16 @@
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S035 (2026-07-13, early content sprint): CUSUM explainer post drafted
+  (business/content_post_cusum_S035.md, LinkedIn + X) + chart generated
+  (chart_cusum_S035.png) from a FRESH SEED=42 backtest run — alert
+  2025-08-10 / S-=7.278 / leads 38 & 19 d re-confirmed live; plot
+  script asserts the alert date. Canon locked phrasing verbatim, no
+  live-catch implication. 2 defects caught+fixed (chart y-scale hid the
+  alert; "error rate" -> "JSON success rate"). Auto-memory zenodo ref
+  fixed (concept ...517). Noted live_run_S034.png present — live-run
+  post fully unblocked. No repo code changes; git untouched by Claude;
+  memory commit on Tatiana.
 - S034b (2026-07-12, afternoon sprint): driftdefense.dev bought + live
   (HTTPS, www redirect, old URL redirects); landing v2 (client path,
   mid-CTA, 5 CTA events, JSON-LD); GoatCounter analytics live; README->
