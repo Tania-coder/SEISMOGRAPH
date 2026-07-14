@@ -1,9 +1,10 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-13 (Session 035, early content sprint: CUSUM
-# explainer post + chart READY for 14.07; auto-memory zenodo ref fixed.
-# Timer tasks untouched — next session S036 on the 17.07 reminder.)
+# Last updated: 2026-07-14 (Session 035b: CUSUM POSTED (LI+X), methodology
+# outline + Briefing #1 draft done via parallel agents, arch-doc stale
+# statuses fixed, posts_dashboard_live.md DEPRECATED, 2nd GitHub email
+# added. Timer tasks untouched — next session S036 on the 17.07 reminder.)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -98,10 +99,11 @@
      HARD no-touch until they answer); withdraw Sigge/Martin/Lars
      invites if still Pending (3 clicks, also removes old bad-phrasing
      notes). On ANY acceptance: locked phrasing first message.
-  2. CONTENT: Tue 14.07 CUSUM explainer — READY (S035:
-     business/content_post_cusum_S035.md + chart_cusum_S035.png),
-     Tatiana posts. Fri 17.07 "Model Weather Briefing #1" (weekly
-     series start). Live-run post READY incl. screenshot
+  2. CONTENT: Tue 14.07 CUSUM explainer POSTED S035b (URLs in
+     open_tasks). Fri 17.07 "Model Weather Briefing #1" — DRAFTED
+     S035b (business/content_briefing1_S036.md), refresh [FILL]
+     marks from /v1/weather on the morning, then post.
+     Live-run post READY incl. screenshot
      (business/portfolio_post_live_run_S034.md + live_run_S034.png),
      slot 22.07, may go early.
   3. HN repost ~21-22.07 Tue/Wed 14-15 UTC if mod still silent (title +
@@ -110,11 +112,11 @@
      branch lPpHBOqwfdAqYN6j -> republish 1.0.1 -> Trusted Publishing.
   5. Batch 2 outreach (Zendesk AI, Parloa) AFTER 17.07 cleanup; notes
      ready, 2-3/week max.
-  6. Second GitHub verified email (5 min, still open, no deadline).
+  6. [DONE S035b] Second GitHub verified email added 2026-07-14.
   7. GoatCounter week-1 review (visitors, CTA clicks, sources).
      [S035 DONE: auto-memory zenodo ref fixed — concept ...517.]
-  8. STRETCH (only if timers are quick): methodology paper outline
-     (Phase 2 tail) — needed for grant credibility + Tier-A outreach.
+  8. [DONE S035b] Methodology paper outline: docs/
+     methodology_paper_outline.md. Next step = DP-noise-ON backtest.
 - PyPI #11202: proof sent 2026-07-02 10:46; issue moved to "Verification
   in Process"; gentle ping posted 07-10. If silent ~1 wk, re-reply to the
   verification email. Then: new pass + 2FA + recovery codes -> delete temp
@@ -127,12 +129,22 @@
   trigger event. Other 6 invites Pending (Sigge/Martin/Lars withdraw
   ~07-17 if silent). On ANY acceptance: first message uses locked
   phrasing. Batch 2 PAUSED.
-- Second GitHub verified email still not added (single-email warning) --
-  closes the account-loss scenario that hit PyPI.
+- Second GitHub verified email ADDED 2026-07-14 (S035b) -- account-loss
+  scenario closed.
 - Track 1b nice-to-have: real Mistral emission to LOCAL dashboard (API key =
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S035b (2026-07-14): CUSUM explainer POSTED by Tatiana (LI activity
+  7482823133020794880; X 2077057793144610885, thread of 2, chart, UTM).
+  Parallel subagents (first use): docs/methodology_paper_outline.md
+  (STRETCH closed; gap = DP-noise-ON backtest + (h,k) sensitivity) +
+  business/content_briefing1_S036.md (Briefing #1 for 17.07, [FILL]
+  markers, /v1/weather fields listed; dashboard unreachable via fetch).
+  Arch doc fixed vs code (BOCD LIVE, auth.py live post-SEC-1, 4 status
+  edits, Tatiana approved). social/posts_dashboard_live.md DEPRECATED
+  (pre-canon phrasing hazard). 2nd GitHub email added. No code changes;
+  git on Tatiana.
 - S035 (2026-07-13, early content sprint): CUSUM explainer post drafted
   (business/content_post_cusum_S035.md, LinkedIn + X) + chart generated
   (chart_cusum_S035.png) from a FRESH SEED=42 backtest run — alert

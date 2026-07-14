@@ -1,7 +1,8 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-13 (Session 035 CLOSED, early content sprint)
+# Last updated: 2026-07-14 (Session 035b CLOSED: CUSUM posted, outline +
+# Briefing #1 drafted via parallel agents, arch doc fixed, 2nd email done)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
@@ -11,15 +12,22 @@
 ## DO NEXT — S036 (reminder fires 17.07 09:00)
 - [ ] 17.07: PyPI reply check (NO touches) + withdraw Sigge/Martin/Lars
       if Pending. On acceptance: locked phrasing.
-- [ ] TATIANA 14.07: post CUSUM explainer — text READY
-      (business/content_post_cusum_S035.md) + chart READY
-      (business/chart_cusum_S035.png). UTM per posting notes.
+- [x] TATIANA 14.07: CUSUM explainer POSTED 2026-07-14 (LinkedIn + X
+      thread of 2, chart attached, UTM linkedin/post):
+      LI: linkedin.com/feed/update/urn:li:activity:7482823133020794880
+      X:  x.com/tatyanti/status/2077057793144610885
+- [x] 14.07 interim (Claude): methodology paper outline DONE
+      (docs/methodology_paper_outline.md, was STRETCH); Briefing #1
+      drafted (business/content_briefing1_S036.md, [FILL 17.07] marks);
+      arch doc stale rows fixed (BOCD live, auth.py live — verified vs
+      code); social/posts_dashboard_live.md marked DEPRECATED (pre-canon
+      phrasing).
 - [ ] 17.07: Model Weather Briefing #1; live-run post READY too
       (screenshot live_run_S034.png exists; slot 22.07, may go early).
 - [ ] HN repost ~21-22.07 if mod silent (pack ready).
 - [ ] If PyPI resolves: recovery chain -> republish 1.0.1 -> OIDC.
 - [ ] Batch 2 (Zendesk AI, Parloa) after 17.07 cleanup.
-- [ ] Second GitHub verified email (5 min).
+- [x] Second GitHub verified email — DONE 2026-07-14 (S035b).
 - [ ] GoatCounter week-1 review (17.07, week completes).
 - [ ] STRETCH: methodology paper outline.
 
@@ -111,8 +119,8 @@
       silent ~1 week, re-reply to the verification email. Then: new pass +
       2FA + recovery codes -> delete temp branch lPpHBOqwfdAqYN6j ->
       republish 1.0.1 -> Trusted Publishing (OIDC).
-- [ ] Add a second verified email on GitHub (single-email warning banner;
-      closes the account-loss scenario that hit PyPI).
+- [x] Add a second verified email on GitHub — DONE 2026-07-14 (S035b;
+      closed the account-loss scenario that hit PyPI).
 
 ## OPEN — Hygiene
 - [x] Bulk CRLF renormalize — DONE S030 (sandbox-mount read artifact, not

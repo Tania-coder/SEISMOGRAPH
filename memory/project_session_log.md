@@ -2325,3 +2325,64 @@ Accountability: session executed by Claude (Cowork); log-corruption
 incident caused by Claude's sandbox write and fully repaired by Claude,
 verified against in-context verbatim copy; close confirmed by Tatiana
 Radchenko.
+
+---
+
+## Session 035b — 2026-07-14 (Cowork): CUSUM posted + parallel-agent sprint
+
+### Done
+- Session-start verification (two-pass, host Read as ground truth):
+  5/5 memory claims CONFIRMED, no drift. S035 log entry present
+  (line 2265); CUSUM post + chart verified ready (locked phrasing
+  verbatim, numbers block intact).
+- CUSUM explainer POSTED by Tatiana (Tue 14.07 slot, chart attached,
+  UTM linkedin/post):
+  LI: linkedin.com/feed/update/urn:li:activity:7482823133020794880
+  X:  x.com/tatyanti/status/2077057793144610885 (thread of 2).
+  Claude provided paste-ready text with UTM link pre-substituted.
+- Two subagents run IN PARALLEL (first use of parallel agents on this
+  project), both under hard constraints (no git, one new file each,
+  heredoc-for-new-files + host-Read verify, facts canon embedded):
+  (1) docs/methodology_paper_outline.md (231 lines) — STRETCH item
+      closed: title + venues (arXiv cs.SE primary), canon-compliant
+      abstract, 8 sections tagged [EXISTS]/[NEEDS WORK], limitations,
+      6 next steps. Biggest evidence gap flagged: DP-noise-ON backtest
+      + (h, k) sensitivity grid.
+  (2) business/content_briefing1_S036.md — Model Weather Briefing #1
+      draft for Fri 17.07 (LinkedIn + X thread of 2, lengths counted
+      programmatically; UTM per registry). Live dashboard unreachable
+      via fetch — all live numbers left as explicit [FILL 17.07]
+      markers with exact /v1/weather fields to read on posting morning.
+- Arch-doc drift FIXED (approved by Tatiana, verified against code
+  BEFORE editing): SEISMOGRAPH_Architecture.md said
+  BayesianOnlineDetector = STUB (lines 133/138-143/319) while
+  engine/correlation.py:135+ has the full LIVE Adams & MacKay 2007
+  implementation; also inventory row for gateway/auth.py still said
+  "Ed25519 stub returns True" — post-SEC-1 it is live verification
+  (InvalidSignature branch, key_sha256 logging). 4 edits, statuses
+  only, host-side Edit tool.
+- Canon hazard NEUTRALIZED: social/posts_dashboard_live.md carries
+  pre-canon phrasing ("caught ... 38 days", "Claude 3.5 Sonnet") —
+  DEPRECATED header added (do-not-copy warning + pointer to canon).
+  Found by the briefing agent, confirmed and marked by Claude.
+- Second GitHub verified email ADDED by Tatiana this session — closes
+  the single-email account-loss scenario (the one that hit PyPI).
+  Last open Admin/Security item outside the PyPI timer.
+- memory/project_open_tasks.md updated: 14.07 post closed with URLs,
+  interim work recorded, second-email item closed.
+
+### Not done / deferred (unchanged, on the 17.07 timer)
+- PyPI #11202 check (no-touch until reply), Sigge/Martin/Lars
+  withdrawal, Briefing #1 posting ([FILL] refresh first), GoatCounter
+  week-1 review, HN repost decision ~21-22.07, batch 2 after cleanup.
+- Methodology paper DRAFTING (outline done; next = DP-noise-ON
+  backtest run per outline step 1).
+
+No repo code changes (docs/ + memory/ + arch doc + gitignored
+business//social/ only). Tests not re-run (no executable changes).
+Git untouched by Claude — commits are Tatiana's (PowerShell).
+
+Accountability: session executed by Claude (Cowork) with two
+parallel subagents; all agent output verified by Claude via host
+Read before acceptance; posting, GitHub email, and git commits by
+Tatiana Radchenko; close confirmed by Tatiana.

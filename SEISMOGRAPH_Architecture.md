@@ -130,17 +130,18 @@ engine/correlation.py -- Contains:
   (b) CUSUMDetector   -- STUB ONLY. This class raises NotImplementedError
                          and exists as an interface contract. All CUSUM
                          logic lives in engine/detector.py.
-  (c) BayesianOnlineDetector -- STUB ONLY. Phase 1 implementation target.
+  (c) BayesianOnlineDetector -- LIVE. Full Adams & MacKay 2007 BOCD
+                         implementation (posterior run-length tracking).
 
 Future developers: do NOT wire engine/correlation.py CUSUMDetector into
 production code. Always import from engine.detector.
 
-### BayesianOnlineDetector (Phase 1)
+### BayesianOnlineDetector (LIVE)
 
 Bayesian online change-point detection (Adams & MacKay 2007).
 Tracks posterior probability of a change point at each time step.
-Implementation deferred to Phase 1. Stub in engine/correlation.py raises
-NotImplementedError.
+LIVE implementation in engine/correlation.py (was a Phase 1 stub;
+doc status corrected 2026-07-14 to match code).
 
 ---
 
@@ -316,10 +317,10 @@ promotion.
 | probe/sdk.py | Atlas agent | OTel-native probe SDK stub (P0-007 scaffold) | Stub (P0-008 wires OTel in Phase 1) |
 | engine/__init__.py | Seismo agent | Package init | Complete |
 | engine/detector.py | Seismo agent | CUSUMDetector (live Page-CUSUM), DriftAlert, _MetricState | Complete |
-| engine/correlation.py | Seismo agent | AgreementScorer (live), CUSUMDetector stub, BayesianOnlineDetector stub | Partial (Phase 1) |
+| engine/correlation.py | Seismo agent | AgreementScorer (live), CUSUMDetector interface stub (live impl in engine/detector.py), BayesianOnlineDetector (live) | Complete |
 | gateway/__init__.py | Aegis agent | Package init, security boundary declaration | Complete |
 | gateway/schema.py | Aegis agent | InboundSignalBatch (Pydantic v2, ConfigDict frozen+forbid) | Complete |
-| gateway/auth.py | Aegis agent | Ed25519 stub (verify_signature returns True) | Stub (Phase 2) |
+| gateway/auth.py | Aegis agent | Ed25519 verify_signature (live: InvalidSignature/ValueError handling, SEC-1 sanitized logging, key_sha256 identity) | Complete |
 | gateway/ingest.py | Aegis agent | receive_batch mock (202/400/401) | Complete (mock) |
 | scripts/anthropic_backtest.py | Seismo agent | Phase 0 backtest (SEED=42, baseline_samples=30) | Complete |
 | notebooks/anthropic_backtest_report.md | Seismo agent | Backtest results, CUSUM trace, 38-day lead | Complete |
