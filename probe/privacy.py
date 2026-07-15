@@ -11,12 +11,18 @@ Outbound contract:
   - canary_hashes are SHA-256 digests (non-reversible).
 
 Differential privacy design (epsilon=2.0 per flush window):
+  - Flush metrics are means over the n=result_count records in the
+    batch.  Under substitution DP (one record replaced; n fixed and
+    public -- transmitted in the clear as result_count), the
+    sensitivity of a bounded mean is delta_f = MAX/n.
   - avg_output_length: clamped to [0, MAX_OUTPUT_LENGTH=8192] before
-    averaging (bounded sensitivity delta_f=8192); noise scale b=4096.0.
-  - json_success_rate: bounded [0,1] by construction; scale b=0.5.
+    averaging; delta_f = 8192/n; noise scale b = 4096/n.
+  - json_success_rate: bounded [0,1] by construction; delta_f = 1/n;
+    noise scale b = 0.5/n.
   - result_count: infrastructure counter, not DP-noised (Phase 0).
-  NOTE(REQ-PRIV-010): sensitivity uses global MAX as conservative bound.
-  Phase 1 will refine to delta_f=MAX/n for large batch sizes.
+  REQ-PRIV-010 IMPLEMENTED (2026-07-15): batch-aware sensitivity via
+  _metric_sensitivity(metric, n).  n=1 degrades exactly to the former
+  global worst-case bounds (delta_f=8192 / 1.0).
 
 Privacy budget (P2-004):
   - DPAccountant enforces a rolling 24-hour epsilon budget per probe.
@@ -46,6 +52,10 @@ Collection vs transmission cadence (P2-012):
 #   | assumption: Laplace noise with epsilon=2.0 provides epsilon-DP
 #     per flush window; sequential composition tracked by DPAccountant
 #   | test: test_dp_noise_perturbs_metrics
+#SG-TRACE: REQ-PRIV-010
+#   | assumption: substitution DP with fixed public n=result_count;
+#     bounded-mean sensitivity delta_f = MAX/n per flush
+#   | test: test_metric_sensitivity_scales_inverse_n
 #SG-TRACE: REQ-PRIV-011
 #   | assumption: DPAccountant 24h window is wall-clock based; clock
 #     skew or system hibernation may shorten the effective window
@@ -78,6 +88,40 @@ _METRIC_SENSITIVITY: dict[str, float] = {
     "avg_output_length": float(MAX_OUTPUT_LENGTH),
     "json_success_rate": 1.0,
 }
+
+
+def _metric_sensitivity(metric: str, n: int) -> float:
+    """Batch-aware substitution-DP sensitivity for a mean of n records.
+
+    Each flush metric is a mean over the n=result_count records in the
+    batch.  Under substitution DP (one record replaced, n fixed and
+    public -- n is transmitted in the clear as result_count), replacing
+    one bounded record changes the mean by at most base/n:
+
+      avg_output_length: records clamped to [0, MAX_OUTPUT_LENGTH]
+        -> delta_f = MAX_OUTPUT_LENGTH / n
+      json_success_rate: per-record values in {0, 1}, mean in [0, 1]
+        -> delta_f = 1 / n
+
+    n=1 degrades exactly to the former global worst-case bounds.
+
+    Args:
+        metric: Key into _METRIC_SENSITIVITY.
+        n: Batch size (result_count).  Must be >= 1.
+
+    Raises:
+        ValueError: If n < 1.
+        KeyError: If metric is unknown.
+
+    #SG-TRACE: REQ-PRIV-010
+    #   | assumption: fixed-size public batch (substitution DP); n is
+    #     probe-controlled, not attacker-controlled, and is transmitted
+    #     as result_count
+    #   | test: test_metric_sensitivity_scales_inverse_n
+    """
+    if n < 1:
+        raise ValueError(f"batch size n must be >= 1; got {n}")
+    return _METRIC_SENSITIVITY[metric] / float(n)
 
 
 # ---------------------------------------------------------------------------
@@ -572,12 +616,13 @@ class Aggregator:
         raw_avg = mean(clamped)
         raw_rate = sum(1 for r in results if r.json_valid) / len(results)
 
-        # Apply Laplace noise
+        # Apply Laplace noise (batch-aware sensitivity, REQ-PRIV-010)
+        n = len(results)
         noised_avg = max(
             0.0,
             raw_avg
             + _laplace_noise(
-                _METRIC_SENSITIVITY["avg_output_length"] / EPSILON,
+                _metric_sensitivity("avg_output_length", n) / EPSILON,
                 self._rng,
             ),
         )
@@ -587,7 +632,7 @@ class Aggregator:
                 1.0,
                 raw_rate
                 + _laplace_noise(
-                    _METRIC_SENSITIVITY["json_success_rate"] / EPSILON,
+                    _metric_sensitivity("json_success_rate", n) / EPSILON,
                     self._rng,
                 ),
             ),
