@@ -2,8 +2,9 @@
 
 Task: implement the REQ-PRIV-010 refinement (delta_f = MAX/n) that
 EXP-1A/1C identified as the root cause of single-probe DP-ON detection
-failure. Branch (to be created by Tatiana): seismograph/task-priv-010.
-Date: 2026-07-15 (S035c). Status: DRAFT — awaiting signature.
+failure. Branch: seismograph/task-priv-010, squash-merged as PR #14
+(main 90fda54); branch deleted.
+Date: 2026-07-15 (S035c). Status: SIGNED.
 
 ---
 
@@ -91,7 +92,9 @@ Human-edited: none yet.
 Implementation and verification by Claude (Cowork, Aegis profile).
 Git operations, host gate, and merge: Tatiana (PowerShell).
 
-Signed: ______________________ (Tatiana Radchenko) Date: __________
+Signed: Tatiana Radchenko Date: 2026-07-15
+(signature entered by Claude at Tatiana's explicit instruction,
+post-merge of PR #14; host gate 134 passed run by Tatiana pre-merge)
 
 ## 6. Methodology note (process improvement)
 

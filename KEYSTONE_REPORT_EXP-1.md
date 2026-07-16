@@ -2,7 +2,7 @@
 
 Task: close the methodology paper's "THE missing experiment" gap
 (docs/methodology_paper_outline.md §5, §6, §10.1).
-Date: 2026-07-15 (S035c, interim session). Status: DRAFT — awaiting signature.
+Date: 2026-07-15 (S035c, interim session). Status: SIGNED.
 
 ---
 
@@ -103,7 +103,9 @@ is exactly what the failure mode requires.
 Experiments executed by Claude (Cowork; three parallel subagents, lead
 verification pass). No git ops; all repo mutations are new files only.
 
-Signed: ______________________ (Tatiana Radchenko) Date: __________
+Signed: Tatiana Radchenko Date: 2026-07-15
+(signature entered by Claude at Tatiana's explicit instruction,
+post-merge of PR #14)
 
 ## 7. Methodology note (process improvement)
 
