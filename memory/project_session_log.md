@@ -2386,3 +2386,94 @@ Accountability: session executed by Claude (Cowork) with two
 parallel subagents; all agent output verified by Claude via host
 Read before acceptance; posting, GitHub email, and git commits by
 Tatiana Radchenko; close confirmed by Tatiana.
+
+---
+
+## Session 035c — 2026-07-15 (Cowork): paper evidence sprint (EXP-1/2 + REQ-PRIV-010)
+
+### Done
+- EXP-1 via THREE parallel subagents (1A DP-ON backtest, 1B sensitivity
+  grid, 1C stable-window FP), all numbers independently re-run by lead
+  before acceptance. Two prior assumptions FALSIFIED, unsoftened:
+  (1) zero-FP-on-stable claim: single-observer FP window rate 0.400
+      over 90 d at (h=5, k=0.5, baseline=30), DP OFF — consistent with
+      CUSUM ARL0 ~465/stream + self-starting baseline inflation, NOT a
+      harness bug (cross-checked vs hand-rolled CUSUM).
+  (2) old DP bounds: incident detection 62.5% vs 56.5% no-bug null —
+      indistinguishable; the outline's "1-3 day delay" estimate false.
+  Confirmed: default config reproduces 2025-08-10 / 38 d; 180/180 grid
+  configs detect pre-postmortem (lead 19-43 d); baseline=10 re-validates
+  D9. Files: scripts/experiment_{dp_backtest,sensitivity,stable_fp}.py,
+  docs/experiments/* (results md + csv + 2 figures).
+- FIX-1 = REQ-PRIV-010 IMPLEMENTED (probe/privacy.py): batch-aware
+  substitution-DP sensitivity _metric_sensitivity(metric, n) = MAX/n,
+  n = len(results) in flush(); epsilon/draw order untouched; n=1
+  degrades exactly to old bounds. +7 tests (DS1-DS6,
+  tests/test_dp_sensitivity.py): inverse-n property, n=1 degradation,
+  invalid input, Laplace MAD calibration, adversarial noise-floor
+  collapse. Suite: 134 passed (sandbox-advisory on clean copy);
+  ruff clean. HOST gate on Tatiana before PR.
+- EXP-1R re-run under FIX-1 (agent, backward-compat asserted
+  byte-for-byte at n=1): detection 62.5% -> 100% at n=100/200; median
+  first alert 2025-08-11 (n=100) / 2025-08-10 (n=200) — the canon
+  38-day result is recovered as the median under DP noise. Stable-FP
+  DP-ON excess shrinks toward the DP-OFF floor (+0.11-0.13 residual).
+- EXP-2 quorum simulation (agent; real engine.correlation
+  AgreementScorer.ingest/promote path, nothing reimplemented):
+  M=3/quorum=3 + 14-day TTL -> public-alert FP 0.015 (vs 0.400 single)
+  at 36 d median lead (quorum cost 2-10 d by config). DESIGN GAP found:
+  engine has NO candidate expiry/time-window matching -> fixed q=2
+  degrades with network size (M=5/q=2 FP 0.86 > single-observer floor).
+  Adversarial: single-org burst NEVER promotes alone (invariant held,
+  asserted); Sybil-alone never promotes; quantified residual:
+  Sybil+honest-FP collusion 0.82 @q=2 -> 0.34 @q=3 (reputation
+  weighting / Ed25519 binding are the Phase-2 answer). Files:
+  scripts/experiment_quorum.py, docs/experiments/quorum_results.md +
+  quorum_fp_vs_m.png. Lead re-ran headline numbers — reproduced.
+- Outline updated to match evidence (host Edit, 7 edits): secs 4.2/5/6
+  now cite EXP-1/1R/2 with honest falsification history; sec 7
+  limitations rewritten (small-n live batches, observer-independence
+  assumption, TTL harness-enforced, collusion residual); test count
+  127 -> 134; next-steps 1-2 marked DONE, FIX-2 spawned.
+- Keystones DRAFTED (both awaiting signature):
+  KEYSTONE_REPORT_EXP-1.md, KEYSTONE_REPORT_PRIV-010.md.
+- Branch seismograph/task-priv-010 created by Tatiana; 17 files staged
+  (verified list — no private files swept). Commit pending her HOST
+  gate (expect 134 passed + ruff clean).
+
+### Defects caught + fixed
+- Test-design defect (mine): first DS5/DS6 measured noise scale through
+  flush() clamps (max(0,.), [0,1]) — at raw_rate=1.0 the clamp zeroes
+  every positive draw (median |dev| exactly 0.0). Fixed: mechanism-level
+  assertions via _laplace_noise directly; flush-level at raw_rate=0.5 /
+  n=100. Rationale recorded in the test module docstring.
+- EXP-1B agent: initial version credited baseline-phase alerts as
+  detections (fake "64 d lead") — fixed to pre-onset-alarm accounting.
+- EXP-1A agent: no false-alarm control in initial design — the added
+  no-bug null became the load-bearing result.
+- Script hazard: dp_backtest figure overwritten per run — suffixed per n.
+- Mount incoherence AGAIN (both directions): privacy.py served a
+  stable-but-truncated snapshot to python import while open() saw new
+  bytes; gateway/auth.py copy carried 14 trailing NULs. All gates run
+  on a reconstructed clean copy (/sessions/.../sg_gate); every
+  delivered file verified via host Read. Rule holds: host = truth.
+
+### Open at close
+- TATIANA: host gate -> commit task-priv-010 -> add the post-stage
+  files (scripts/experiment_quorum.py, docs/experiments/quorum_*,
+  docs/methodology_paper_outline.md, memory/*) -> PR -> sign both
+  Keystones.
+- FIX-2 DECISION (Tatiana): engine-side candidate TTL + quorum scaling
+  (+ metric name in ChangePointResult) in AgreementScorer; threshold
+  datum to data/drift_labels/ per Seismo bound. Not blocking the paper.
+- S036 timers unchanged (17.07 09:00): PyPI check (no-touch), withdraw
+  Sigge/Martin/Lars, Briefing #1 ([FILL] refresh), GoatCounter wk-1,
+  HN repost decision ~21-22.07.
+- Track 1b live flushes have n=3 -> near-worst-case DP noise until the
+  live suite grows (noted in outline limitations).
+
+Accountability: session executed by Claude (Cowork; 5 subagents total
+across EXP-1/1R/2), all agent numbers independently re-run by the lead
+before acceptance; code change scoped to probe/privacy.py + new tests;
+git ops and host gate by Tatiana Radchenko; close confirmed by Tatiana
+("сохраняем и закрываем").

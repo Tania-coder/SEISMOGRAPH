@@ -1,10 +1,13 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-14 (Session 035b: CUSUM POSTED (LI+X), methodology
-# outline + Briefing #1 draft done via parallel agents, arch-doc stale
-# statuses fixed, posts_dashboard_live.md DEPRECATED, 2nd GitHub email
-# added. Timer tasks untouched — next session S036 on the 17.07 reminder.)
+# Last updated: 2026-07-15 (Session 035c: EXP-1/1R/2 evidence pack +
+# REQ-PRIV-010 fix (delta_f=MAX/n) on branch seismograph/task-priv-010,
+# 134 tests. Canon 38d recovered under DP noise at n=200. Quorum
+# demonstrated: M=3/q=3+TTL14d -> FP 0.015 vs 0.400 single-observer.
+# Engine design gap found (no candidate TTL) -> FIX-2 decision pending.
+# Two Keystones await signature; commit/PR pending Tatiana's host gate.
+# Timers -> S036 17.07.)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -135,6 +138,19 @@
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S035c (2026-07-15): paper evidence sprint, 5 subagents. EXP-1
+  falsified zero-FP (0.400/90d single obs) + old DP bounds (62.5% vs
+  56.5% null). FIX-1 REQ-PRIV-010 (probe/privacy.py delta_f=MAX/n,
+  +7 tests = 134): EXP-1R recovers canon — median alert 2025-08-10 at
+  n=200 under DP noise, 100% detection at n>=100. EXP-2 (real
+  AgreementScorer): M=3/q=3+TTL14d -> public FP 0.015 @ 36d lead;
+  invariant held (burst/Sybil-alone never promote); residual: q=2
+  collusion 0.82 -> 0.34 @q=3; ENGINE GAP: no candidate TTL, q=2
+  degrades with M (M=5 FP 0.86) -> FIX-2 candidate awaiting decision.
+  Outline secs 4.2/5/6/7/8/10 updated to evidence. Keystones EXP-1 +
+  PRIV-010 drafted, unsigned. Branch task-priv-010: 17 files staged by
+  Tatiana; commit awaits her host gate (expect 134 passed); post-stage
+  files (quorum_*, outline, memory/*) need a second git add.
 - S035b (2026-07-14): CUSUM explainer POSTED by Tatiana (LI activity
   7482823133020794880; X 2077057793144610885, thread of 2, chart, UTM).
   Parallel subagents (first use): docs/methodology_paper_outline.md
