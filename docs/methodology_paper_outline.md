@@ -135,9 +135,13 @@ citations committed yet.
   DPAccountant]
 - Frozen SignalBatch schema; Pydantic ingest validation (frozen + forbid).
   [EXISTS: probe/privacy.py, gateway/schema.py]
-- [NEEDS WORK: sensitivity analysis writeup — how delta_f was chosen per
-  metric; sequential composition accounting is an open Phase 1 item — state
-  it as such]
+- Batch-aware sensitivity (REQ-PRIV-010, implemented 2026-07-15): flush
+  metrics are means over n=result_count records; substitution-DP
+  delta_f = MAX/n (n fixed and public). n=1 degrades to the former
+  worst-case bounds. [EXISTS: probe/privacy.py _metric_sensitivity,
+  tests/test_dp_sensitivity.py DS1-DS6, KEYSTONE_REPORT_PRIV-010.md]
+- [NEEDS WORK: sequential composition accounting is an open Phase 1
+  item — state it as such]
 
 ### 4.3 Correlation engine
 - Per-org, per-metric Page-CUSUM (engine/detector.py): standardised z,
@@ -162,8 +166,19 @@ citations committed yet.
   strength. [EXISTS: calibration record]
 - Two-layer promotion: candidate DriftAlert -> quorum gate -> public alert;
   single-org signals stay private. [EXISTS: code + arch]
-- [NEEDS WORK: sensitivity study — alert date vs h, k, baseline_samples,
-  noise sigma, and DP noise on/off. This is THE missing experiment.]
+- Sensitivity study DONE (EXP-1B, 2026-07-15): 180-config grid over
+  (h, k, baseline_samples, sigma). 180/180 detect before the postmortem;
+  lead 19-43 d; default (5.0, 0.5, 30) confirmed at 2025-08-10 / 38 d;
+  baseline_samples=10 re-validates D9 (42/51 S- false positives).
+  [EXISTS: scripts/experiment_sensitivity.py,
+  docs/experiments/sensitivity_results.md + grid.csv + heatmap]
+- HONEST single-observer FP result (EXP-1C): 0.400 stable-window FP
+  rate over 90 days at the default operating point (consistent with
+  CUSUM ARL0 ~ 465/stream + self-starting baseline inflation). Per-
+  window zero-FP claims are untenable for one observer — the quorum
+  gate is load-bearing, demonstrated in EXP-2 (see sec 6).
+  [EXISTS: scripts/experiment_stable_fp.py,
+  docs/experiments/stable_fp_results.md + _fix1.md]
 
 ## 6. Evaluation: seeded backtest case study
 
@@ -179,11 +194,28 @@ citations committed yet.
   postmortem (first alert 2025-08-10, S-=7.278 > h=5.0; 19 days before the
   escalation; detected in the subtle 0.8% phase). NEVER phrase as a live
   catch. [EXISTS: report + assertions C1-C6; re-confirmed live S035]
-- Reproducibility: single script, fixed seed, asserted in the 127-test suite.
-  [EXISTS: tests; CI green]
-- [NEEDS WORK: DP-noise-on variant of the backtest (report currently notes
-  ~1-3 day expected delay but does not run it); multi-observer simulation
-  (N>=2 probes with independent noise) to exercise the quorum path end-to-end]
+- Reproducibility: single script, fixed seed, asserted in the 134-test
+  suite (127 + 7 DP-sensitivity tests, task-priv-010). [EXISTS: tests]
+- DP-noise-on backtest DONE (EXP-1A + EXP-1R, 2026-07-15). At the old
+  worst-case bounds (n=1) detection was indistinguishable from the
+  no-bug null (62.5% vs 56.5%) — the prior "1-3 day delay" estimate
+  was falsified. After REQ-PRIV-010 (delta_f=MAX/n): 100% detection at
+  n=100/200; median first alert 2025-08-11 (n=100) / 2025-08-10
+  (n=200) — the canon 38-day result is recovered as the median under
+  DP noise. [EXISTS: scripts/experiment_dp_backtest.py,
+  docs/experiments/dp_backtest_results.md + _fix1.md + histograms]
+- Multi-observer quorum simulation DONE (EXP-2, 2026-07-15), exercising
+  the REAL AgreementScorer promotion path. Headline: M=3/quorum=3 with
+  14-day candidate TTL cuts stable-window public-alert FP to 0.015
+  (vs 0.400 single-observer) at 36 d median lead (quorum cost ~2-5 d).
+  Design gap found and quantified: the engine has NO candidate expiry,
+  so fixed quorum=2 degrades as the network grows (M=5/q=2 FP 0.86) —
+  engine-side TTL + quorum scaling is the resulting recommendation.
+  Adversarial: single-org burst never promotes alone (invariant held);
+  Sybil-alone never promotes; Sybil+honest-FP collusion at q=2 is the
+  quantified residual (0.82 -> 0.34 at q=3) that reputation weighting
+  and Ed25519 binding address. [EXISTS: scripts/experiment_quorum.py,
+  docs/experiments/quorum_results.md + quorum_fp_vs_m.png]
 
 ## 7. Limitations (honest, load-bearing for credibility)
 
@@ -195,10 +227,17 @@ citations committed yet.
   may be shorter or longer.
 - One incident, one metric family: no claim of generality across incident
   types (e.g., quality drift without JSON-validity signal).
-- DP calibration not externally audited: epsilon=2.0 and sensitivity bounds
-  are internal choices; sequential composition accounting still open.
-- Backtest ran without DP noise; live noise adds variance and may delay
-  alerts (estimated 1-3 days, unverified).
+- DP calibration not externally audited: epsilon=2.0 and the
+  substitution-DP delta_f=MAX/n bound (REQ-PRIV-010) are internal
+  choices; sequential composition accounting still open.
+- DP-ON detection verified only for batch sizes n>=100 per flush;
+  small live batches (current Track-1b flushes have result_count=3)
+  remain near the worst-case noise regime.
+- Quorum results assume independent observer noise; real observers
+  share provider infrastructure, so cross-observer correlation may
+  reduce the measured FP suppression. Engine lacks candidate expiry
+  (TTL harness-enforced in EXP-2); Sybil+honest-FP collusion at
+  quorum=2 is a quantified open residual (see sec 6).
 - Ed25519 signature verification stubbed at the gateway in the evaluated
   version; Sybil resistance beyond per-round dedup is future work.
 
@@ -208,7 +247,9 @@ citations committed yet.
   archive — cite concept DOI 10.5281/zenodo.21045517. [EXISTS: repo, PyPI,
   Zenodo v1.0.1 with corrected Sonnet 4 wording]
 - One-command backtest: python3 scripts/anthropic_backtest.py (SEED=42);
-  report regenerated deterministically; 127 tests pass. [EXISTS]
+  report regenerated deterministically; 134 tests pass. All EXP-1/EXP-2
+  experiment scripts deterministic (master seeds, run-twice identical).
+  [EXISTS]
 - Canary suites content-addressed (SHA-256) for exact re-execution. [EXISTS]
 - [NEEDS WORK: pin an environment (requirements lock or container ref) in the
   paper's artifact appendix; state Python version]
@@ -217,10 +258,12 @@ citations committed yet.
 
 ## Next concrete steps (ordered)
 
-1. Run the DP-noise-on backtest variant + (h, k, baseline_samples, sigma)
-   sensitivity grid; one figure + one table. Biggest evidence gap, ~1 script.
-2. Multi-observer quorum simulation (2-3 synthetic probes, independent
-   seeds) to demonstrate the promotion path end-to-end.
+1. [DONE 2026-07-15] DP-noise-on backtest + sensitivity grid (EXP-1A/
+   1B/1C/1R) + REQ-PRIV-010 fix. See secs 4.2, 5, 6.
+2. [DONE 2026-07-15] Multi-observer quorum simulation (EXP-2). Spawned
+   follow-up: FIX-2 candidate — engine-side candidate TTL + quorum
+   scaling in AgreementScorer (design gap quantified in EXP-2); needs
+   Tatiana's decision + drift_labels datum before implementation.
 3. Resolve BayesianOnlineDetector status (evaluate as comparison detector or
    explicitly scope out) — arch doc and code currently disagree.
 4. Literature pass for Section 2 (drift detection, LLM observability, DP

@@ -1,13 +1,35 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-14 (Session 035b CLOSED: CUSUM posted, outline +
-# Briefing #1 drafted via parallel agents, arch doc fixed, 2nd email done)
+# Last updated: 2026-07-15 (Session 035c: EXP-1/EXP-2 evidence pack +
+# REQ-PRIV-010 fix on branch seismograph/task-priv-010, 134 tests)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S035c — 2026-07-15 (interim, paper evidence sprint)
+- [x] EXP-1 (3 parallel agents): DP-ON backtest + (h,k,baseline,sigma)
+      grid (180 cfg) + stable-FP. FALSIFIED: zero-FP claim (0.400/90d
+      single obs) and old DP bounds (detection 62.5% vs null 56.5%).
+      Default (5.0,0.5,30) confirmed: 2025-08-10 / 38d.
+- [x] FIX-1 REQ-PRIV-010: delta_f=MAX/n in probe/privacy.py + 7 tests
+      (134 total). EXP-1R: 100% detection at n>=100; median alert
+      2025-08-10 at n=200 — canon 38d recovered under DP noise.
+- [x] EXP-2 quorum sim (real AgreementScorer): M=3/q=3+TTL14d ->
+      FP 0.015 at 36d lead. Invariant held (burst/Sybil-alone never
+      promote). Design gap: NO candidate expiry in engine; fixed q=2
+      degrades with network size (M=5/q=2 FP 0.86).
+- [x] Outline updated (secs 4.2/5/6/7/8/10); Keystones EXP-1 +
+      PRIV-010 drafted.
+- [ ] TATIANA: host gate (expect 134 passed) -> commit on
+      seismograph/task-priv-010 -> PR -> sign both Keystones.
+- [ ] DECISION (Tatiana): FIX-2 candidate — engine-side candidate TTL +
+      quorum scaling (+ metric name in ChangePointResult) in
+      AgreementScorer. Threshold decision needs drift_labels datum
+      per Seismo bound. Blocks nothing for the paper (TTL documented
+      as harness-enforced), but is the right engine fix.
 
 ## DO NEXT — S036 (reminder fires 17.07 09:00)
 - [ ] 17.07: PyPI reply check (NO touches) + withdraw Sigge/Martin/Lars
