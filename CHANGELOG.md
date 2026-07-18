@@ -6,6 +6,23 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.0] - 2026-07-18
+
+### Added
+- **Live provider execution** (`probe/providers.py`): OpenAI-compatible
+  canary execution against real LLM endpoints, so a probe run can hit a
+  live model API end-to-end rather than only the local gateway.
+
+### Changed
+- **Batch-aware DP sensitivity** (`probe/privacy.py`, REQ-PRIV-010):
+  differential-privacy noise scales sensitivity as Δf = MAX/n across the
+  batch, tightening the privacy/utility trade-off while preserving the
+  seeded-backtest detection result.
+- Canary execution path (`probe/canary.py`) and MCP adapter
+  (`probe/adapters/mcp.py`) updated to support live provider runs.
+
+---
+
 ## [1.0.0-rc.1] - 2026-06-12
 
 ### Summary

@@ -7,7 +7,7 @@
 #
 # Distribution name : seismograph-probe
 # Python import name: probe   (e.g. from probe.sdk import ProbeSDK)
-# Version           : 1.0.0
+# Version           : 1.1.0
 #
 # Only the probe/ directory is packaged.  engine/, gateway/, dashboard/,
 # and all test files are excluded.
@@ -22,7 +22,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "seismograph-probe"
-version = "1.0.0"
+version = "1.1.0"
 description = "Federated early-warning probe for silent LLM degradation."
 readme = "README.md"
 license = { text = "Apache-2.0" }
