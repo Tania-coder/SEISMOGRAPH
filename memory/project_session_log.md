@@ -2061,7 +2061,7 @@ Accountability: session executed by Claude (Cowork), reviewed by Tatiana Radchen
 
 Accountability: session executed by Claude (Cowork), reviewed and
 confirmed by Tatiana Radchenko.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+
 ## Session 033 — 2026-07-10 (Cowork): S033 timers + infra tail + SEC-1
 
 ### Done
@@ -2477,3 +2477,90 @@ across EXP-1/1R/2), all agent numbers independently re-run by the lead
 before acceptance; code change scoped to probe/privacy.py + new tests;
 git ops and host gate by Tatiana Radchenko; close confirmed by Tatiana
 ("сохраняем и закрываем").
+
+### S035c addendum (post-close, same day: merge + signatures)
+- HOST gate by Tatiana: 134 passed, ruff both gates clean (first
+  host-side confirmation of the branch).
+- PR #14 squash-merged to main (90fda54). Remote branches deleted:
+  task-priv-010 + stale task-E1 / task-infra-1 (S033 leftovers found
+  on the Compare page). lPpHBOqwfdAqYN6j kept (PyPI #11202 proof).
+- Both Keystones SIGNED (Tatiana Radchenko, 2026-07-15; signatures
+  entered by Claude at her explicit instruction). README test count
+  127 -> 134 (badge + overview + test-suite block). Commit 4057b33
+  pushed to main.
+- Remains on Tatiana: visual check of the Security tab after the
+  post-merge CodeQL scan (expect 0 Open). This entry closes S035c's
+  "Open at close" items 1-2; FIX-2 decision still pending -> S036.
+
+## Session 036 — 2026-07-18 (Cowork): PyPI recovery CLOSED + first Trusted-Publishing release (1.1.0)
+
+Session-start protocol: read CURRENT_STATE + open_tasks + log tail (last
+entry S035c). No S036 in log -> entered fresh S036 (timers were 17.07).
+
+### Verify pass (read-only, sandbox)
+- Cloned main fresh from GitHub into /tmp (git-safe, independent of Tatiana's
+  repo). HEAD 4057b33. Ran ruff check + ruff format --check (both clean,
+  51 files) + pytest: 134 passed. Baseline CONFIRMED on main.
+- DOI concept 10.5281/zenodo.21045517 -> 302 -> record 21139614 (v1.0.1). OK.
+- Landing driftdefense.dev LIVE but shows "127 tests" (STALE, should be 134;
+  separate drift-defense repo, index.html line 138 single occurrence).
+- Dashboard /v1/weather NOT fetchable (robots-blocked to WebFetch; curl
+  policy-blocked) -> Briefing #1 [FILL] still needs browser or Tatiana.
+
+### PyPI #11202 — RESOLVED (major state change since S035c)
+- Gmail ground truth: 2026-07-16 20:06 UTC support confirmed verification
+  successful, 2FA reset + password reset issued, issue #11202 CLOSED. But
+  the 07-16 reset links had expired; Tatiana couldn't log in ("davai zanovo").
+- Drove PyPI recovery in browser: requested a FRESH password reset
+  (pypi.org/account/request-password-reset, email), pulled the new reset
+  link from Gmail (18:10Z), opened the set-password page. Tatiana entered
+  the new password herself (Claude never handles passwords/2FA codes).
+- Re-check found 2FA was NOT actually enabled (recovery codes existed, TOTP
+  did not) -> PyPI blocked project mgmt. Guided Tatiana through TOTP setup.
+- VERIFIED clean: account Kapibara, password reset, 2FA TOTP enabled,
+  7 unused recovery codes, no warning banners, project seismograph-probe
+  manageable (sole owner). Full recovery + hardening done.
+
+### Trusted Publishing + release 1.1.0
+- Tatiana deleted temp branch lPpHBOqwfdAqYN6j (PowerShell). Confirmed via
+  ls-remote: only refs/heads/main remains.
+- Package build recon: probe dist config = pyproject_probe.toml (name
+  seismograph-probe, packages=["probe"], hatchling); scripts/build_probe.sh
+  swaps it in as pyproject.toml. Root pyproject.toml = monorepo app
+  (name seismograph 0.0.1), NOT published. Only tag was v1.0.0.
+- probe/ diff since v1.0.0: NEW probe/providers.py (+192, live OpenAI-compat
+  canary execution = feature) + probe/privacy.py (REQ-PRIV-010 DP fix) +
+  canary.py + adapters/mcp.py. Feature present -> semver minor -> 1.1.0
+  (Tatiana chose 1.1.0 over 1.0.1).
+- Authored .github/workflows/release.yml (on: release published +
+  workflow_dispatch; build job swaps pyproject_probe.toml, python -m build
+  sdist+wheel, twine check, upload-artifact; publish job env pypi,
+  id-token: write, pypa/gh-action-pypi-publish@release/v1). Validated the
+  swap-build + twine check locally for BOTH 1.0.0 and 1.1.0 (probe-only
+  wheel, PASSED).
+- Configured PyPI Trusted Publisher (browser): owner Tania-coder, repo
+  SEISMOGRAPH, workflow release.yml, environment pypi. Green "Added".
+- Delivered files: pyproject_probe.toml (1.0.0->1.1.0) + CHANGELOG.md
+  (1.1.0 entry) written to repo working tree via device_commit_files
+  (verified host-side: correct, no NUL). release.yml REJECTED by bridge
+  (.github/workflows/ is a protected path) -> Tatiana created it from a
+  PowerShell here-string ([IO.File]::WriteAllText, no BOM).
+- Tatiana committed + pushed: 4057b33..df4b900 (3 files, release.yml new).
+  Confirmed release.yml on remote main via git cat-file.
+- Created GitHub Release v1.1.0 (browser, target main, label Latest) ->
+  triggered workflow run #1: Build 13s + Publish (Trusted Publishing) 21s,
+  Success (40s total). VERIFIED LIVE: pypi.org/project/seismograph-probe
+  shows 1.1.0, Latest release, "2 minutes ago". ZERO tokens used.
+  (Run had 2 warnings + 1 notice = benign annotations, not failures.)
+
+### Open at close (S036)
+1. Landing driftdefense.dev "127 tests" -> 134: one-line index.html fix
+   (drift-defense repo NOT device-connected; PowerShell replace prepared).
+2. Repo logs (this file + CURRENT_STATE + open_tasks) updated S036 ->
+   Tatiana to commit from PowerShell.
+3. FIX-2 engine decision (candidate TTL + quorum scaling in
+   AgreementScorer) — still pending Tatiana.
+4. Deferred: withdraw invites Sigge/Martin/Lars if Pending; GoatCounter
+   week-1 review; Model Weather Briefing #1 [FILL] refresh.
+- git untouched by Claude all session (PowerShell only). No repo code
+  changes beyond the release files (all authored/committed by Tatiana).

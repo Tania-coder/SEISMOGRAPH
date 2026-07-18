@@ -1,13 +1,13 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-15 (Session 035c: EXP-1/1R/2 evidence pack +
-# REQ-PRIV-010 fix (delta_f=MAX/n) on branch seismograph/task-priv-010,
-# 134 tests. Canon 38d recovered under DP noise at n=200. Quorum
-# demonstrated: M=3/q=3+TTL14d -> FP 0.015 vs 0.400 single-observer.
-# Engine design gap found (no candidate TTL) -> FIX-2 decision pending.
-# Two Keystones await signature; commit/PR pending Tatiana's host gate.
-# Timers -> S036 17.07.)
+# Last updated: 2026-07-18 (Session 036: PyPI recovery #11202 CLOSED —
+# account Kapibara recovered + hardened (pwd reset, 2FA TOTP, recovery
+# codes). seismograph-probe 1.1.0 PUBLISHED to PyPI via GitHub Actions
+# Trusted Publishing (OIDC): providers.py feature + REQ-PRIV-010 fix;
+# 1.0.0->1.1.0 (minor). Temp branch lPpHBOqwfdAqYN6j deleted. Baseline
+# 134 re-verified on a clean clone. FIX-2 decision still pending.
+# Prior (S035c): PR #14 merged (90fda54), README 134 (4057b33).)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -87,12 +87,17 @@
 - dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
   (reply posted to Void Stitch's comment)
 - Show HN:   https://news.ycombinator.com/item?id=48773957 (posted + first comment)
-- PyPI:      https://pypi.org/project/seismograph-probe/1.0.0/ (1.0.1 republish pending #11202)
+- PyPI:      https://pypi.org/project/seismograph-probe/ (1.1.0 LIVE, published
+  S036 2026-07-18 via Trusted Publishing/OIDC; account Kapibara, 2FA TOTP on;
+  releases now = GitHub Release tag vX.Y.Z -> .github/workflows/release.yml)
 - DOI:       https://doi.org/10.5281/zenodo.21045517 (concept; cite for grant) ->
   currently resolves to v1.0.1 (10.5281/zenodo.21139614), Sonnet-4 wording fixed
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
+- [S036 DONE] PyPI #11202 CLOSED: account recovered + 2FA TOTP + recovery
+  codes; seismograph-probe 1.1.0 PUBLISHED via Trusted Publishing; temp
+  branch lPpHBOqwfdAqYN6j deleted. All PyPI no-touch/escalation items MOOT.
 - SEC-1 arc FULLY CLOSED S034: PR #12 (sanitize/int) + PR #13 (SEC-1b:
   key_sha256 hash-prefix logging, digest over parsed key bytes). CodeQL
   0 Open / 6 Closed visually confirmed on scan #17. 127 passed host & CI.
@@ -138,6 +143,20 @@
   long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
 
 ## Last sessions
+- S036 (2026-07-18): PyPI saga CLOSED. Account Kapibara recovery finished
+  (pwd reset via fresh link, 2FA TOTP enabled, 7 recovery codes; full
+  access verified). Deleted temp branch lPpHBOqwfdAqYN6j. Set up PyPI
+  Trusted Publishing (OIDC): publisher Tania-coder/SEISMOGRAPH ->
+  release.yml, env pypi. Added .github/workflows/release.yml (build swaps
+  pyproject_probe.toml in, hatchling sdist+wheel, twine check; publish via
+  gh-action-pypi-publish + id-token write). Bumped pyproject_probe.toml
+  1.0.0->1.1.0, CHANGELOG 1.1.0 entry. Commit df4b900 pushed to main;
+  GitHub Release v1.1.0 -> workflow Success (40s, build+publish green) ->
+  seismograph-probe 1.1.0 LIVE on PyPI, zero tokens. Verify-pass: 134
+  tests + ruff both gates on a clean GitHub clone; DOI concept ...517 ->
+  v1.0.1. Open: landing driftdefense.dev still "127 tests" (separate repo);
+  invites/GoatCounter/Briefing#1 deferred; FIX-2 decision pending. git on
+  Tatiana (PowerShell).
 - S035c (2026-07-15): paper evidence sprint, 5 subagents. EXP-1
   falsified zero-FP (0.400/90d single obs) + old DP bounds (62.5% vs
   56.5% null). FIX-1 REQ-PRIV-010 (probe/privacy.py delta_f=MAX/n,
@@ -238,4 +257,3 @@
   redesigned hero + facts (fb9018b, verified live); X thread pinned.
   Defects: Edit-tool NUL bytes (x2), form_input vs dev.to tags widget.
   122 passed, both ruff gates.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           

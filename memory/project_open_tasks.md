@@ -1,13 +1,31 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-15 (Session 035c: EXP-1/EXP-2 evidence pack +
-# REQ-PRIV-010 fix on branch seismograph/task-priv-010, 134 tests)
+# Last updated: 2026-07-18 (Session 036: PyPI #11202 CLOSED, seismograph-
+# probe 1.1.0 PUBLISHED via Trusted Publishing; baseline 134 re-verified)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S036 — 2026-07-18 (PyPI recovery + first Trusted-Publishing release)
+- [x] PyPI #11202 CLOSED: account Kapibara recovered (pwd reset + 2FA TOTP
+      + 7 recovery codes). Full access verified (project manageable).
+- [x] Temp branch lPpHBOqwfdAqYN6j DELETED (was the #11202 proof branch).
+- [x] PyPI Trusted Publishing (OIDC) configured: publisher
+      Tania-coder/SEISMOGRAPH -> release.yml, env pypi.
+- [x] .github/workflows/release.yml added (build swap + hatchling +
+      twine check -> gh-action-pypi-publish via id-token write).
+- [x] seismograph-probe 1.1.0 PUBLISHED (commit df4b900; GitHub Release
+      v1.1.0 -> workflow Success 40s). providers.py feature + REQ-PRIV-010.
+- [x] Baseline 134 + ruff both gates re-verified on a clean GitHub clone.
+- [ ] Landing driftdefense.dev "127 tests" -> 134 (separate drift-defense
+      repo; one-line index.html fix, PowerShell replace ready).
+- [ ] Invites Sigge/Martin/Lars: withdraw if still Pending (deferred).
+- [ ] GoatCounter week-1 review (deferred).
+- [ ] Model Weather Briefing #1: [FILL] needs /v1/weather numbers (deferred).
+- [ ] FIX-2 engine decision (candidate TTL + quorum scaling) — pending.
 
 ## S035c — 2026-07-15 (interim, paper evidence sprint)
 - [x] EXP-1 (3 parallel agents): DP-ON backtest + (h,k,baseline,sigma)
@@ -23,8 +41,10 @@
       degrades with network size (M=5/q=2 FP 0.86).
 - [x] Outline updated (secs 4.2/5/6/7/8/10); Keystones EXP-1 +
       PRIV-010 drafted.
-- [ ] TATIANA: host gate (expect 134 passed) -> commit on
-      seismograph/task-priv-010 -> PR -> sign both Keystones.
+- [x] TATIANA: host gate 134 passed -> PR #14 squash-merged (90fda54)
+      -> Keystones SIGNED + README 134 (4057b33) -> branches cleaned
+      (incl. stale task-E1/task-infra-1; lPpHBOqwfdAqYN6j kept).
+      CI 4/4 green on 4057b33.
 - [ ] DECISION (Tatiana): FIX-2 candidate — engine-side candidate TTL +
       quorum scaling (+ metric name in ChangePointResult) in
       AgreementScorer. Threshold decision needs drift_labels datum
