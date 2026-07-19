@@ -1,13 +1,12 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-18 (Session 036: PyPI recovery #11202 CLOSED —
-# account Kapibara recovered + hardened (pwd reset, 2FA TOTP, recovery
-# codes). seismograph-probe 1.1.0 PUBLISHED to PyPI via GitHub Actions
-# Trusted Publishing (OIDC): providers.py feature + REQ-PRIV-010 fix;
-# 1.0.0->1.1.0 (minor). Temp branch lPpHBOqwfdAqYN6j deleted. Baseline
-# 134 re-verified on a clean clone. FIX-2 decision still pending.
-# Prior (S035c): PR #14 merged (90fda54), README 134 (4057b33).)
+# Last updated: 2026-07-19 (Session 037: FIX-2 SHIPPED on branch
+# seismograph/task-fix-2 (b5c8621, pushed, host gate 151 green) — engine
+# candidate TTL + metric-scoped, population-scaled quorum q(M)=max(3,ceil(M/2)).
+# Awaiting PR review + squash-merge to main + Keystone signature. Landing
+# "127 tests" note was STALE — live site already shows 134.
+# Prior (S036): PyPI #11202 CLOSED, seismograph-probe 1.1.0 PUBLISHED (OIDC).)
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -20,6 +19,8 @@
 - Phase 0 thesis VALIDATED (38-day lead, backtest). Phases 1-2 core complete;
   Phase 3 partial. Product-realism Tracks 1/1b/2/3 DONE. Narrative arc DONE:
   README + landing + LinkedIn + X (pinned) + dev.to article published.
+- FIX-2 (S037): AgreementScorer engine gap closed on branch
+  seismograph/task-fix-2 — awaiting PR merge to main.
 
 ## Facts canon (E1, fixed S029 — use ONLY these)
 - Incident: Anthropic postmortem 2025-09-17, THREE infra bugs, NOT a model
@@ -43,30 +44,29 @@
   concept DOI now resolves to the fixed version.
 
 ## Baseline (re-verify at session start)
-- Tests: 127 passed (was 122; +5 from SEC-1). From repo root: py -3.10 -m pytest -q.
+- Tests: 134 on MAIN; 151 on seismograph/task-fix-2 (+17 from FIX-2).
+  After the FIX-2 PR merges, main = 151. From repo root: py -3.10 -m pytest -q.
 - Sandbox runs the FULL suite (install: opentelemetry-sdk fastapi uvicorn
   sqlalchemy cryptography httpx pytest).
 - Ruff BOTH gates, pinned: pip install ruff==0.15.20 && ruff check . &&
-  ruff format --check . — then pytest. 4 files (correlation.py,
-  gateway/main.py, first_party_fleet.py, test_privacy.py) trip ruff
-  in-sandbox only. CONFIRMED S030: this is a sandbox-mount READ artifact
-  (extra trailing NUL bytes), not a repo defect — host file and git blob
-  are byte-identical and correct (verified via Read tool + git cat-file).
-  pytest is unaffected (122 passed). Ignore permanently; CI is ground truth.
+  ruff format --check . — then pytest. (S030-era in-sandbox trailing-NUL
+  ruff artifact on 4 files was a mount READ artifact, not a repo defect;
+  host + CI are ground truth. S037 clean-clone + host both fully green.)
 - HARD RULE (S029, refined S030): after ANY write through the mount
   (Edit tool OR bash/python heredoc), don't trust sandbox reads (cat/wc/
   grep/ruff) to check for corruption -- the sandbox mount itself pads
-  trailing NUL bytes on read for recently-touched files (confirmed S030
-  on README.md, drift-defense/index.html, project_open_tasks.md; none
-  were actually corrupted on the real host disk). ALWAYS verify via the
-  Read tool (host path) or `git cat-file -p HEAD:<path>` -- those are
-  ground truth. Prefer bash heredoc for writes (still fewer surprises),
-  but the verification step is the part that actually matters.
+  trailing NUL bytes on read for recently-touched files. ALWAYS verify via
+  the Read tool (host path) or `git cat-file -p HEAD:<path>` -- ground truth.
 - HARD RULE (S035, write-path counterpart): NEVER append to an EXISTING
-  memory/log file via sandbox heredoc — a stale mount cache made a
-  heredoc append OVERWRITE the S034 log entry (restored same session
-  from in-context copy; git had it too). Appends/edits to existing
-  files: host-side Edit tool ONLY. Heredoc remains fine for NEW files.
+  memory/log file via sandbox heredoc through the mount -- a stale mount
+  cache once made a heredoc append OVERWRITE the S034 log entry. Appends to
+  existing files: build the full new content in /tmp (clean) then write via
+  device_commit_files (a clean host overwrite), and re-verify NUL-free.
+- HARD RULE (S037): the desktop bridge can drop mid-session; device_commit_files
+  during the outage fails and files never reach disk. Symptom: host gate shows
+  the OLD test count + `git add` "pathspec did not match" for new files. After
+  any reconnect, re-run device_commit_files and confirm the host gate shows the
+  NEW count BEFORE committing.
 
 ## HARD RULE — git ONLY from PowerShell (Tatiana)
 - NEVER run git from the sandbox (mount leaves index.lock, blocks Tatiana;
@@ -80,8 +80,8 @@
 - Landing:   https://driftdefense.dev (custom domain S034, Porkbun,
   auto-renew, exp 2027-07-12; old github.io URL redirects; repo clone:
   D:\Dev\Projects\drift-defense) — landing v2: client path, 5 CTA
-  click-events, JSON-LD. Brand rule: SEISMOGRAPH = engine,
-  Drift Defense = service.
+  click-events, JSON-LD. Shows "134 tests" (verified live S037). Brand rule:
+  SEISMOGRAPH = engine, Drift Defense = service.
 - Analytics: https://driftdefense.goatcounter.com (GoatCounter, free
   tier, code driftdefense). Adblockers undercount — lower bound only.
 - dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
@@ -95,165 +95,61 @@
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- [S036 DONE] PyPI #11202 CLOSED: account recovered + 2FA TOTP + recovery
-  codes; seismograph-probe 1.1.0 PUBLISHED via Trusted Publishing; temp
-  branch lPpHBOqwfdAqYN6j deleted. All PyPI no-touch/escalation items MOOT.
-- SEC-1 arc FULLY CLOSED S034: PR #12 (sanitize/int) + PR #13 (SEC-1b:
-  key_sha256 hash-prefix logging, digest over parsed key bytes). CodeQL
-  0 Open / 6 Closed visually confirmed on scan #17. 127 passed host & CI.
-  Keystone SEC-1 signed (2026-07-12). No SAST debt.
-- S036 PLAN (scheduled reminder fires 17.07 09:00):
-  1. TIMERS 17.07: check PyPI #11202 for a reply (re-reply SENT 07-12 —
-     HARD no-touch until they answer); withdraw Sigge/Martin/Lars
-     invites if still Pending (3 clicks, also removes old bad-phrasing
-     notes). On ANY acceptance: locked phrasing first message.
-  2. CONTENT: Tue 14.07 CUSUM explainer POSTED S035b (URLs in
-     open_tasks). Fri 17.07 "Model Weather Briefing #1" — DRAFTED
-     S035b (business/content_briefing1_S036.md), refresh [FILL]
-     marks from /v1/weather on the morning, then post.
-     Live-run post READY incl. screenshot
-     (business/portfolio_post_live_run_S034.md + live_run_S034.png),
-     slot 22.07, may go early.
-  3. HN repost ~21-22.07 Tue/Wed 14-15 UTC if mod still silent (title +
-     first comment ready in the pack). Meet it with GoatCounter open.
-  4. IF PyPI resolves: new pass + 2FA + recovery codes -> delete temp
-     branch lPpHBOqwfdAqYN6j -> republish 1.0.1 -> Trusted Publishing.
-  5. Batch 2 outreach (Zendesk AI, Parloa) AFTER 17.07 cleanup; notes
-     ready, 2-3/week max.
-  6. [DONE S035b] Second GitHub verified email added 2026-07-14.
-  7. GoatCounter week-1 review (visitors, CTA clicks, sources).
-     [S035 DONE: auto-memory zenodo ref fixed — concept ...517.]
-  8. [DONE S035b] Methodology paper outline: docs/
-     methodology_paper_outline.md. Next step = DP-noise-ON backtest.
-- PyPI #11202: proof sent 2026-07-02 10:46; issue moved to "Verification
-  in Process"; gentle ping posted 07-10. If silent ~1 wk, re-reply to the
-  verification email. Then: new pass + 2FA + recovery codes -> delete temp
-  branch lPpHBOqwfdAqYN6j -> republish 1.0.1 -> Trusted Publishing (OIDC).
-- HN item 48773957: first comment still [flagged]. Mod email SENT 07-06
-  15:03 (stale 07-06 14:32 draft still to delete). Plan B: "Show HN:"
-  repost in 2-3 weeks.
-- Outreach: Sebastian (Legora) ACCEPTED 07-03; single light-touch
-  follow-up SENT 07-10 15:11 (no reply yet) -- no more messages unless a
-  trigger event. Other 6 invites Pending (Sigge/Martin/Lars withdraw
-  ~07-17 if silent). On ANY acceptance: first message uses locked
-  phrasing. Batch 2 PAUSED.
-- Second GitHub verified email ADDED 2026-07-14 (S035b) -- account-loss
-  scenario closed.
-- Track 1b nice-to-have: real Mistral emission to LOCAL dashboard (API key =
-  long no-dash string from console.mistral.ai -> API Keys, NOT org UUID).
+- [S037 SHIPPED, awaiting merge] FIX-2 on branch seismograph/task-fix-2
+  (b5c8621): G1 metric-scoped agreement + G2 per-candidate 14d TTL (both
+  scorers) + G3 population-scaled quorum q(M)=max(3,ceil(M/2)). Host gate
+  151 green. NEXT: review + squash-merge to main; sign §6 of
+  KEYSTONE_REPORT_FIX-2.md; then update this baseline to 151.
+  Synthetic/EXP-2-backed defaults; Phase-1 calibrated q(M) table + TTL from
+  real drift_labels still pending (data/drift_labels/quorum_fix2_calibration.md).
+- Landing "127 tests" -> RESOLVED S037 (live already 134; note was stale).
+- Invites Sigge/Martin/Lars: withdraw if still Pending (LinkedIn).
+- GoatCounter week-1 review (visitors, CTA clicks, sources).
+- Model Weather Briefing #1: business/content_briefing1_S036.md [FILL] marks
+  need /v1/weather numbers (dashboard /v1/weather robots-blocked to WebFetch
+  and curl policy-blocked -> pull via browser or Tatiana reads).
+- HN "Show HN:" repost ~21-22.07 if mod still silent (pack ready).
+- Outreach: Sebastian (Legora) ACCEPTED 07-03, single follow-up sent 07-10
+  (no reply); no more messages unless a trigger event. Batch 2 (Zendesk AI,
+  Parloa) PAUSED until 07-17 cleanup done.
 
 ## Last sessions
+- S037 (2026-07-19): FIX-2 SHIPPED. Read engine cold; framed Stage-1
+  contract for 3 gaps (metric-blind quorum, no candidate TTL, fixed q that
+  degrades with M — EXP-2: M=5/q=2 FP 0.86). Tatiana: do all three, q(M)+TTL
+  delegated. Implemented q(M)=max(3,ceil(M/2)) over live observer population
+  M + per-candidate 14d TTL + (model_tuple, metric_name) scoping, in BOTH the
+  in-process AgreementScorer and the Redis backend (rewritten to per-stream
+  ZSETs + two-key atomic Lua; ns->ms because ZSET/Lua doubles cap at 2^53).
+  Gateway now observe()s population per metric. +14 new scorer tests
+  (metric scoping, TTL expiry, q(M) scaling, Sybil resistance, semantic-only
+  promote) + 2-orgs-below-floor regression. Clean-clone gate + HOST gate both
+  151 passed, ruff x2 clean. Committed b5c8621, pushed to
+  seismograph/task-fix-2. KEYSTONE_REPORT_FIX-2.md drafted (unsigned) +
+  data/drift_labels/quorum_fix2_calibration.md. Bridge dropped mid-commit
+  once (files didn't land -> host showed 134 + empty branch); fixed on
+  reconnect. Landing "127->134" found already-live. git on Tatiana.
 - S036 (2026-07-18): PyPI saga CLOSED. Account Kapibara recovery finished
-  (pwd reset via fresh link, 2FA TOTP enabled, 7 recovery codes; full
-  access verified). Deleted temp branch lPpHBOqwfdAqYN6j. Set up PyPI
-  Trusted Publishing (OIDC): publisher Tania-coder/SEISMOGRAPH ->
-  release.yml, env pypi. Added .github/workflows/release.yml (build swaps
-  pyproject_probe.toml in, hatchling sdist+wheel, twine check; publish via
-  gh-action-pypi-publish + id-token write). Bumped pyproject_probe.toml
-  1.0.0->1.1.0, CHANGELOG 1.1.0 entry. Commit df4b900 pushed to main;
-  GitHub Release v1.1.0 -> workflow Success (40s, build+publish green) ->
-  seismograph-probe 1.1.0 LIVE on PyPI, zero tokens. Verify-pass: 134
-  tests + ruff both gates on a clean GitHub clone; DOI concept ...517 ->
-  v1.0.1. Open: landing driftdefense.dev still "127 tests" (separate repo);
-  invites/GoatCounter/Briefing#1 deferred; FIX-2 decision pending. git on
-  Tatiana (PowerShell).
-- S035c (2026-07-15): paper evidence sprint, 5 subagents. EXP-1
-  falsified zero-FP (0.400/90d single obs) + old DP bounds (62.5% vs
-  56.5% null). FIX-1 REQ-PRIV-010 (probe/privacy.py delta_f=MAX/n,
-  +7 tests = 134): EXP-1R recovers canon — median alert 2025-08-10 at
-  n=200 under DP noise, 100% detection at n>=100. EXP-2 (real
-  AgreementScorer): M=3/q=3+TTL14d -> public FP 0.015 @ 36d lead;
-  invariant held (burst/Sybil-alone never promote); residual: q=2
-  collusion 0.82 -> 0.34 @q=3; ENGINE GAP: no candidate TTL, q=2
-  degrades with M (M=5 FP 0.86) -> FIX-2 candidate awaiting decision.
-  Outline secs 4.2/5/6/7/8/10 updated to evidence. Keystones EXP-1 +
-  PRIV-010 drafted, unsigned. Branch task-priv-010: 17 files staged by
-  Tatiana; commit awaits her host gate (expect 134 passed); post-stage
-  files (quorum_*, outline, memory/*) need a second git add.
-- S035b (2026-07-14): CUSUM explainer POSTED by Tatiana (LI activity
-  7482823133020794880; X 2077057793144610885, thread of 2, chart, UTM).
-  Parallel subagents (first use): docs/methodology_paper_outline.md
-  (STRETCH closed; gap = DP-noise-ON backtest + (h,k) sensitivity) +
-  business/content_briefing1_S036.md (Briefing #1 for 17.07, [FILL]
-  markers, /v1/weather fields listed; dashboard unreachable via fetch).
-  Arch doc fixed vs code (BOCD LIVE, auth.py live post-SEC-1, 4 status
-  edits, Tatiana approved). social/posts_dashboard_live.md DEPRECATED
-  (pre-canon phrasing hazard). 2nd GitHub email added. No code changes;
-  git on Tatiana.
-- S035 (2026-07-13, early content sprint): CUSUM explainer post drafted
-  (business/content_post_cusum_S035.md, LinkedIn + X) + chart generated
-  (chart_cusum_S035.png) from a FRESH SEED=42 backtest run — alert
-  2025-08-10 / S-=7.278 / leads 38 & 19 d re-confirmed live; plot
-  script asserts the alert date. Canon locked phrasing verbatim, no
-  live-catch implication. 2 defects caught+fixed (chart y-scale hid the
-  alert; "error rate" -> "JSON success rate"). Auto-memory zenodo ref
-  fixed (concept ...517). Noted live_run_S034.png present — live-run
-  post fully unblocked. No repo code changes; git untouched by Claude;
-  memory commit on Tatiana.
-- S034b (2026-07-12, afternoon sprint): driftdefense.dev bought + live
-  (HTTPS, www redirect, old URL redirects); landing v2 (client path,
-  mid-CTA, 5 CTA events, JSON-LD); GoatCounter analytics live; README->
-  landing UTM bridge; marketing pack (HN repost + batch 2 notes +
-  2-week content plan, weekly "Model Weather Briefing" anchor; NO paid
-  ads until analytics 2wk + HN + 1 organic request); Track 1b DONE —
-  3 live Mistral emissions accepted, json_rate converging 0.203->0.291
-  (DP averaging demo); portfolio post drafted. dev.to fixed by Tatiana
-  (127 + concept DOI, API-verified). PyPI re-reply sent 07-12 (Tatiana
-  chose early send) — no-touch rule until reply. hn@ stale draft
-  deleted. Scheduled reminder 17.07 09:00 created (one-time).
-- S034 (2026-07-12): SEC-1b -- alert #6 closed via key_sha256 hash-prefix
-  logging (digest over PARSED key bytes = canonical identity;
-  _sanitize_for_log kept for exc branch). SL2 rewritten. Host gate 127
-  passed; PR #13 squash-merged (b6388b8). codeql #16 cancelled by
-  concurrency (memory push) -- #17 scanned tree incl. fix: 0 Open /
-  6 Closed VISUALLY CONFIRMED. Keystone SEC-1 amended (sections 2/4/7)
-  and SIGNED. Mount corruption artifact recurred (stale length + NUL
-  padding); gate run on clean /tmp copy, host = ground truth. Deferred:
-  PyPI + invites to ~07-17; second GitHub email; hn@ draft.
-- S033 (2026-07-10): S033 timers sent (PyPI #11202 gentle ping posted;
-  Sebastian single light-touch follow-up 15:11) -- both authorized, canon
-  respected. dependabot security-only pip policy merged (PR #10); Dependabot
-  codeql-action 3->4 bump merged (PR #11), no pip version PRs (correct).
-  SEC-1 COMPLETE (PR #12): fixed 5 CodeQL py/log-injection alerts --
-  _sanitize_for_log in gateway/auth.py (root cause: bytes.fromhex ignores
-  ASCII whitespace -> newline-injected key reached raw log call) + int()
-  taint break in engine/audit.py + 5 tests (SL1-SL5). 127 passed host & CI;
-  ruff/format green. Post-merge CodeQL: 4 audit.py alerts closed, auth.py
-  path re-opened as alert #6 (custom sanitizer unrecognized) -- functionally
-  fixed (SL2) but not CodeQL-clean; S034 follow-up. Two CI fails caught +
-  fixed (ruff I001 import
-  order via --fix; ruff format on audit.py). Keystone written
-  (KEYSTONE_REPORT_SEC-1.md, needs signature). Lesson: run the full gate
-  (ruff format/check + pytest) on HOST before opening a PR -- sandbox mount
-  served truncated reads of freshly-written files this session.
-- S032 (2026-07-06): status sweep (PyPI silent; hn@ mod email sent by
-  Tatiana 15:03, stale draft left to delete; Sebastian accepted invite
-  07-03 but no reply; all 6 invites Pending; HN comment still flagged);
-  drift-defense Pages build FIXED — transient Pages infra error on the
-  9c1e9fb deploy (build was green, NOT a repo defect); UI re-run stuck
-  in queue, fixed via empty commit 3aceaf0 (Tatiana, PowerShell), run #7
-  green in 48s; live landing verified showing the dev.to Evidence link.
-  No code changes.
-- S031 (2026-07-03..06): Sebastian follow-up sent (07-03, authorized);
-  invite statuses swept twice -- all 6 Pending, Delphine's note found to
-  carry old "caught" wording (4/6 total imprecise, mitigation = correct
-  first message); Void Stitch classified as likely bot (disengage); HN
-  comment still [flagged], mod email drafted in Gmail (Tatiana to send);
-  PyPI silent since 07-02 (ping 07-09/10); GitHub Jul-2 security events
-  (2FA/password/new email) confirmed as Tatiana's own -- false alarm;
-  found drift-defense Pages build failure on 9c1e9fb. No code changes.
-- S030 (2026-07-02/03): CRLF sandbox-mount artifact fully diagnosed and
-  closed (not a repo bug); dev.to link added to README + landing (a30a604 /
-  9c1e9fb); Zenodo v1.0.1 published with Sonnet-4 wording fix (DOI
-  10.5281/zenodo.21139614); dev.to reply posted; Show HN posted (item
-  48773957); PyPI #11202 status checked (waiting on support); outreach
-  batch 1 sent to 4/5 Tier-A targets (paused for replies per playbook).
-  Lesson: locked the "seeded backtest flags... 38 days" phrasing after 3
-  connection notes went out with an imprecise "caught... early" variant.
-  122 passed.
-- S029 (2026-07-02): E1 facts fixed everywhere public (commit 0d9c81d,
-  main); private-notes near-leak caught pre-push + gitignored; 29 fixes in
-  business/social/job_search; dev.to article PUBLISHED (tags OK); landing
-  redesigned hero + facts (fb9018b, verified live); X thread pinned.
-  Defects: Edit-tool NUL bytes (x2), form_input vs dev.to tags widget.
-  122 passed, both ruff gates.
+  (pwd reset, 2FA TOTP, 7 recovery codes). Deleted temp branch
+  lPpHBOqwfdAqYN6j. PyPI Trusted Publishing (OIDC): publisher
+  Tania-coder/SEISMOGRAPH -> release.yml, env pypi. Added
+  .github/workflows/release.yml. Bumped pyproject_probe.toml 1.0.0->1.1.0,
+  CHANGELOG 1.1.0. Commit df4b900; GitHub Release v1.1.0 -> workflow Success
+  -> seismograph-probe 1.1.0 LIVE on PyPI, zero tokens. Verify-pass: 134
+  tests + ruff both gates on a clean GitHub clone. git on Tatiana.
+- S035c (2026-07-15): paper evidence sprint, 5 subagents. EXP-1 falsified
+  zero-FP + old DP bounds. FIX-1 REQ-PRIV-010 (delta_f=MAX/n, +7 tests =134):
+  EXP-1R recovers canon under DP noise. EXP-2 (real AgreementScorer):
+  M=3/q=3+TTL14d -> public FP 0.015 @36d; ENGINE GAP: no candidate TTL, q=2
+  degrades with M (M=5 FP 0.86) -> FIX-2 (now shipped S037). PR #14 merged
+  (90fda54), Keystones EXP-1 + PRIV-010 signed, README 134.
+- S035b (2026-07-14): CUSUM explainer POSTED by Tatiana (LI + X). Parallel
+  subagents: methodology_paper_outline.md + content_briefing1_S036.md.
+  Arch doc fixed vs code. 2nd GitHub email added. No code changes.
+- S034b (2026-07-12 pm): driftdefense.dev bought + live; landing v2;
+  GoatCounter live; marketing pack; Track 1b DONE (3 live Mistral emissions).
+- S034 (2026-07-12): SEC-1b closed (PR #13 b6388b8); CodeQL 0 Open/6 Closed;
+  Keystone SEC-1 SIGNED. 127 passed.
+- S029-S033: E1 canon fix, dev.to publish, Show HN, Zenodo v1.0.1, outreach
+  batch 1, drift-defense Pages fix, GitHub infra hardening, SEC-1 log-injection
+  fix (->127). See log/archive.

@@ -2564,3 +2564,95 @@ entry S035c). No S036 in log -> entered fresh S036 (timers were 17.07).
    week-1 review; Model Weather Briefing #1 [FILL] refresh.
 - git untouched by Claude all session (PowerShell only). No repo code
   changes beyond the release files (all authored/committed by Tatiana).
+
+---
+
+## Session 037 — 2026-07-19 (FIX-2: engine candidate TTL + metric-scoped, population-scaled quorum)
+
+Session start (per Constitution): read CURRENT_STATE + open_tasks +
+project_phase_state memory. Reported last-done/open/next, Tatiana chose
+"с того что предложил" -> quick win first, then FIX-2.
+
+### Quick win (already done)
+- Landing driftdefense.dev "127 tests" -> 134: WebFetch of the LIVE site
+  shows "134 tests" already. The S036 backlog note was STALE (fixed
+  between sessions or the note was wrong). drift-defense repo not
+  device-connected; live site is ground truth for the visitor-facing
+  claim -> item CLOSED, no action.
+
+### FIX-2 (the substantive work) — Stage 1 contract
+Read the engine cold (correlation.py, detector.py, scorer_redis.py,
+models.py, data/drift_labels/, scripts/experiment_quorum.py). Three
+concrete gaps grounded in code:
+- G1 (correctness): ChangePointResult had NO metric_name; both scorers
+  keyed quorum on model_tuple alone -> orgs drifting on different metrics
+  falsely "agree".
+- G2 (candidate TTL): in-process AgreementScorer._pending never expired;
+  Redis had only a coarse set-level 24h EXPIRE re-armed on ingest (not
+  per-candidate, not the 14d EXP-2 harness-enforced). 
+- G3 (scaling): fixed quorum (default 2). EXP-2: M=5/q=2 -> public FP
+  0.86; q=3 pulls collusion 0.82->0.34; M=3/q=3/TTL14d -> FP 0.015 @36d.
+Reality: data/drift_labels/ has only the CUSUM h/k mock calibration -> no
+labelled quorum-FP dataset -> ship the MECHANISM with EXP-2-backed
+synthetic defaults (same posture as h=5/k=0.5), calibrated table = Phase 1.
+
+### Decisions
+- Scope: ALL THREE (Tatiana). q(M) shape + TTL delegated to Claude.
+- q(M) = max(3, ceil(M/2)) (floor=3, frac=1/2, configurable). M = live
+  observer population for a (model_tuple, metric_name) stream.
+- candidate TTL = 14d, configurable, per-candidate in both scorers.
+
+### Implementation (branch seismograph/task-fix-2, commit b5c8621)
+- engine/correlation.py: required_quorum() helper + policy constants
+  (QUORUM_FLOOR=3, QUORUM_FRAC_NUM/DEN=1/2, DEFAULT_TTL_NS=14d);
+  ChangePointResult += metric_name + timestamp_ns; AgreementScorer
+  rewritten — per-(mt,metric) buckets, observe() population, per-candidate
+  TTL window (now-ttl, now], q(M) promotion, auto-clear agree on promote
+  (observers retained). quorum= param now sets the FLOOR.
+- engine/scorer_redis.py: RedisAgreementScorer rewritten to per-(mt,metric)
+  ZSETs scored by event-time, two-key atomic Lua (ZREMRANGEBYSCORE prune +
+  ZCOUNT[cutoff,now] + q(M) + DEL agree), mirrored observe/ingest/promote/
+  clear. DESIGN CATCH: ns (~1.7e18) exceeds IEEE-754 double precision
+  (2^53~9e15) used by ZSET scores + Redis Lua numbers -> Redis backend
+  stores event-time in MILLISECONDS internally (public API still ns).
+- gateway/main.py: public path calls scorer.observe() per metric
+  (population M); passes metric_name to ingest/promote/clear; leaves cp
+  timestamp unset so the scorer stamps wall-clock (gateway ts is monotonic).
+- tests/test_agreement_scorer.py (NEW, 14): required_quorum scaling,
+  metric scoping, TTL expiry (+ slow-coincidence), q(M) population scaling,
+  promotion-clears-candidates, ADV-b semantic-only-shift PROMOTES, ADV-a
+  Sybil single-identity / observer-inflation / floor-residual.
+- tests/test_scorer_redis.py: rewritten to ZSET/Lua wiring (MagicMock).
+- tests/test_gateway.py: quorum test -> 3 orgs; added
+  test_two_orgs_below_floor_stay_stable regression (floor 2->3 behaviour).
+- data/drift_labels/quorum_fix2_calibration.md (NEW): synthetic-defaults
+  record + EXP-2 provenance.
+- KEYSTONE_REPORT_FIX-2.md (NEW): contract, adversarial cases, verification,
+  limitations. §6 sign-off UNSIGNED (awaiting Tatiana).
+
+### Verification
+- Sandbox clean-clone gate (base 752b9c2): ruff check clean, ruff
+  format --check clean, 151 passed (was 134; +17).
+- HOST gate on Tatiana's machine: 151 passed, ruff both clean, 52 files
+  formatted. Committed b5c8621 (8 files, +1215/-496), pushed to
+  origin/seismograph/task-fix-2.
+
+### Incident (bridge drop)
+- First device_commit_files failed silently: desktop bridge dropped
+  mid-session. Files did NOT reach disk -> Tatiana's first host gate
+  showed OLD baseline 134 and `git add tests/test_agreement_scorer.py`
+  reported "pathspec did not match" (empty branch pushed). Reconnected,
+  re-ran device_commit_files (8/8 written, no rejects), re-ran host gate
+  -> 151, then committed. LESSON logged to project_phase_state memory.
+
+### Open at close (S037)
+1. FIX-2 PR: review + squash-merge seismograph/task-fix-2 -> main; sign
+   §6 of KEYSTONE_REPORT_FIX-2.md; after merge main baseline = 151.
+2. Repo logs (this file + CURRENT_STATE + open_tasks) updated S037 ->
+   Tatiana to commit from PowerShell (convention: memory on main).
+3. Deferred: invites Sigge/Martin/Lars if Pending; GoatCounter week-1
+   review; Model Weather Briefing #1 [FILL] refresh; HN repost ~21-22.07.
+4. Phase-1 FIX-2 follow-up: calibrated q(M) + TTL from real drift_labels;
+   Sybil residual mitigations (reputation weighting).
+- git untouched by Claude all session (PowerShell only). Code authored by
+  Claude, gated + committed by Tatiana.

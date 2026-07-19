@@ -1,13 +1,43 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-18 (Session 036: PyPI #11202 CLOSED, seismograph-
-# probe 1.1.0 PUBLISHED via Trusted Publishing; baseline 134 re-verified)
+# Last updated: 2026-07-19 (Session 037: FIX-2 SHIPPED on branch
+# seismograph/task-fix-2 (b5c8621, host gate 151) — awaiting PR merge to main)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S037 — 2026-07-19 (FIX-2: engine candidate TTL + metric-scoped, scaled quorum)
+- [x] FIX-2 SHIPPED on branch seismograph/task-fix-2 (commit b5c8621,
+      pushed; host gate 151 passed, ruff x2 clean). Closes the EXP-2 engine
+      gap in the ENGINE (not the harness):
+  - [x] G1: ChangePointResult += metric_name + timestamp_ns; agreement now
+        per (model_tuple, metric_name) in both scorers.
+  - [x] G2: per-candidate 14d TTL — window (now-ttl, now]. In-process dict
+        of {org: latest_ts}; Redis rewritten to per-stream ZSETs scored by
+        event-time (ms, since ns exceeds IEEE-754 double precision).
+  - [x] G3: population-scaled quorum q(M)=max(3, ceil(M/2)) over the live
+        observer population M (new observe() on the gateway public path).
+        floor=3, frac=1/2 configurable; SYNTHETIC EXP-2-backed defaults.
+  - [x] +14 new tests (tests/test_agreement_scorer.py) — metric scoping,
+        TTL expiry, q(M) scaling, Sybil resistance, semantic-only-promote;
+        + test_two_orgs_below_floor_stay_stable regression; Redis tests
+        rewritten to ZSET/Lua wiring. 134 -> 151.
+  - [x] data/drift_labels/quorum_fix2_calibration.md (synthetic defaults +
+        EXP-2 provenance); KEYSTONE_REPORT_FIX-2.md (unsigned).
+- [ ] FIX-2 PR: review + squash-merge seismograph/task-fix-2 -> main; sign
+      §6 of KEYSTONE_REPORT_FIX-2.md; then bump main baseline to 151.
+- [ ] Phase-1 FIX-2 follow-up: calibrated q(M) table + TTL from a real
+      drift_labels dataset (the "Seismo bound"); Sybil residual mitigations
+      (reputation weighting + Ed25519 binding).
+- [x] Landing driftdefense.dev "127 tests" -> RESOLVED: live already shows
+      134 (S036 note was stale; no action needed).
+- [ ] Deferred (carried): invites Sigge/Martin/Lars if Pending; GoatCounter
+      week-1 review; Model Weather Briefing #1 [FILL] /v1/weather refresh;
+      HN "Show HN:" repost ~21-22.07 if mod silent.
+
 
 ## S036 — 2026-07-18 (PyPI recovery + first Trusted-Publishing release)
 - [x] PyPI #11202 CLOSED: account Kapibara recovered (pwd reset + 2FA TOTP
