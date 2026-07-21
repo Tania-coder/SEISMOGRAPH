@@ -2656,3 +2656,107 @@ synthetic defaults (same posture as h=5/k=0.5), calibrated table = Phase 1.
    Sybil residual mitigations (reputation weighting).
 - git untouched by Claude all session (PowerShell only). Code authored by
   Claude, gated + committed by Tatiana.
+
+---
+
+## Session 038 — 2026-07-21
+
+**Director:** Tatiana
+**Co-pilot:** Claude (claude-opus-4-8)
+**Phase:** 3 (partial) — post-FIX-2 merge + distribution/analytics pass
+**Tasks:** FIX-2 merge & sign-off; HN repost; analytics review (GoatCounter + GitHub); outreach-invite cleanup
+
+### What was done
+
+**FIX-2 shipped to main (the session's headline).**
+- Independent clean-clone re-verification in sandbox /tmp (base 752b9c2):
+  ruff check clean, ruff format --check clean, 151 passed. Confirmed
+  seismograph/task-fix-2 tip = b5c8621, pushed.
+- Merge-safety check: fix-2 touches engine/tests/data/KEYSTONE (8 files);
+  main's intervening S037 commit (7c84e6e) touches only memory/*. Zero file
+  overlap -> squash merge conflict-free (verified before Tatiana ran it).
+- Tatiana (PowerShell): host gate on branch = 151 passed, ruff x2 clean;
+  git merge --squash seismograph/task-fix-2 -> main, 8 files staged (no
+  private notes), commit 4fdca91, pushed (7c84e6e..4fdca91). Branch deleted
+  local + remote (git branch -D; push --delete).
+- Post-merge housekeeping (Claude authored, Tatiana committed fbc9f44):
+  KEYSTONE_REPORT_FIX-2.md §6 SIGNED (Tatiana, 2026-07-21) + status line
+  -> SIGNED/merged; CURRENT_STATE.md baseline 134->151, header S038,
+  FIX-2 marked MERGED; project_open_tasks.md FIX-2 PR item -> [x].
+  Files built in /tmp from git ground truth, written via device_commit_files,
+  verified through Tatiana's `git diff --stat` (3 files, +25/-21).
+- **main baseline is now 151.**
+
+**HN "Show HN:" repost — done, auto-flagged.**
+- Mod silence confirmed (Gmail: only the 07-06 sent mail, no reply) ->
+  repost condition met. Window 14-15 UTC; Tatiana posted manually.
+- New item 48990690 (title A: "Show HN: SEISMOGRAPH - open-source early
+  warning for silent LLM API drift"), first-comment text included in body.
+  [flagged] within ~3 min at 1 point -> HN software auto-kill (account
+  tania-coder karma 1 + prior flagged item 48773957). Predicted risk.
+- Decision: do NOT repost again (3rd same-URL = spam/ban risk) and do NOT
+  delete. Created a Gmail draft to hn@ (reply in the 07-06 thread, refs
+  both items 48990690 + 48773957, asks why legit Show HN auto-flags /
+  requests unflag) — UNSENT, Tatiana to send. Canon note: first-comment
+  used locked phrasing correctly, with the precision tweak "while the
+  fault was still touching only ~0.8% of traffic".
+- Strategic read logged: HN via this low-karma account is low-EV +
+  account-risky; return later once karma is built from ordinary
+  commenting, not cold reposts.
+
+**Analytics reviewed — honest numbers.**
+- GoatCounter week-1 (7d): 32 visits (-37%), 88% referrer (unknown) +
+  bing 4; CTA click-events = 0. CTA wiring VERIFIED correct in landing
+  code (all data-goatcounter-click present, script loaded, window.goatcounter
+  defined) -> 0 clicks = low intent x undercount, not a bug. KEY FINDING:
+  GoatCounter systematically undercounts here (adblock blocks its beacon;
+  dev audience = worst case). A live end-to-end test hit (utm + event) did
+  not appear -> consistent with the beacon being blocked. Treat GoatCounter
+  as a coarse floor, not truth.
+- GitHub Insights (14d, server-side, adblock-proof): stars 3, forks 0,
+  watchers 0; views 78 / 19 unique; clones 466 / 116 unique — clones are
+  CI/scanner noise (own Actions + CodeQL + release + security bots), NOT
+  organic interest, do not report. Referring sites: Google 2, github 1,
+  news.ycombinator.com 1; LinkedIn/dev.to = zero referrals to repo.
+- Conclusion: marketing surfaces are live + correct; the bottleneck is
+  top-of-funnel REACH, not instrumentation or landing polish. Honest
+  metrics going forward = GitHub Insights / PyPI download stats / direct
+  scan-request emails (adblock can't strip those). PyPI stats not pulled
+  (pypistats 429 twice) — carry-forward.
+
+**Outreach invites — partial cleanup.**
+- Sent list = 6 pending: José Caldeira, Joel Hellermark (notes canon-OK),
+  Delphine Groll (note has "caught" but KEEP, high-value Nabla), and the
+  withdraw targets Sigge Labor / Martin Raison / Lars Maaløe — whose notes
+  carry BOTH "caught" AND the factually WRONG "Claude 3.5 Sonnet" (canon =
+  Claude Sonnet 4).
+- Sigge Labor invite WITHDRAWN (confirmed: People 6->5, Sigge gone).
+- Martin Raison + Lars Maaløe: NOT completed via automation. LinkedIn's
+  withdraw-confirm modal could not be driven reliably in the remote browser
+  — coordinate-space instability (CSS viewport 720x750 vs screenshot 900x938;
+  the one Sigge success happened at a 1:1 viewport, later clicks missed) plus
+  the renderer freezing on screenshot/JS twice. Ref-clicks + both coord
+  spaces tried, page re-render invalidated refs. Handed to Tatiana to finish
+  manually (2 clicks each). José/Joel/Delphine untouched by design.
+
+### Verification
+- FIX-2: independent sandbox clean-clone gate (151, ruff x2) + Tatiana host
+  gate (151) BEFORE merge; conflict-free squash proven by file-overlap check;
+  post-merge memory writes verified via git diff (ground truth), not mount.
+- Mount hazard re-encountered: session-start stage of CURRENT_STATE served a
+  STALE S036 snapshot; caught by reading git ground truth (origin/main) —
+  all memory edits sourced from git, never the mount.
+
+### Open at close (S038)
+1. Tatiana: SEND the Gmail draft to hn@ (unsent) if/when she chooses.
+2. Tatiana: withdraw Martin Raison + Lars Maaløe invites manually (2 clicks
+   each) — automation blocked. José/Joel/Delphine keep.
+3. Model Weather Briefing #1 — still needs /v1/weather numbers (deferred).
+4. PyPI download stats — pull later (pypistats 429 this session).
+5. Phase-1 FIX-2 follow-up: calibrated q(M) table + TTL from real
+   drift_labels; Sybil residual (reputation weighting).
+6. Distribution is the priority lever, not tooling — plan a reach channel
+   that isn't a cold HN repost.
+- git untouched by Claude all session (PowerShell only). Code/docs authored
+  by Claude, gated + committed by Tatiana. Diagnostic-test hit may show in
+  GoatCounter (utm_campaign=diagnostic_test / event cta-diagnostic-test) — ignore.
