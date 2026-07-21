@@ -11,10 +11,12 @@ This module has two distinct roles:
    engine/detector.py.  Do NOT import CUSUMDetector from this module
    for production use.
 
-2. **AgreementScorer (LIVE)** -- Cross-observer quorum gate.  A single-org
-   signal is NEVER promoted to a public drift alert.  A minimum of
-   QUORUM_MIN distinct org_ids must agree before promote_to_public_alert()
-   returns a non-None count.
+2. **AgreementScorer (LIVE)** -- Cross-observer quorum gate (FIX-2).  A
+   single-org signal is NEVER promoted to a public drift alert.  Agreement
+   is scoped per (model_tuple, metric_name); each candidate expires after a
+   candidate TTL; and the required quorum scales with the live observer
+   population M as q(M) = max(QUORUM_FLOOR, ceil(M/2)) before
+   promote_to_public_alert() returns a non-None count.
 
 3. **BayesianOnlineDetector (LIVE)** -- Adams & MacKay 2007 BOCD with
    Normal-Inverse-Gamma conjugate prior.  Phase 0-005 implementation.
@@ -34,7 +36,81 @@ data/drift_labels/ before any production deployment.
 from __future__ import annotations
 
 import math
+import time
 from dataclasses import dataclass, field
+
+# ---------------------------------------------------------------------------
+# Quorum-scaling policy (FIX-2)
+# ---------------------------------------------------------------------------
+# The public-alert quorum scales with the live observer population M for a
+# (model_tuple, metric_name) stream so that a fixed absolute threshold cannot
+# be trivially met as the network grows.  EXP-2 showed fixed quorum=2 yields a
+# 0.86 stable-window public-alert FP rate at M=5; the floor of 3 plus a
+# proportional term holds the boundary.
+#
+#     q(M) = max(QUORUM_FLOOR, ceil(QUORUM_FRAC_NUM * M / QUORUM_FRAC_DEN))
+#
+# Defaults (floor=3, frac=1/2) are SYNTHETIC, EXP-2-backed starting points --
+# the same posture as the CUSUM h=5.0/k=0.5 defaults.  A production q(M)
+# schedule must be recorded as labelled data in data/drift_labels/ against a
+# target public-FP bound before deployment (no such dataset exists yet).
+#
+# candidate TTL: each org's candidate alert (and each observer heartbeat)
+# counts toward its (model_tuple, metric_name) stream only while it is newer
+# than DEFAULT_TTL_NS.  This is the engine-side realisation of the 14-day
+# candidate expiry that EXP-2 enforced in the harness (M=3/q=3/TTL=14d ->
+# public FP 0.015 at 36-day lead).
+#
+# #SG-TRACE: REQ-ENGINE-012
+# #   | assumption: q(M) floor=3, frac=1/2 are synthetic EXP-2 defaults,
+# #     configurable, pending real-traffic drift_labels calibration
+# #   | test: test_required_quorum_scaling
+# #SG-TRACE: REQ-ENGINE-013
+# #   | assumption: candidate/observer TTL is event-time (wall-clock ns);
+# #     Redis backend rescales to ms to stay within IEEE-754 ZSET score
+# #     precision (ns would exceed 2**53)
+# #   | test: test_agreement_scorer_ttl_expiry
+
+QUORUM_FLOOR: int = 3
+"""Minimum distinct agreeing orgs for a public alert, regardless of M."""
+
+QUORUM_FRAC_NUM: int = 1
+QUORUM_FRAC_DEN: int = 2
+"""Proportional term: quorum grows as ceil(NUM * M / DEN) of the population."""
+
+DEFAULT_TTL_NS: int = 14 * 86_400 * 1_000_000_000
+"""Candidate / observer expiry window: 14 days in nanoseconds."""
+
+
+def required_quorum(
+    network_size: int,
+    floor: int = QUORUM_FLOOR,
+    frac_num: int = QUORUM_FRAC_NUM,
+    frac_den: int = QUORUM_FRAC_DEN,
+) -> int:
+    """Return the quorum threshold q(M) for a live observer population M.
+
+    q(M) = max(floor, ceil(frac_num * M / frac_den)).
+
+    Args:
+        network_size: Distinct orgs observing this stream within the TTL
+            window (M).  Negative values are treated as 0.
+        floor: Absolute minimum quorum (default QUORUM_FLOOR = 3).
+        frac_num: Numerator of the proportional term (default 1).
+        frac_den: Denominator of the proportional term (default 2).
+
+    Returns:
+        The minimum number of distinct agreeing orgs required to promote a
+        public alert for a population of ``network_size`` observers.
+
+    #SG-TRACE: REQ-ENGINE-012
+    #   | assumption: ceil division via integer arithmetic; frac_den > 0
+    #   | test: test_required_quorum_scaling
+    """
+    m = max(0, network_size)
+    scaled = (frac_num * m + frac_den - 1) // frac_den  # ceil(frac_num*m/den)
+    return max(floor, scaled)
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -78,11 +154,23 @@ class ChangePointResult:
         score: The detector statistic at evaluation time.
         threshold: The detection threshold in effect.
         contributing_orgs: Pseudonymous org_ids behind this signal.
+        metric_name: Which metric drifted (e.g. "json_success_rate").  The
+            quorum gate matches agreement per (model_tuple, metric_name):
+            two orgs drifting on DIFFERENT metrics do NOT agree.  Empty
+            string means "unspecified" (legacy callers; treated as a single
+            catch-all metric bucket).
+        timestamp_ns: Event-time of the candidate in wall-clock nanoseconds.
+            Used by AgreementScorer for candidate TTL expiry.  0 means unset;
+            the scorer then stamps arrival time on ingest.
 
     #SG-TRACE: REQ-ENGINE-005
     #   | assumption: change_detected is conservative (false-negative
     #     preferred over false-positive at Phase 0 calibration)
     #   | test: test_cusum_no_false_positive_stable_window
+    #SG-TRACE: REQ-ENGINE-012
+    #   | assumption: metric_name is carried so cross-observer agreement is
+    #     per (model_tuple, metric_name), not per model_tuple alone
+    #   | test: test_agreement_scorer_metric_scoped
     """
 
     model_tuple: str
@@ -90,6 +178,8 @@ class ChangePointResult:
     score: float
     threshold: float
     contributing_orgs: list[str] = field(default_factory=list)
+    metric_name: str = ""
+    timestamp_ns: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -402,72 +492,211 @@ class BayesianOnlineDetector:
 
 
 class AgreementScorer:
-    """Gates drift alerts behind cross-observer quorum.
+    """Gates drift alerts behind cross-observer quorum (FIX-2).
 
-    A single-org signal is NEVER promoted to a public drift alert.
-    A minimum of QUORUM_MIN distinct org_ids must independently signal
-    a change before promote_to_public_alert() returns a non-None count.
+    A single-org signal is NEVER promoted to a public drift alert.  A
+    quorum of distinct org_ids must independently signal a change on the
+    SAME (model_tuple, metric_name) stream, within the candidate TTL
+    window, before promote_to_public_alert() returns a non-None count.
+
+    Three properties this class enforces (FIX-2 over the Phase 2 version):
+
+    1. **Metric-scoped agreement.** Candidates are bucketed by
+       (model_tuple, metric_name).  Two orgs drifting on different metrics
+       of the same model do not agree.
+
+    2. **Candidate TTL.** Each org's most recent candidate counts only
+       while newer than ``ttl_ns`` (event-time).  Stale candidates expire,
+       so two orgs signalling weeks apart never form a coincidental quorum.
+
+    3. **Population-scaled quorum.** The required quorum is
+       ``required_quorum(M)`` where M is the live observer population for
+       the stream (distinct orgs seen within the TTL window via
+       ``observe()`` or ``ingest()``).  A fixed absolute threshold is
+       trivially met as the network grows; q(M) = max(floor, ceil(M/2))
+       holds the false-positive boundary (EXP-2).
+
+    ``observe()`` records the watching population; ``ingest()`` records an
+    org that actually fired a candidate (and implicitly observes).  The
+    effective population is ``max(observers, agreeing)`` so that a caller
+    that never calls ``observe()`` degrades safely to the fixed floor.
+
+    On a successful promotion the agreeing candidates for that stream are
+    cleared automatically (a fresh drift episode must re-accrue); the
+    observer population is retained.
 
     #SG-TRACE: REQ-ENGINE-008
-    #   | assumption: org_id deduplication is done by contributing_orgs
-    #     set logic here; Sybil resistance handled upstream
+    #   | assumption: org_id deduplication via dict keys here; Ed25519
+    #     org-identity binding (one org = one key) is the upstream gate
     #   | test: test_agreement_scorer_single_org_blocked
+    #SG-TRACE: REQ-ENGINE-012
+    #   | assumption: agreement is per (model_tuple, metric_name); quorum
+    #     scales with the live observer population M
+    #   | test: test_agreement_scorer_metric_scoped
+    #SG-TRACE: REQ-ENGINE-013
+    #   | assumption: candidate/observer TTL is event-time in ns
+    #   | test: test_agreement_scorer_ttl_expiry
     """
 
     QUORUM_MIN: int = 2
-    """Minimum distinct agreeing orgs required for a public alert.
+    """Legacy Phase 2 absolute quorum.  Retained for backward-compatible
+    imports only.  FIX-2 uses QUORUM_FLOOR (3) as the scaled-quorum floor;
+    pass ``quorum=`` to override the floor."""
 
-    Phase 1 open decision: raise to 3?  Requires Tatiana approval.
-    """
-
-    def __init__(self, quorum: int | None = None) -> None:
+    def __init__(
+        self,
+        quorum: int | None = None,
+        ttl_ns: int = DEFAULT_TTL_NS,
+        frac_num: int = QUORUM_FRAC_NUM,
+        frac_den: int = QUORUM_FRAC_DEN,
+    ) -> None:
         """Initialise the agreement scorer.
 
         Args:
-            quorum: Override for the minimum quorum size.
-                Defaults to QUORUM_MIN (2) if None.
+            quorum: Override for the quorum FLOOR (minimum q(M)).  Defaults
+                to QUORUM_FLOOR (3) if None.  The floor is the smallest
+                quorum ever required, independent of population size.
+            ttl_ns: Candidate/observer expiry window in nanoseconds.
+                Defaults to DEFAULT_TTL_NS (14 days).
+            frac_num: Numerator of the proportional quorum term.
+            frac_den: Denominator of the proportional quorum term.
         """
-        self.quorum: int = quorum if quorum is not None else self.QUORUM_MIN
-        self._pending: dict[str, list[ChangePointResult]] = {}
+        self.floor: int = quorum if quorum is not None else QUORUM_FLOOR
+        self.ttl_ns: int = ttl_ns
+        self.frac_num: int = frac_num
+        self.frac_den: int = frac_den
+        # (model_tuple, metric_name) -> {org_id: latest_candidate_ts_ns}
+        self._agree: dict[tuple[str, str], dict[str, int]] = {}
+        # (model_tuple, metric_name) -> {org_id: latest_observed_ts_ns}
+        self._observers: dict[tuple[str, str], dict[str, int]] = {}
+
+    @property
+    def quorum(self) -> int:
+        """Backward-compatible alias: the scaled-quorum floor."""
+        return self.floor
+
+    @staticmethod
+    def _now_ns() -> int:
+        """Wall-clock event-time in nanoseconds."""
+        return time.time_ns()
+
+    def observe(
+        self,
+        model_tuple: str,
+        metric_name: str,
+        org_id: str,
+        timestamp_ns: int | None = None,
+    ) -> None:
+        """Record that ``org_id`` is watching this stream (population M).
+
+        Called on every accepted signal (drift or not) on the public path.
+        Distinct observers within the TTL window define M, which sets the
+        required quorum q(M).
+
+        Args:
+            model_tuple: Composite model identifier.
+            metric_name: Metric stream being observed.
+            org_id: Pseudonymous observer identity.
+            timestamp_ns: Event-time; defaults to now.
+
+        #SG-TRACE: REQ-ENGINE-012
+        #   | test: test_agreement_scorer_quorum_scales_with_population
+        """
+        ts = timestamp_ns if timestamp_ns else self._now_ns()
+        bucket = self._observers.setdefault((model_tuple, metric_name), {})
+        prev = bucket.get(org_id, 0)
+        if ts >= prev:
+            bucket[org_id] = ts
 
     def ingest(self, result: ChangePointResult) -> None:
-        """Record a change-point result from a contributing org.
+        """Record a change-point candidate from one or more orgs.
+
+        Only ``change_detected`` results contribute to quorum; a result
+        with ``change_detected=False`` still registers the orgs as
+        observers (they are watching but did not fire).
 
         Args:
-            result: A ChangePointResult from any detector.
+            result: A ChangePointResult carrying model_tuple, metric_name,
+                contributing_orgs, and (optionally) timestamp_ns.
         """
-        key: str = result.model_tuple
-        if key not in self._pending:
-            self._pending[key] = []
-        self._pending[key].append(result)
+        if not result.contributing_orgs:
+            return
+        ts = result.timestamp_ns if result.timestamp_ns else self._now_ns()
+        key = (result.model_tuple, result.metric_name)
+        for org_id in result.contributing_orgs:
+            self.observe(result.model_tuple, result.metric_name, org_id, ts)
+            if result.change_detected:
+                bucket = self._agree.setdefault(key, {})
+                prev = bucket.get(org_id, 0)
+                if ts >= prev:
+                    bucket[org_id] = ts
 
-    def promote_to_public_alert(self, model_tuple: str) -> int | None:
-        """Return org count if quorum met, else None.
+    def _live_orgs(self, table: dict[str, int], now_ns: int) -> set[str]:
+        """Return orgs whose latest timestamp is in the window (now-ttl, now].
+
+        A candidate is live iff ``cutoff <= ts <= now``: within the last TTL
+        and not in the future relative to the evaluation instant.
+        """
+        cutoff = now_ns - self.ttl_ns
+        return {org for org, ts in table.items() if cutoff <= ts <= now_ns}
+
+    def promote_to_public_alert(
+        self,
+        model_tuple: str,
+        metric_name: str = "",
+        now_ns: int | None = None,
+    ) -> int | None:
+        """Return agreeing-org count if population-scaled quorum is met.
+
+        Counts distinct orgs with a live (within-TTL) candidate on the
+        (model_tuple, metric_name) stream, computes the required quorum
+        from the live observer population M, and promotes if the agreeing
+        count meets it.  On promotion the agreeing candidates are cleared;
+        observers are retained.
 
         Args:
-            model_tuple: The composite model identifier to evaluate.
+            model_tuple: Composite model identifier to evaluate.
+            metric_name: Metric stream to evaluate.  Empty string matches
+                the unspecified/legacy bucket.
+            now_ns: Event-time reference for TTL; defaults to now.
 
         Returns:
-            int count of distinct agreeing orgs if >= self.quorum, else None.
+            int count of distinct live agreeing orgs if >= q(M), else None.
 
-        #SG-TRACE: REQ-ENGINE-008
+        #SG-TRACE: REQ-ENGINE-012
         #   | test: test_single_org_noise_blocked
+        #   | test: test_agreement_scorer_quorum_scales_with_population
         """
-        if model_tuple not in self._pending:
+        key = (model_tuple, metric_name)
+        agree_tbl = self._agree.get(key)
+        if not agree_tbl:
             return None
-        results: list[ChangePointResult] = self._pending[model_tuple]
-        agreeing_orgs: set[str] = set()
-        for r in results:
-            if r.change_detected:
-                agreeing_orgs.update(r.contributing_orgs)
-        if len(agreeing_orgs) >= self.quorum:
-            return len(agreeing_orgs)
+        now = now_ns if now_ns is not None else self._now_ns()
+
+        live_agree = self._live_orgs(agree_tbl, now)
+        if not live_agree:
+            return None
+        obs_tbl = self._observers.get(key, {})
+        live_obs = self._live_orgs(obs_tbl, now)
+        population = max(len(live_obs), len(live_agree))
+        q = required_quorum(
+            population, self.floor, self.frac_num, self.frac_den
+        )
+        if len(live_agree) >= q:
+            count = len(live_agree)
+            self.clear(model_tuple, metric_name)
+            return count
         return None
 
-    def clear(self, model_tuple: str) -> None:
-        """Clear pending results for a model tuple after an alert decision.
+    def clear(self, model_tuple: str, metric_name: str = "") -> None:
+        """Clear pending agreeing candidates for a stream after a decision.
+
+        The observer population for the stream is retained (those orgs are
+        still watching); only the agreeing-candidate set is discarded so a
+        fresh drift episode must re-accrue quorum.
 
         Args:
-            model_tuple: The model identifier to discard pending results for.
+            model_tuple: The model identifier to discard candidates for.
+            metric_name: The metric stream to discard candidates for.
         """
-        self._pending.pop(model_tuple, None)
+        self._agree.pop((model_tuple, metric_name), None)

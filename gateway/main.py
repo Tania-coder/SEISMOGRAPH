@@ -692,6 +692,13 @@ async def ingest_signals(
         scorer = request.app.state.scorer
 
         for metric_name, value in batch.metrics.items():
+            # Record this org as an observer of the stream (population M for
+            # the population-scaled quorum), whether or not it drifts.
+            # #SG-TRACE: REQ-ENGINE-012 | test: test_gateway_quorum_scoped
+            scorer.observe(
+                batch.model_tuple, metric_name, str(batch.client_id)
+            )
+
             alert = detector.update(
                 model_tuple=batch.model_tuple,
                 metric_name=metric_name,
@@ -710,25 +717,31 @@ async def ingest_signals(
                 # Persist local alert (no fleet_id on public path)
                 repo.save_local_alert(alert, str(batch.client_id))
 
-                # Bridge DetectorDriftAlert -> ChangePointResult
+                # Bridge DetectorDriftAlert -> ChangePointResult.
+                # metric_name scopes agreement to this stream; timestamp is
+                # left unset so the scorer stamps wall-clock event-time
+                # (gateway `ts` is monotonic, not comparable across nodes).
                 cp = ChangePointResult(
                     model_tuple=alert.model_tuple,
                     change_detected=True,
                     score=alert.cusum_score,
                     threshold=alert.threshold,
                     contributing_orgs=[str(batch.client_id)],
+                    metric_name=alert.metric_name,
                 )
                 scorer.ingest(cp)
 
-                # Check quorum; promote if >= QUORUM_MIN distinct orgs
-                org_count = scorer.promote_to_public_alert(alert.model_tuple)
+                # Quorum check: population-scaled q(M), per (model, metric).
+                org_count = scorer.promote_to_public_alert(
+                    alert.model_tuple, alert.metric_name
+                )
                 if org_count is not None:
                     repo.save_public_alert(
                         model_tuple=alert.model_tuple,
                         metric_name=alert.metric_name,
                         contributing_org_count=org_count,
                     )
-                    scorer.clear(alert.model_tuple)
+                    scorer.clear(alert.model_tuple, alert.metric_name)
                     logger.warning(
                         "PUBLIC ALERT | model=%s metric=%s orgs=%d",
                         alert.model_tuple,

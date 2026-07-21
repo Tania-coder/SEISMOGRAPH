@@ -369,20 +369,27 @@ def test_single_org_noise_blocked() -> None:
 
 
 # ---------------------------------------------------------------------------
-# T11 -- ADVERSARIAL: two orgs reach quorum -> dashboard shows DRIFTING
+# T11 -- ADVERSARIAL: three orgs reach quorum -> dashboard shows DRIFTING
 # ---------------------------------------------------------------------------
 
 
 def test_quorum_reached_triggers_dashboard() -> None:
-    """Two distinct orgs agree on drift -> quorum -> DRIFTING.
+    """Three distinct orgs agree on the same metric -> quorum -> DRIFTING.
+
+    FIX-2: the population-scaled quorum floor is 3, so two orgs no longer
+    promote (see test_two_orgs_below_floor_stay_stable).  Here three
+    distinct orgs drift on the SAME (model_tuple, metric_name) stream
+    within the TTL window, meeting q(M=3) = max(3, ceil(3/2)) = 3.
 
     #SG-TRACE: REQ-GW-025
+    #SG-TRACE: REQ-ENGINE-012 | test: test_quorum_reached_triggers_dashboard
     """
     from engine.correlation import AgreementScorer
     from engine.detector import CUSUMDetector
 
     client_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     client_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+    client_c = "cccccccc-cccc-cccc-cccc-cccccccccccc"
     mt = VALID_PAYLOAD["model_tuple"]
 
     with patch("gateway.main.verify_signature", return_value=True):
@@ -416,20 +423,26 @@ def test_quorum_reached_triggers_dashboard() -> None:
                     break
 
             assert cusum_fired_a, (
-                "CUSUM should fire for client_a before client_b joins"
+                "CUSUM should fire for client_a before the others join"
             )
 
-            payload_b = {
-                **VALID_PAYLOAD,
-                "batch_id": "22000000-0000-0000-0000-000000000000",
-                "client_id": client_b,
-                "metrics": {"json_success_rate": 0.0},
-            }
-            resp_b = c.post("/v1/signals", json=payload_b)
-            assert resp_b.status_code == 202, resp_b.text
-            assert resp_b.json().get("alerts"), (
-                "client_b batch should fire a local CUSUM alert"
-            )
+            # client_b and client_c each add one more drifting observation on
+            # the shared stream: distinct agreeing orgs 2 and 3.
+            for cid, bid in (
+                (client_b, "22000000-0000-0000-0000-000000000000"),
+                (client_c, "23000000-0000-0000-0000-000000000000"),
+            ):
+                payload_x = {
+                    **VALID_PAYLOAD,
+                    "batch_id": bid,
+                    "client_id": cid,
+                    "metrics": {"json_success_rate": 0.0},
+                }
+                resp_x = c.post("/v1/signals", json=payload_x)
+                assert resp_x.status_code == 202, resp_x.text
+                assert resp_x.json().get("alerts"), (
+                    f"client {cid} batch should fire a local CUSUM alert"
+                )
 
             weather = c.get("/v1/weather")
 
@@ -442,6 +455,82 @@ def test_quorum_reached_triggers_dashboard() -> None:
         f"Expected DRIFTING after quorum, got {status!r}"
     )
     assert entry["last_alert_timestamp"] is not None
+
+
+# ---------------------------------------------------------------------------
+# T11b -- FIX-2: two orgs are below the scaled-quorum floor (stay STABLE)
+# ---------------------------------------------------------------------------
+
+
+def test_two_orgs_below_floor_stay_stable() -> None:
+    """Two distinct agreeing orgs do NOT promote under the FIX-2 floor of 3.
+
+    Regression guard for the population-scaled quorum: the Phase 2 engine
+    promoted at 2 orgs; FIX-2 raises the floor to 3 so a two-org
+    coincidence stays private fleet data.
+
+    #SG-TRACE: REQ-ENGINE-012 | test: test_two_orgs_below_floor_stay_stable
+    """
+    from engine.correlation import AgreementScorer
+    from engine.detector import CUSUMDetector
+
+    client_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    client_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+    mt = VALID_PAYLOAD["model_tuple"]
+
+    with patch("gateway.main.verify_signature", return_value=True):
+        with TestClient(app) as c:
+            app.state.detector = CUSUMDetector(
+                h=5.0, k=0.5, baseline_samples=3
+            )
+            app.state.scorer = AgreementScorer()
+
+            for i in range(3):
+                c.post(
+                    "/v1/signals",
+                    json={
+                        **VALID_PAYLOAD,
+                        "batch_id": f"30{i:06d}-0000-0000-0000-000000000000",
+                        "client_id": client_a,
+                        "metrics": {"json_success_rate": 0.95},
+                    },
+                )
+
+            fired = False
+            for i in range(15):
+                resp = c.post(
+                    "/v1/signals",
+                    json={
+                        **VALID_PAYLOAD,
+                        "batch_id": f"31{i:06d}-0000-0000-0000-000000000000",
+                        "client_id": client_a,
+                        "metrics": {"json_success_rate": 0.0},
+                    },
+                )
+                if resp.json().get("alerts"):
+                    fired = True
+                    break
+            assert fired
+
+            resp_b = c.post(
+                "/v1/signals",
+                json={
+                    **VALID_PAYLOAD,
+                    "batch_id": "32000000-0000-0000-0000-000000000000",
+                    "client_id": client_b,
+                    "metrics": {"json_success_rate": 0.0},
+                },
+            )
+            assert resp_b.json().get("alerts")
+
+            weather = c.get("/v1/weather")
+
+    data = weather.json()
+    entry = next((e for e in data if e["model_tuple"] == mt), None)
+    assert entry is not None
+    assert entry["status"] == "STABLE", (
+        f"Two orgs are below floor=3; expected STABLE, got {entry['status']!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
