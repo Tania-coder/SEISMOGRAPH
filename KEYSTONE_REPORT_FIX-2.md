@@ -3,7 +3,7 @@
 Task: close the FIX-2 engine gap left open by EXP-2 — the AgreementScorer had
 no candidate expiry, no metric matching, and a fixed absolute quorum that
 degrades as the network grows (M=5/q=2 -> public-alert FP 0.86).
-Date: 2026-07-19 (S037). Status: UNSIGNED — awaiting Tatiana host gate + signature.
+Date: 2026-07-19 (S037). Status: SIGNED 2026-07-21 (S038); squash-merged to main (4fdca91).
 
 ---
 
@@ -104,5 +104,9 @@ Adversarial cases (Constitution-mandated):
 
 ## 6. Sign-off
 
-- [ ] Tatiana: host gate green (ruff x2 + pytest 151) on
-      seismograph/task-fix-2, then squash-merge, then sign here.
+- [x] Tatiana: host gate green (ruff x2 + pytest 151) on
+      seismograph/task-fix-2, squash-merged to main (4fdca91), signed.
+      — Tatiana Radchenko, 2026-07-21 (S038)
+      Independent clean-clone re-verification (Claude, S038): ruff check +
+      ruff format --check clean, 151 passed; no file overlap with main's
+      intervening S037 memory commit — squash merge was conflict-free.

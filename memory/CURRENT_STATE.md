@@ -1,11 +1,11 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-19 (Session 037: FIX-2 SHIPPED on branch
-# seismograph/task-fix-2 (b5c8621, pushed, host gate 151 green) — engine
-# candidate TTL + metric-scoped, population-scaled quorum q(M)=max(3,ceil(M/2)).
-# Awaiting PR review + squash-merge to main + Keystone signature. Landing
-# "127 tests" note was STALE — live site already shows 134.
+# Last updated: 2026-07-21 (Session 038: FIX-2 MERGED to main (squash 4fdca91)
+# — engine candidate TTL + metric-scoped, population-scaled quorum
+# q(M)=max(3,ceil(M/2)); main baseline now 151. Keystone FIX-2 §6 SIGNED.
+# Independent clean-clone re-verify pre-merge: ruff x2 clean, 151 passed,
+# conflict-free squash. Prior (S037): FIX-2 shipped on branch (b5c8621, 151).
 # Prior (S036): PyPI #11202 CLOSED, seismograph-probe 1.1.0 PUBLISHED (OIDC).)
 
 ## Identity
@@ -19,8 +19,9 @@
 - Phase 0 thesis VALIDATED (38-day lead, backtest). Phases 1-2 core complete;
   Phase 3 partial. Product-realism Tracks 1/1b/2/3 DONE. Narrative arc DONE:
   README + landing + LinkedIn + X (pinned) + dev.to article published.
-- FIX-2 (S037): AgreementScorer engine gap closed on branch
-  seismograph/task-fix-2 — awaiting PR merge to main.
+- FIX-2 (S037, MERGED to main S038 @4fdca91): AgreementScorer engine gap
+  closed — metric-scoped agreement, per-candidate 14d TTL, population-scaled
+  quorum q(M)=max(3,ceil(M/2)). Keystone signed.
 
 ## Facts canon (E1, fixed S029 — use ONLY these)
 - Incident: Anthropic postmortem 2025-09-17, THREE infra bugs, NOT a model
@@ -44,8 +45,8 @@
   concept DOI now resolves to the fixed version.
 
 ## Baseline (re-verify at session start)
-- Tests: 134 on MAIN; 151 on seismograph/task-fix-2 (+17 from FIX-2).
-  After the FIX-2 PR merges, main = 151. From repo root: py -3.10 -m pytest -q.
+- Tests: 151 on MAIN (FIX-2 merged S038 @4fdca91; +17 from FIX-2 over the
+  134 baseline). From repo root: py -3.10 -m pytest -q.
 - Sandbox runs the FULL suite (install: opentelemetry-sdk fastapi uvicorn
   sqlalchemy cryptography httpx pytest).
 - Ruff BOTH gates, pinned: pip install ruff==0.15.20 && ruff check . &&
@@ -95,11 +96,9 @@
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- [S037 SHIPPED, awaiting merge] FIX-2 on branch seismograph/task-fix-2
-  (b5c8621): G1 metric-scoped agreement + G2 per-candidate 14d TTL (both
-  scorers) + G3 population-scaled quorum q(M)=max(3,ceil(M/2)). Host gate
-  151 green. NEXT: review + squash-merge to main; sign §6 of
-  KEYSTONE_REPORT_FIX-2.md; then update this baseline to 151.
+- [S038 DONE] FIX-2 MERGED to main (squash 4fdca91): G1 metric-scoped
+  agreement + G2 per-candidate 14d TTL (both scorers) + G3 population-scaled
+  quorum q(M)=max(3,ceil(M/2)). Keystone §6 SIGNED. main baseline = 151.
   Synthetic/EXP-2-backed defaults; Phase-1 calibrated q(M) table + TTL from
   real drift_labels still pending (data/drift_labels/quorum_fix2_calibration.md).
 - Landing "127 tests" -> RESOLVED S037 (live already 134; note was stale).

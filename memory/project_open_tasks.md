@@ -1,8 +1,8 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-19 (Session 037: FIX-2 SHIPPED on branch
-# seismograph/task-fix-2 (b5c8621, host gate 151) — awaiting PR merge to main)
+# Last updated: 2026-07-21 (Session 038: FIX-2 MERGED to main (squash 4fdca91);
+# Keystone §6 signed; main baseline now 151)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
@@ -27,8 +27,9 @@
         rewritten to ZSET/Lua wiring. 134 -> 151.
   - [x] data/drift_labels/quorum_fix2_calibration.md (synthetic defaults +
         EXP-2 provenance); KEYSTONE_REPORT_FIX-2.md (unsigned).
-- [ ] FIX-2 PR: review + squash-merge seismograph/task-fix-2 -> main; sign
-      §6 of KEYSTONE_REPORT_FIX-2.md; then bump main baseline to 151.
+- [x] FIX-2 PR (S038): squash-merged seismograph/task-fix-2 -> main (4fdca91);
+      §6 of KEYSTONE_REPORT_FIX-2.md SIGNED; main baseline bumped to 151.
+      Independent clean-clone re-verify pre-merge (ruff x2 + 151), conflict-free.
 - [ ] Phase-1 FIX-2 follow-up: calibrated q(M) table + TTL from a real
       drift_labels dataset (the "Seismo bound"); Sybil residual mitigations
       (reputation weighting + Ed25519 binding).
