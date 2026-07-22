@@ -1,13 +1,40 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-21 (Session 038: FIX-2 MERGED to main (squash 4fdca91);
-# Keystone §6 signed; main baseline now 151)
+# Last updated: 2026-07-22 (Session 039: FIX-2b analytical quorum schedule
+# authored — q(M)=max(3,ceil(M/3)), QUORUM_FRAC_DEN 2->3; 151 pass on clean
+# clone; Keystone FIX-2b UNSIGNED; awaiting Tatiana branch/host-gate/merge)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S039 — 2026-07-22 (FIX-2b: analytical quorum schedule, the "Seismo bound")
+- [~] FIX-2b AUTHORED on a clean clone (base 2fc6108); NOT yet on a branch/
+      merged. Replaces FIX-2 synthetic frac=1/2 with a model-derived schedule.
+  - [x] Finding: binding constraint is detection POWER (false negatives), NOT
+        FP. Shipped ceil(M/2) suppressed FP 1e-6..1e-12 while eroding power
+        (majority rule unreachable under sparse canary coverage).
+  - [x] q(M)=max(3, ceil(M/3)) — ONE constant: engine/correlation.py
+        QUORUM_FRAC_DEN 2->3 (flows to Redis Lua too). Flat q=3 for M<=9
+        (= near-term optimum + old policy, no regression), gentle knee at M=10.
+  - [x] p anchored to LIVE detector (CUSUM ARL0~=500; gateway wires CUSUM).
+        14d TTL validated analytically (band [~5d, 25.6d] at 1/day cadence).
+  - [x] Adversarial verify of the MODEL: SURVIVES-WITH-CAVEATS. Pure
+        correlation can't break it at anchored p; residual = estimation-
+        inflated p (~0.074) x rho~0.08 at M>=10, which ceil(M/3) hedges
+        (worst-case FP 0.036/0.046/0.032). floor=3 kept for Sybil, not FP.
+  - [x] Fixed repo doc bug: correlation.py BOCD "(LIVE)" -> "(IMPLEMENTED,
+        not wired)"; CUSUM is the live candidate generator.
+  - [x] Gate: ruff x2 clean + 151 pass on clean clone (count unchanged).
+        NEW: data/drift_labels/quorum_seismo_bound.md, KEYSTONE_REPORT_FIX-2b.md
+        (UNSIGNED), scripts/experiment_quorum_bound.py + quorum_seismo_pick.py.
+- [ ] TATIANA (S039 close): create branch seismograph/task-fix-2b, host gate
+      (ruff x2 + 151), squash-merge, SIGN Keystone FIX-2b §6, bump memory.
+- [ ] NEXT LEVER: #6 distribution/reach (queued after #5; the real unblock for
+      #5-empirical — need orgs to get real drift_labels).
+
 
 ## S037 — 2026-07-19 (FIX-2: engine candidate TTL + metric-scoped, scaled quorum)
 - [x] FIX-2 SHIPPED on branch seismograph/task-fix-2 (commit b5c8621,
@@ -30,8 +57,9 @@
 - [x] FIX-2 PR (S038): squash-merged seismograph/task-fix-2 -> main (4fdca91);
       §6 of KEYSTONE_REPORT_FIX-2.md SIGNED; main baseline bumped to 151.
       Independent clean-clone re-verify pre-merge (ruff x2 + 151), conflict-free.
-- [ ] Phase-1 FIX-2 follow-up: calibrated q(M) table + TTL from a real
-      drift_labels dataset (the "Seismo bound"); Sybil residual mitigations
+- [~] Phase-1 FIX-2 follow-up: ANALYTICAL q(M)+TTL DONE in FIX-2b (S039,
+      awaiting merge). REMAINS (Phase-2, needs real traffic): measure p and
+      rho from live probes -> recalibrate; Sybil residual mitigations
       (reputation weighting + Ed25519 binding).
 - [x] Landing driftdefense.dev "127 tests" -> RESOLVED: live already shows
       134 (S036 note was stale; no action needed).

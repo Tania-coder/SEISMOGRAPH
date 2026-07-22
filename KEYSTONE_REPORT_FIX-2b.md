@@ -119,6 +119,10 @@ Adversarial cases (Constitution-mandated):
 
 ## 6. Sign-off
 
-- [ ] Tatiana: host gate green (ruff x2 + pytest 151) on the FIX-2b branch,
-      squash-merge to main, sign here.
-      — Tatiana Radchenko, 2026-07-__ (S039)
+- [x] Tatiana: host gate green (ruff x2 + pytest 151) on
+      seismograph/task-fix-2b; squash-merged to main (be8dc5f), pushed
+      (2fc6108..be8dc5f); signed.
+      — Tatiana Radchenko, 2026-07-22 (S039)
+      Sandbox clean-clone gate (Claude, base 2fc6108): ruff check + ruff
+      format --check clean (54 files), 151 passed; near-term behaviour
+      identical to FIX-2 for M<=9 (schedules diverge only at M>=10).

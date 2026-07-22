@@ -2760,3 +2760,83 @@ synthetic defaults (same posture as h=5/k=0.5), calibrated table = Phase 1.
 - git untouched by Claude all session (PowerShell only). Code/docs authored
   by Claude, gated + committed by Tatiana. Diagnostic-test hit may show in
   GoatCounter (utm_campaign=diagnostic_test / event cta-diagnostic-test) — ignore.
+
+---
+
+## Session 039 — 2026-07-22
+
+**Director:** Tatiana
+**Co-pilot:** Claude (claude-opus-4-8)
+**Phase:** 3 (partial) — engineering debt: FIX-2 quorum recalibration
+**Task:** #5 (analytical q(M), "лёгкая версия") — derive the quorum schedule
+from an explicit FP/power model instead of the FIX-2 synthetic frac=1/2.
+
+### Intake / decision chain
+- Confirmed #5 "calibrate on REAL drift_labels" is impossible now: no multi-org
+  traffic exists (network = one live probe). Dependency runs #6 reach ->
+  (orgs) -> real data -> #5-empirical. What IS doable now = an ANALYTICAL q(M)
+  schedule against an explicit "Seismo bound". Tatiana: analytical route, then #6.
+- Built scripts/experiment_quorum_bound.py (exact binomial tails, no RNG):
+  FP(M,q)=P(Binom(M,p)>=q), power=P(Binom(M,d)>=q), feasible band
+  [q_min(p,beta), q_max(d,gamma)].
+- **Headline: the binding constraint is POWER (false negatives), not FP.** The
+  shipped ceil(M/2) suppressed FP to 1e-6..1e-12 while eroding power (genuine
+  drift seen by 70% of orgs promoted p=0.34 at M=3; majority rule unreachable
+  under sparse canary coverage). FIX-2's scaling was mis-motivated.
+- Anchored p to the LIVE detector = Page-CUSUM (gateway/main.py wires
+  CUSUMDetector; ARL0~=500 two-sided, indep sim 496). p(1/day,14d)=0.0276.
+  TTL band at 1/day = [~5 d spread, 25.6 d FP ceiling] -> 14 d validated
+  analytically (was synthetic). >~1.5/day/metric pushes 14 d out of band.
+
+### Adversarial verify (before touching signed FIX-2)
+- Independent reviewer tried to REFUTE. VERDICT SURVIVES-WITH-CAVEATS:
+  - Pure correlation cannot break it at anchored p (beta-binomial FP(M=10,q=3)
+    ceiling 0.040 < 0.05 for all rho). No critical rho at p=0.028.
+  - Real risk = p under-estimation: baseline est. (30 samples) drops median
+    per-stream ARL0 to ~182 (p~0.074); at that p a common-mode rho~=0.08
+    breaches FP=0.05 at M=10.
+  - Found a repo doc bug: correlation.py labelled BOCD "LIVE" while gateway
+    wires CUSUM. Confirmed CUSUM is live -> anchor valid; docstring corrected.
+- Decision (Tatiana): "gentle hedge" — flat near-term, gentle rise as honest
+  hedge for the estimation x correlation worst case.
+
+### Schedule pick (from numbers, not preview)
+- scripts/quorum_seismo_pick.py evaluated candidates vs C1 near-term flat,
+  C2 honest FP, C3 worst-case beta-binomial FP (p_hi=0.074, rho=0.1), C4 power.
+- **Winner: q(M)=max(3, ceil(M/3)) — one constant: QUORUM_FRAC_DEN 2 -> 3.**
+  Flat q=3 for M<=9 (= near-term optimum AND old policy -> no regression),
+  knee at M=10 (exactly where verify found the thin margin). Worst-case FP
+  0.036/0.046/0.032 at M=10/15/20 (<=beta); power d=0.5 = 0.83/0.94/0.94.
+  flat-q=3 and ceil(M/4) breach worst-case FP; ceil(M/2) collapses power.
+- floor=3 KEPT — for a Sybil reason, NOT statistical (1 Sybil + 1 honest FP
+  can't reach quorum). Proportional term gives no adversarial headroom;
+  that's Phase-2 reputation weighting.
+
+### Changes (branch: seismograph/task-fix-2b — Tatiana to create)
+- engine/correlation.py: QUORUM_FRAC_DEN 2->3; policy note + docstrings
+  rewritten; BOCD "(LIVE)" -> "(IMPLEMENTED, not wired)".
+- engine/scorer_redis.py: no code change (Lua reads frac_den from ARGV;
+  parity by construction).
+- tests: test_required_quorum_scaling -> ceil(M/3) values + frac_den=2 legacy
+  recovery; test_quorum_scales_with_population knee 7->10 + flat-at-M=9;
+  test_scorer_redis Lua ARGV frac_den 2->3; test_gateway q(M=3) comment.
+- data/drift_labels/quorum_seismo_bound.md (NEW), KEYSTONE_REPORT_FIX-2b.md
+  (NEW, UNSIGNED), scripts/experiment_quorum_bound.py + quorum_seismo_pick.py.
+
+### Verification
+- Clean GitHub clone (base 2fc6108): ruff check clean, ruff format --check
+  clean (54 files), pytest 151 passed (count unchanged; assertions updated).
+- Near-term behaviour IDENTICAL to FIX-2 for M<=9; schedules diverge only at
+  M>=10 (network won't reach soon). KEYSTONE_REPORT_FIX-2b SUPERSEDES the
+  FIX-2 §4.2 scaling headline; FIX-2 TTL/metric/population machinery unchanged.
+
+### Open at close (S039)
+1. Tatiana: create branch seismograph/task-fix-2b, host gate (ruff x2 + 151),
+   squash-merge, SIGN KEYSTONE_REPORT_FIX-2b §6, bump memory.
+2. #6 distribution/reach — the next lever (was queued after #5).
+3. Carried: Model Weather Briefing #1 [FILL]; PyPI download stats; hn@ draft
+   (Tatiana's to send); withdraw Martin/Lars invites (2 clicks each).
+4. Phase-2 (real data): measure p and rho from probe traffic -> recalibrate
+   q(M)/TTL; reputation weighting + Ed25519 binding for the Sybil residual.
+- git untouched by Claude all session (PowerShell only). Code/docs authored by
+  Claude, gated + committed by Tatiana.

@@ -1,7 +1,10 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-21 (Session 038: FIX-2 MERGED to main (squash 4fdca91)
+# Last updated: 2026-07-22 (Session 039: FIX-2b analytical quorum schedule
+# authored — q(M)=max(3,ceil(M/3)), one constant QUORUM_FRAC_DEN 2->3; 151 on
+# clean clone; Keystone FIX-2b UNSIGNED, awaiting Tatiana branch/merge.
+# Prior (S038): FIX-2 MERGED to main (squash 4fdca91)
 # — engine candidate TTL + metric-scoped, population-scaled quorum
 # q(M)=max(3,ceil(M/2)); main baseline now 151. Keystone FIX-2 §6 SIGNED.
 # Independent clean-clone re-verify pre-merge: ruff x2 clean, 151 passed,
@@ -21,7 +24,11 @@
   README + landing + LinkedIn + X (pinned) + dev.to article published.
 - FIX-2 (S037, MERGED to main S038 @4fdca91): AgreementScorer engine gap
   closed — metric-scoped agreement, per-candidate 14d TTL, population-scaled
-  quorum q(M)=max(3,ceil(M/2)). Keystone signed.
+  quorum. Keystone signed.
+- FIX-2b (S039, AUTHORED, awaiting merge): recalibrated the quorum SLOPE from
+  an FP/power model. Binding constraint was POWER, not FP -> q(M)=max(3,
+  ceil(M/3)) (frac_den 2->3), flat q=3 for M<=9, gentle knee at M=10. floor=3
+  kept (Sybil). Keystone FIX-2b UNSIGNED. Supersedes FIX-2 §4.2 scaling only.
 
 ## Facts canon (E1, fixed S029 — use ONLY these)
 - Incident: Anthropic postmortem 2025-09-17, THREE infra bugs, NOT a model
@@ -45,8 +52,9 @@
   concept DOI now resolves to the fixed version.
 
 ## Baseline (re-verify at session start)
-- Tests: 151 on MAIN (FIX-2 merged S038 @4fdca91; +17 from FIX-2 over the
-  134 baseline). From repo root: py -3.10 -m pytest -q.
+- Tests: 151 on MAIN (FIX-2 merged S038 @4fdca91). FIX-2b (S039) keeps the
+  count at 151 (assertions updated, no tests added) — authored on a clean
+  clone, NOT yet merged. From repo root: py -3.10 -m pytest -q.
 - Sandbox runs the FULL suite (install: opentelemetry-sdk fastapi uvicorn
   sqlalchemy cryptography httpx pytest).
 - Ruff BOTH gates, pinned: pip install ruff==0.15.20 && ruff check . &&
@@ -113,6 +121,18 @@
   Parloa) PAUSED until 07-17 cleanup done.
 
 ## Last sessions
+- S039 (2026-07-22): FIX-2b — analytical quorum schedule ("Seismo bound").
+  #5-analytical route (real-data #5 impossible pre-network). Model (exact
+  binomial, scripts/experiment_quorum_bound.py): binding constraint is POWER,
+  not FP; shipped ceil(M/2) was mis-motivated (FP 1e-6..1e-12, power eroded).
+  Anchored p to LIVE CUSUM (ARL0~500); 14d TTL validated (band [~5d,25.6d]).
+  Adversarial verify of the model: SURVIVES-WITH-CAVEATS (correlation can't
+  break it at anchored p; residual = estimation-inflated p x rho~0.08 at
+  M>=10). Tatiana chose "gentle hedge" -> q(M)=max(3,ceil(M/3)), one constant
+  QUORUM_FRAC_DEN 2->3, knee at M=10, flat=3 near-term (no regression <=M9).
+  Fixed docstring bug (BOCD "LIVE"->not-wired; CUSUM is live). ruff x2 + 151
+  on clean clone. NEW: quorum_seismo_bound.md, KEYSTONE_REPORT_FIX-2b.md
+  (unsigned), 2 scripts. git on Tatiana (branch fix-2b to create).
 - S037 (2026-07-19): FIX-2 SHIPPED. Read engine cold; framed Stage-1
   contract for 3 gaps (metric-blind quorum, no candidate TTL, fixed q that
   degrades with M — EXP-2: M=5/q=2 FP 0.86). Tatiana: do all three, q(M)+TTL
