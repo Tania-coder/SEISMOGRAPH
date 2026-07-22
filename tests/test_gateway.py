@@ -379,7 +379,7 @@ def test_quorum_reached_triggers_dashboard() -> None:
     FIX-2: the population-scaled quorum floor is 3, so two orgs no longer
     promote (see test_two_orgs_below_floor_stay_stable).  Here three
     distinct orgs drift on the SAME (model_tuple, metric_name) stream
-    within the TTL window, meeting q(M=3) = max(3, ceil(3/2)) = 3.
+    within the TTL window, meeting q(M=3) = max(3, ceil(3/3)) = 3 (FIX-2b).
 
     #SG-TRACE: REQ-GW-025
     #SG-TRACE: REQ-ENGINE-012 | test: test_quorum_reached_triggers_dashboard

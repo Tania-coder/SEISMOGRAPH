@@ -58,24 +58,27 @@ def _cp(
 
 
 def test_required_quorum_scaling() -> None:
-    """q(M) = max(3, ceil(M/2)); floor holds until M > 4.
+    """q(M) = max(3, ceil(M/3)) -- FIX-2b Seismo bound; floor holds to M=9.
 
     #SG-TRACE: REQ-ENGINE-012 | test: test_required_quorum_scaling
     """
     assert required_quorum(0) == 3
     assert required_quorum(1) == 3
-    assert required_quorum(2) == 3
-    assert required_quorum(3) == 3
-    assert required_quorum(4) == 3  # ceil(4/2)=2 -> floor 3
-    assert required_quorum(5) == 3  # ceil(5/2)=3
-    assert required_quorum(6) == 3
-    assert required_quorum(7) == 4  # ceil(7/2)=4 > floor
-    assert required_quorum(8) == 4
-    assert required_quorum(10) == 5
+    assert required_quorum(3) == 3  # ceil(3/3)=1 -> floor 3
+    assert required_quorum(6) == 3  # ceil(6/3)=2 -> floor 3
+    assert required_quorum(7) == 3  # ceil(7/3)=3
+    assert required_quorum(9) == 3  # ceil(9/3)=3 -- flat to here
+    assert required_quorum(10) == 4  # ceil(10/3)=4 > floor -- knee
+    assert required_quorum(12) == 4
+    assert required_quorum(13) == 5  # ceil(13/3)=5
+    assert required_quorum(15) == 5
+    assert required_quorum(20) == 7  # ceil(20/3)=7 (was 10 under ceil(M/2))
     assert required_quorum(-5) == 3  # negatives clamp to 0
     # Floor override
     assert required_quorum(2, floor=2) == 2
     assert required_quorum(1, floor=2) == 2
+    # frac_den override recovers the legacy ceil(M/2) shape
+    assert required_quorum(7, frac_den=2) == 4
 
 
 def test_floor_default_is_three() -> None:
@@ -178,7 +181,10 @@ def test_ttl_prevents_slow_coincidence() -> None:
 
 
 def test_quorum_scales_with_population() -> None:
-    """3 agreeing orgs promote at M=3 but NOT at M=7 (q rises to 4).
+    """3 agreeing orgs promote at M=3 but NOT at M=10 (q rises to 4).
+
+    FIX-2b: under the ceil(M/3) schedule the knee is at M=10 (q(9)=3,
+    q(10)=4), not M=7 -- the near-term horizon stays at the floor.
 
     #SG-TRACE: REQ-ENGINE-012
     #   | test: test_agreement_scorer_quorum_scales_with_population
@@ -190,14 +196,22 @@ def test_quorum_scales_with_population() -> None:
         small.ingest(_cp(org, ts_ns=now))
     assert small.promote_to_public_alert(MODEL, M1, now_ns=now) == 3
 
-    # Large network: 7 observers, only 3 agree -> q(7)=4 -> no promote.
+    # Near-term still flat: 9 observers, only 3 agree -> q(9)=3 -> promote.
+    mid = AgreementScorer()
+    for i in range(9):
+        mid.observe(MODEL, M1, f"obs-{i}", timestamp_ns=now)
+    for org in ("obs-0", "obs-1", "obs-2"):
+        mid.ingest(_cp(org, ts_ns=now))
+    assert mid.promote_to_public_alert(MODEL, M1, now_ns=now) == 3
+
+    # Large network: 10 observers, only 3 agree -> q(10)=4 -> no promote.
     large = AgreementScorer()
-    for i in range(7):
+    for i in range(10):
         large.observe(MODEL, M1, f"obs-{i}", timestamp_ns=now)
     for org in ("obs-0", "obs-1", "obs-2"):
         large.ingest(_cp(org, ts_ns=now))
     assert large.promote_to_public_alert(MODEL, M1, now_ns=now) is None
-    # A fourth agreeing org meets q(7)=4.
+    # A fourth agreeing org meets q(10)=4.
     large.ingest(_cp("obs-3", ts_ns=now))
     assert large.promote_to_public_alert(MODEL, M1, now_ns=now) == 4
 

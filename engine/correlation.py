@@ -15,11 +15,16 @@ This module has two distinct roles:
    single-org signal is NEVER promoted to a public drift alert.  Agreement
    is scoped per (model_tuple, metric_name); each candidate expires after a
    candidate TTL; and the required quorum scales with the live observer
-   population M as q(M) = max(QUORUM_FLOOR, ceil(M/2)) before
-   promote_to_public_alert() returns a non-None count.
+   population M as q(M) = max(QUORUM_FLOOR, ceil(M/3)) before
+   promote_to_public_alert() returns a non-None count (FIX-2b Seismo bound).
 
-3. **BayesianOnlineDetector (LIVE)** -- Adams & MacKay 2007 BOCD with
-   Normal-Inverse-Gamma conjugate prior.  Phase 0-005 implementation.
+3. **BayesianOnlineDetector (IMPLEMENTED, not wired)** -- Adams & MacKay 2007
+   BOCD with Normal-Inverse-Gamma conjugate prior.  Implemented here but NOT
+   on the live promotion path: the gateway public path wires the Page-CUSUM
+   detector (engine/detector.py, imported in gateway/main.py), so the LIVE
+   candidate generator is CUSUM.  The FIX-2b p-anchor (CUSUM ARL0) therefore
+   matches the wired detector; if BOCD (hazard 1/200) is later wired in, p
+   must be re-anchored to it before trusting the quorum schedule.
 
 All threshold decisions must be documented as labelled data in
 data/drift_labels/ before any production deployment.
@@ -44,26 +49,50 @@ from dataclasses import dataclass, field
 # ---------------------------------------------------------------------------
 # The public-alert quorum scales with the live observer population M for a
 # (model_tuple, metric_name) stream so that a fixed absolute threshold cannot
-# be trivially met as the network grows.  EXP-2 showed fixed quorum=2 yields a
-# 0.86 stable-window public-alert FP rate at M=5; the floor of 3 plus a
-# proportional term holds the boundary.
+# be trivially met as the network grows.
 #
 #     q(M) = max(QUORUM_FLOOR, ceil(QUORUM_FRAC_NUM * M / QUORUM_FRAC_DEN))
+#            = max(3, ceil(M/3))   with the FIX-2b defaults
 #
-# Defaults (floor=3, frac=1/2) are SYNTHETIC, EXP-2-backed starting points --
-# the same posture as the CUSUM h=5.0/k=0.5 defaults.  A production q(M)
-# schedule must be recorded as labelled data in data/drift_labels/ against a
-# target public-FP bound before deployment (no such dataset exists yet).
+# FIX-2b calibration (the "Seismo bound", S039) replaced the FIX-2 synthetic
+# frac=1/2 (ceil(M/2)) with an analytically-derived schedule.  Method: model
+# the public false-positive per candidate-TTL window as X ~ Binomial(M, p),
+# p = per-org stable-window false-candidate rate, and detection power as
+# Y ~ Binomial(M, d).  The binding constraint turned out to be POWER (false
+# negatives), not FP: at p anchored to the CUSUM ARL0~=500 (p~=0.028 at
+# cadence 1/day, TTL 14d) the shipped ceil(M/2) suppressed FP by 5-10 orders
+# of magnitude (1e-6..1e-12) while eroding power (a genuine drift seen by 70%
+# of orgs promoted with prob 0.34 at M=3, and ceil(M/2) demanded a MAJORITY
+# agree -- unreachable when only a minority of canaries cover the fault).
+#
+# The FIX-2b schedule ceil(M/3): (a) equals the floor of 3 across the near-
+# term horizon M<=9 (where the network actually lives -- identical to both the
+# honest-noise optimum and to the old policy there, so no regression);
+# (b) rises gently past M=10 as an honest hedge against the estimation x
+# correlation worst case an adversarial review flagged -- baseline estimation
+# (30 samples) can inflate the median per-stream p to ~0.074, at which a
+# common-mode correlation rho~=0.08 pushes FP(M=10, q=3) past 0.05; ceil(M/3)
+# keeps the worst-case beta-binomial FP <= 0.05 at M=10/15/20 (0.036/0.046/
+# 0.032) while staying within the detection-power ceiling.
+#
+# floor=3 is retained for an ADVERSARIAL (Sybil) reason, NOT a statistical
+# one: the FP model does not require it (q=2 already holds FP), but a floor of
+# 3 means one Sybil identity plus a single honest false alarm cannot reach
+# quorum.  The proportional term gives NO additional headroom against a
+# colluding/correlated adversary as M grows -- that is the job of reputation
+# weighting + Ed25519 one-org-one-key binding (Phase 2), not this layer.
 #
 # candidate TTL: each org's candidate alert (and each observer heartbeat)
 # counts toward its (model_tuple, metric_name) stream only while it is newer
-# than DEFAULT_TTL_NS.  This is the engine-side realisation of the 14-day
-# candidate expiry that EXP-2 enforced in the harness (M=3/q=3/TTL=14d ->
-# public FP 0.015 at 36-day lead).
+# than DEFAULT_TTL_NS.  FIX-2b validated the 14-day window analytically: at
+# cadence ~1/day it sits inside the feasible band [~5 d cross-org detection
+# spread, ~25.6 d FP ceiling]; sampling faster than ~1.5/day/metric pushes 14
+# d out of band -> shorten TTL or raise the floor.
 #
 # #SG-TRACE: REQ-ENGINE-012
-# #   | assumption: q(M) floor=3, frac=1/2 are synthetic EXP-2 defaults,
-# #     configurable, pending real-traffic drift_labels calibration
+# #   | assumption: q(M) = max(3, ceil(M/3)) is the FIX-2b Seismo-bound
+# #     schedule; floor=3 is Sybil-justified; p anchored to CUSUM ARL0 (the
+# #     LIVE detector), pending real-traffic recalibration of p and rho
 # #   | test: test_required_quorum_scaling
 # #SG-TRACE: REQ-ENGINE-013
 # #   | assumption: candidate/observer TTL is event-time (wall-clock ns);
@@ -75,8 +104,13 @@ QUORUM_FLOOR: int = 3
 """Minimum distinct agreeing orgs for a public alert, regardless of M."""
 
 QUORUM_FRAC_NUM: int = 1
-QUORUM_FRAC_DEN: int = 2
-"""Proportional term: quorum grows as ceil(NUM * M / DEN) of the population."""
+QUORUM_FRAC_DEN: int = 3
+"""Proportional term: quorum grows as ceil(NUM * M / DEN) of the population.
+
+FIX-2b (Seismo bound): frac_den raised 2 -> 3.  The gentle ceil(M/3) slope
+keeps q(M)=floor across the near-term horizon (q=3 for M<=9), then rises one
+step per ~3 orgs.  See the policy note above and
+data/drift_labels/quorum_seismo_bound.md for the derivation."""
 
 DEFAULT_TTL_NS: int = 14 * 86_400 * 1_000_000_000
 """Candidate / observer expiry window: 14 days in nanoseconds."""
@@ -513,8 +547,9 @@ class AgreementScorer:
        ``required_quorum(M)`` where M is the live observer population for
        the stream (distinct orgs seen within the TTL window via
        ``observe()`` or ``ingest()``).  A fixed absolute threshold is
-       trivially met as the network grows; q(M) = max(floor, ceil(M/2))
-       holds the false-positive boundary (EXP-2).
+       trivially met as the network grows; q(M) = max(floor, ceil(M/3))
+       is the FIX-2b Seismo-bound schedule (flat at the floor for M<=9,
+       gentle hedge beyond).  See the module-level policy note.
 
     ``observe()`` records the watching population; ``ingest()`` records an
     org that actually fired a candidate (and implicitly observes).  The

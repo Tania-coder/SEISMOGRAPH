@@ -212,7 +212,7 @@ def test_redis_scorer_promote_uses_lua_eval(
         0,  # now_ms
         3,  # floor (default QUORUM_FLOOR)
         1,  # frac_num
-        2,  # frac_den
+        3,  # frac_den (FIX-2b: ceil(M/3) Seismo bound; was 2)
     )
     mock_redis.scard.assert_not_called()
     mock_redis.delete.assert_not_called()
