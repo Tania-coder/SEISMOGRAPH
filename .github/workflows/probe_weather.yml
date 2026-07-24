@@ -33,7 +33,7 @@
 # across all four providers — cents per month total. Models chosen are each
 # provider's current cheap tier (verified July 2026):
 #   mistral/mistral-small-latest, openai/gpt-4o-mini,
-#   anthropic/claude-haiku-4-5, google/gemini-3.5-flash
+#   anthropic/claude-haiku-4-5, google/gemini-2.5-flash
 
 name: probe-weather-multi
 
@@ -71,7 +71,7 @@ jobs:
             api_key_secret: ANTHROPIC_API_KEY
           - provider: google
             # Gemini OpenAI-compatible endpoint (note the /openai suffix).
-            model_tuple: google/gemini-3.5-flash
+            model_tuple: google/gemini-2.5-flash
             base_url: https://generativelanguage.googleapis.com/v1beta/openai
             api_key_secret: GEMINI_API_KEY
 
