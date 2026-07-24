@@ -1,0 +1,130 @@
+# .github/workflows/probe_weather_multi.yml — S041 multi-provider matrix
+# Evolution of the S040 single-provider draft: one matrix job probes four
+# providers through the same OpenAI-compatible adapter (probe/providers.py
+# speaks only the /v1/chat/completions wire format, which all four expose).
+#
+# PURPOSE: keep the public /v1/weather board populated with FOUR real model
+# rows (Render free tier loses SQLite on restart; a standing cron self-heals
+# the demo within <=12h).
+#
+# SECRETS to add (repo Settings -> Secrets and variables -> Actions):
+#   MISTRAL_API_KEY      — console.mistral.ai key
+#   OPENAI_API_KEY       — platform.openai.com key
+#   ANTHROPIC_API_KEY    — console.anthropic.com key (used via Anthropic's
+#                          OpenAI SDK compatibility layer at
+#                          https://api.anthropic.com/v1/ — the only interface
+#                          probe/providers.py supports)
+#   GEMINI_API_KEY       — aistudio.google.com key (used via Gemini's
+#                          OpenAI-compatible endpoint)
+#   SEISMOGRAPH_ID_B64   — OPTIONAL: stable probe identity, base64 of the
+#                          local .seismograph_id key file. If absent, a fresh
+#                          key is generated per run (accepted by the public
+#                          path, but identity rotates; stable is better).
+#     PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("D:\Dev\Projects\SEISMOGRAPH\.seismograph_id"))
+#
+# GRACEFUL SKIP: a matrix leg whose provider secret is not configured skips
+# its probe steps instead of failing. GitHub Actions cannot reference the
+# secrets context in `if:` directly, so the documented pattern is used:
+# expose the secret through job-level env (secrets[matrix.api_key_secret])
+# and gate steps on `env.PROVIDER_API_KEY != ''`.
+#
+# COST: canary suite is 3 prompts (<=200 cap respected) at max_tokens 64,
+# temperature 0, per provider, twice daily => ~24 tiny completions/day
+# across all four providers — cents per month total. Models chosen are each
+# provider's current cheap tier (verified July 2026):
+#   mistral/mistral-small-latest, openai/gpt-4o-mini,
+#   anthropic/claude-haiku-4-5, google/gemini-3.5-flash
+
+name: probe-weather-multi
+
+on:
+  schedule:
+    - cron: "17 5,17 * * *"   # 05:17 & 17:17 UTC daily (off-minute on purpose)
+  workflow_dispatch: {}        # manual "emit now" button
+
+permissions:
+  contents: read
+
+jobs:
+  emit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false         # one provider outage must not silence the rest
+      matrix:
+        include:
+          - provider: mistral
+            model_tuple: mistral/mistral-small-latest
+            base_url: https://api.mistral.ai/v1
+            api_key_secret: MISTRAL_API_KEY
+          - provider: openai
+            model_tuple: openai/gpt-4o-mini
+            base_url: https://api.openai.com/v1
+            api_key_secret: OPENAI_API_KEY
+          - provider: anthropic
+            # Anthropic's OpenAI SDK compatibility layer (maps
+            # /chat/completions onto /v1/messages internally). This is the
+            # only interface probe/providers.py implements — there is no
+            # native Anthropic Messages adapter in probe/adapters/.
+            model_tuple: anthropic/claude-haiku-4-5
+            base_url: https://api.anthropic.com/v1
+            api_key_secret: ANTHROPIC_API_KEY
+          - provider: google
+            # Gemini OpenAI-compatible endpoint (note the /openai suffix).
+            model_tuple: google/gemini-3.5-flash
+            base_url: https://generativelanguage.googleapis.com/v1beta/openai
+            api_key_secret: GEMINI_API_KEY
+
+    name: emit (${{ matrix.provider }})
+
+    env:
+      # Secret indirection: resolves to '' when the secret is unset, which
+      # the step-level `if:` guards below can test (the secrets context
+      # itself is not allowed in `if:` expressions).
+      PROVIDER_API_KEY: ${{ secrets[matrix.api_key_secret] }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Note missing secret (leg skips gracefully)
+        if: env.PROVIDER_API_KEY == ''
+        run: |
+          echo "::notice title=probe-weather-multi::Secret ${{ matrix.api_key_secret }} not configured — skipping ${{ matrix.model_tuple }} probe."
+
+      - uses: actions/setup-python@v5
+        if: env.PROVIDER_API_KEY != ''
+        with:
+          python-version: "3.11"
+
+      - name: Install probe deps
+        if: env.PROVIDER_API_KEY != ''
+        run: pip install httpx cryptography
+
+      - name: Warm up Render gateway (free tier cold start ~60s)
+        if: env.PROVIDER_API_KEY != ''
+        run: |
+          for i in 1 2 3 4 5; do
+            curl -fsS -m 90 https://seismograph-weather.onrender.com/v1/weather && break
+            echo "warmup attempt $i failed; retrying" && sleep 20
+          done
+
+      - name: Restore probe identity key
+        if: env.PROVIDER_API_KEY != ''
+        env:
+          SEISMOGRAPH_ID_B64: ${{ secrets.SEISMOGRAPH_ID_B64 }}
+        run: |
+          if [ -n "$SEISMOGRAPH_ID_B64" ]; then
+            echo "$SEISMOGRAPH_ID_B64" | base64 -d > .seismograph_id
+            chmod 600 .seismograph_id
+          fi
+
+      - name: Live emission (${{ matrix.model_tuple }} -> public gateway)
+        if: env.PROVIDER_API_KEY != ''
+        env:
+          SEISMOGRAPH_PROBE_BASE_URL: ${{ matrix.base_url }}
+          SEISMOGRAPH_PROBE_API_KEY: ${{ env.PROVIDER_API_KEY }}
+          SEISMOGRAPH_PROBE_MODEL_TUPLE: ${{ matrix.model_tuple }}
+          SEISMOGRAPH_PROBE_MAX_TOKENS: "64"
+          SEISMOGRAPH_GATEWAY_ENDPOINT: https://seismograph-weather.onrender.com/v1/signals
+          SEISMOGRAPH_PROBE_KEY_PATH: .seismograph_id
+        run: python scripts/live_emit.py
