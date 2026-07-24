@@ -133,6 +133,11 @@
   Fixed docstring bug (BOCD "LIVE"->not-wired; CUSUM is live). ruff x2 + 151
   on clean clone. NEW: quorum_seismo_bound.md, KEYSTONE_REPORT_FIX-2b.md
   (unsigned), 2 scripts. git on Tatiana (branch fix-2b to create).
+  #6 reach kicked off SAME session: STANDING drift-radar scheduled task
+  (trig_01PPnjrGBoCzYD5MDFwAhZYQ, daily 09:00 Berlin) — do NOT recreate.
+  Ride-along pack + evergreen guide in business/ (guide published:false,
+  pending Tatiana dev.to publish). Live-wave scan: GPT-5.5 episode past-peak,
+  no live wave 2026-07-24. /v1/weather board currently EMPTY ([]).
 - S037 (2026-07-19): FIX-2 SHIPPED. Read engine cold; framed Stage-1
   contract for 3 gaps (metric-blind quorum, no candidate TTL, fixed q that
   degrades with M — EXP-2: M=5/q=2 FP 0.86). Tatiana: do all three, q(M)+TTL

@@ -32,8 +32,15 @@
         (UNSIGNED), scripts/experiment_quorum_bound.py + quorum_seismo_pick.py.
 - [ ] TATIANA (S039 close): create branch seismograph/task-fix-2b, host gate
       (ruff x2 + 151), squash-merge, SIGN Keystone FIX-2b §6, bump memory.
-- [ ] NEXT LEVER: #6 distribution/reach (queued after #5; the real unblock for
-      #5-empirical — need orgs to get real drift_labels).
+- [~] #6 distribution/reach STARTED (same session): approach = incident
+      ride-along. STANDING drift-radar scheduled task created
+      (trig_01PPnjrGBoCzYD5MDFwAhZYQ, daily 09:00 Berlin, push on) — surfaces
+      live waves + drafts; NEVER recreate it. Pack + templates:
+      business/reach_incident_ridealong_S039.md. Evergreen guide drafted
+      business/content_evergreen_guide_S039.md (published:false -> Tatiana to
+      publish on dev.to). Live-wave scan 2026-07-24: none live (GPT-5.5 past
+      peak). NEXT: optional HTML guide for driftdefense.dev; #5-empirical still
+      needs orgs -> real drift_labels.
 
 
 ## S037 — 2026-07-19 (FIX-2: engine candidate TTL + metric-scoped, scaled quorum)

@@ -2840,3 +2840,36 @@ from an explicit FP/power model instead of the FIX-2 synthetic frac=1/2.
    q(M)/TTL; reputation weighting + Ed25519 binding for the Sybil residual.
 - git untouched by Claude all session (PowerShell only). Code/docs authored by
   Claude, gated + committed by Tatiana.
+
+### Addendum (same session, S039) — #6 distribution/reach kicked off
+- After FIX-2b merged, started #6 (reach). Approach chosen by Tatiana:
+  "incident ride-along" — show up where LLM engineers already debate "did the
+  model change or is it me?", genuine method help first, tool second.
+- Playbook + response pack: business/reach_incident_ridealong_S039.md
+  (gitignored) — channel watchlist, wave threshold, act/don't-act rule, locked-
+  phrasing templates (HN no-link, forum/reddit soft-link, X), competitive
+  differentiation (federated cross-org vs single-org observability).
+- STANDING SCHEDULED TASK CREATED: "SEISMOGRAPH drift-radar (incident
+  ride-along)", id trig_01PPnjrGBoCzYD5MDFwAhZYQ, cron 0 7 * * * (daily 09:00
+  Europe/Berlin), push notifications ON. Fresh session each fire: scans
+  watchlist, scores vs threshold, pings Tatiana with candidate thread(s) +
+  ready-to-post draft. Surfaces/drafts only — never posts. NEXT SESSION: this
+  radar exists and runs daily; don't recreate it.
+- Live-wave scan (ground-truth via browser, NOT WebFetch which mis-reported
+  recency): the GPT-5.5 degradation episode (OpenAI forum #1381700 closed;
+  status.openai.com incident; HN #48789428 = 372pts/152c but 19 DAYS old) is
+  PAST PEAK. No live wave within 24-48h at 2026-07-24. HN Algolia by-date past
+  week: 0 degradation stories. Correctly did NOT post (would be necro-bump).
+  LESSON: verify thread recency by browser ground-truth; WebFetch hallucinated
+  "3h/130pts" for a 19-day/372pt thread.
+- Evergreen guide DRAFTED (not dependent on a live wave): business/
+  content_evergreen_guide_S039.md — dev.to-ready how-to "Did the model get
+  worse, or is it just you?" (canary+baseline+CUSUM code, N=1/federated
+  differentiator, honest Anthropic-backtest with locked phrasing, FAQ/SEO).
+  CUSUM code test-run OK; postmortem URL verified live. published:false —
+  PENDING Tatiana review + publish to dev.to (@taniacoder). UTM
+  utm_campaign=evergreen_howto baked in.
+- Open at #6 close: (1) Tatiana publish the evergreen guide when reviewed;
+  (2) radar handles live waves; (3) optional HTML version of the guide for
+  driftdefense.dev/guides (owned SEO, set as canonical). Short tails unchanged
+  (Briefing #1 /v1/weather, PyPI stats, Martin/Lars invites, hn@ draft).
