@@ -1,15 +1,17 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-07-22 (Session 039: FIX-2b analytical quorum schedule
-# authored — q(M)=max(3,ceil(M/3)), one constant QUORUM_FRAC_DEN 2->3; 151 on
-# clean clone; Keystone FIX-2b UNSIGNED, awaiting Tatiana branch/merge.
-# Prior (S038): FIX-2 MERGED to main (squash 4fdca91)
-# — engine candidate TTL + metric-scoped, population-scaled quorum
-# q(M)=max(3,ceil(M/2)); main baseline now 151. Keystone FIX-2 §6 SIGNED.
-# Independent clean-clone re-verify pre-merge: ruff x2 clean, 151 passed,
-# conflict-free squash. Prior (S037): FIX-2 shipped on branch (b5c8621, 151).
-# Prior (S036): PyPI #11202 CLOSED, seismograph-probe 1.1.0 PUBLISHED (OIDC).)
+# Last updated: 2026-07-24 (Session 040, GTM sprint: CAN-1 MERGED to main
+# (c439105, PR #19) — tool-calling canaries + output/reasoning token metrics,
+# baseline 151 -> 193; probe_weather multi-provider cron LIVE, /v1/weather
+# shows 2 models STABLE (google/gemini-3.5-flash-lite + mistral/
+# mistral-small-latest); landing v3 LIVE (193, trust row/DOI, security §,
+# alert-signup form, guide page); CONTRIBUTING.md added; README 134->193.
+# Prior (S039, merged+signed same day): FIX-2b analytical quorum
+# q(M)=max(3,ceil(M/3)) (be8dc5f squash, c277740 sign); evergreen guide
+# published on dev.to; drift-radar daily task live.
+# Prior (S038): FIX-2 MERGED (4fdca91), baseline 151, Keystone signed.
+# Prior (S036): seismograph-probe 1.1.0 PUBLISHED on PyPI (OIDC).
 
 ## Identity
 - Director: Tatiana Radchenko (Aarhus). Claude = Lead Technical Co-Pilot.
@@ -25,10 +27,19 @@
 - FIX-2 (S037, MERGED to main S038 @4fdca91): AgreementScorer engine gap
   closed — metric-scoped agreement, per-candidate 14d TTL, population-scaled
   quorum. Keystone signed.
-- FIX-2b (S039, AUTHORED, awaiting merge): recalibrated the quorum SLOPE from
-  an FP/power model. Binding constraint was POWER, not FP -> q(M)=max(3,
-  ceil(M/3)) (frac_den 2->3), flat q=3 for M<=9, gentle knee at M=10. floor=3
-  kept (Sybil). Keystone FIX-2b UNSIGNED. Supersedes FIX-2 §4.2 scaling only.
+- FIX-2b (S039, MERGED be8dc5f + Keystone SIGNED c277740 same day):
+  recalibrated the quorum SLOPE from an FP/power model. Binding constraint
+  was POWER, not FP -> q(M)=max(3,ceil(M/3)) (frac_den 2->3), flat q=3 for
+  M<=9, knee at M=10. floor=3 kept (Sybil). Supersedes FIX-2 §4.2 scaling.
+- CAN-1 (S040, MERGED c439105 via PR #19, Keystone at root UNSIGNED):
+  tool-calling canaries (suite v1.1.0 = frozen v1.0.0 + frozen tool-schema
+  canary; tool_call_validity_rate) + per-canary output/reasoning token
+  metrics (avg_output_tokens / avg_reasoning_tokens, DP-treated, additive
+  gateway allowlist). engine/ untouched. 151 -> 193 tests. Caveats: deploy
+  gateway before new probes (422 otherwise); new metrics feed live CUSUM but
+  are not column-persisted by save_batch / not re-warmed on restart.
+  Market driver: agentic workloads (tool-calling drift) + reasoning-token
+  shifts (GPT-5.5-type episodes). Probe 1.2.0 release WARRANTED, not done.
 
 ## Facts canon (E1, fixed S029 — use ONLY these)
 - Incident: Anthropic postmortem 2025-09-17, THREE infra bugs, NOT a model
@@ -52,9 +63,9 @@
   concept DOI now resolves to the fixed version.
 
 ## Baseline (re-verify at session start)
-- Tests: 151 on MAIN (FIX-2 merged S038 @4fdca91). FIX-2b (S039) keeps the
-  count at 151 (assertions updated, no tests added) — authored on a clean
-  clone, NOT yet merged. From repo root: py -3.10 -m pytest -q.
+- Tests: **193 on MAIN** (CAN-1 merged S040 @c439105; was 151). Verified
+  S040 on Tatiana host AND independent fresh sandbox clone (193 + ruff x2).
+  From repo root: py -3.10 -m pytest -q.
 - Sandbox runs the FULL suite (install: opentelemetry-sdk fastapi uvicorn
   sqlalchemy cryptography httpx pytest).
 - Ruff BOTH gates, pinned: pip install ruff==0.15.20 && ruff check . &&
@@ -85,12 +96,22 @@
   commit file list before push anyway.
 
 ## Live assets
-- Dashboard: https://seismograph-weather.onrender.com/dashboard
-- Landing:   https://driftdefense.dev (custom domain S034, Porkbun,
-  auto-renew, exp 2027-07-12; old github.io URL redirects; repo clone:
-  D:\Dev\Projects\drift-defense) — landing v2: client path, 5 CTA
-  click-events, JSON-LD. Shows "134 tests" (verified live S037). Brand rule:
-  SEISMOGRAPH = engine, Drift Defense = service.
+- Dashboard: https://seismograph-weather.onrender.com/dashboard — /v1/weather
+  NON-EMPTY since S040: google/gemini-3.5-flash-lite + mistral/
+  mistral-small-latest, both STABLE, fed by probe_weather cron (2x daily,
+  .github/workflows/probe_weather.yml; secrets MISTRAL_API_KEY +
+  GEMINI_API_KEY + SEISMOGRAPH_ID_B64; OPENAI/ANTHROPIC legs skip until
+  keys added). Gemini note: 2.5-flash closed to new users, 3.5-flash 503s
+  on free tier -> pinned gemini-3.5-flash-lite. Google keys now "AQ."-format.
+- Landing:   https://driftdefense.dev (Porkbun, auto-renew, exp 2027-07-12;
+  repo D:\Dev\Projects\drift-defense) — **landing v3 LIVE (75e5999, S040)**:
+  193 tests, backtest-first 38-days card, trust row (DOI/CodeQL/OIDC),
+  security-posture §, alert-signup form (formsubmit.co -> GoatCounter event
+  cta-alert-signup; ACTIVATION EMAIL pending Tatiana's one click),
+  early-observer line, guide links. Brand rule: SEISMOGRAPH = engine,
+  Drift Defense = service.
+- Guide (owned canonical): https://driftdefense.dev/guides/detect-silent-llm-change/
+  (live S040; dev.to article -1lia sets it as canonical_url).
 - Analytics: https://driftdefense.goatcounter.com (GoatCounter, free
   tier, code driftdefense). Adblockers undercount — lower bound only.
 - dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
@@ -107,23 +128,47 @@
 - Grant/market pack: docs/ (whitepaper, pitch deck, one-pager, in main).
 
 ## Open now (full backlog: project_open_tasks.md)
-- [S038 DONE] FIX-2 MERGED to main (squash 4fdca91): G1 metric-scoped
-  agreement + G2 per-candidate 14d TTL (both scorers) + G3 population-scaled
-  quorum q(M)=max(3,ceil(M/2)). Keystone §6 SIGNED. main baseline = 151.
-  Synthetic/EXP-2-backed defaults; Phase-1 calibrated q(M) table + TTL from
-  real drift_labels still pending (data/drift_labels/quorum_fix2_calibration.md).
-- Landing "127 tests" -> RESOLVED S037 (live already 134; note was stale).
-- Invites Sigge/Martin/Lars: withdraw if still Pending (LinkedIn).
-- GoatCounter week-1 review (visitors, CTA clicks, sources).
-- Model Weather Briefing #1: business/content_briefing1_S036.md [FILL] marks
-  need /v1/weather numbers (dashboard /v1/weather robots-blocked to WebFetch
-  and curl policy-blocked -> pull via browser or Tatiana reads).
-- HN "Show HN:" repost ~21-22.07 if mod still silent (pack ready).
-- Outreach: Sebastian (Legora) ACCEPTED 07-03, single follow-up sent 07-10
-  (no reply); no more messages unless a trigger event. Batch 2 (Zendesk AI,
-  Parloa) PAUSED until 07-17 cleanup done.
+- Tatiana one-click: formsubmit.co ACTIVATION email (else landing signups
+  are dropped). Sign Keystone CAN-1 §6 when reviewed.
+- OpenSSF Best Practices anketa (~1-1.5h; checklist
+  business/openssf_badge_checklist_S040.md; CONTRIBUTING.md gap closed S040).
+- OPENAI_API_KEY + ANTHROPIC_API_KEY secrets (paid accounts ~$5 each) ->
+  board goes to 4 models automatically.
+- probe 1.2.0 release (CAN-1 features) + "tool-calling drift monitoring"
+  post — next content hook.
+- GTM 30-day plan EXECUTING (business/GTM_30DAY_S040.md): >=5 scan requests
+  + >=1 paid Baseline €2,500 by ~23.08; 90-day kill criteria end-October.
+  Snapshot offensive: targets business/targets_15_S040.md (Claude targets
+  can start now; others after ~2 weeks of board baseline). Dist pack
+  (GitHub Action + MCP server) in business/dist_S040/ — publish next.
+- NLnet: general call CLOSED until ~2026-10-01 (only TALER/Fediversity open
+  to 01.08, poor fit). Draft ready business/nlnet_application_draft_S040.md;
+  check nlnet.nl/propose ~25.09.
+- Model Weather Briefing #1: now UNBLOCKED (board live) — fill from
+  /v1/weather after a few days of data.
+- PyPI download stats: pypistats 429 (4 sessions) — retry.
+- Phase-1/2 engineering PARKED during GTM (calibrated q(M)/TTL from real
+  drift_labels; reputation weighting; Ed25519 binding).
 
 ## Last sessions
+- S040 (2026-07-24, GTM sprint): verified state via fresh clone (caught
+  auto-memory lagging a session); market audit (niche confirmed: no rigorous
+  public silent-change detector; daily-bench=hobby, Artificial Analysis=
+  levels not change); strategy set (NO app; distribution = GitHub Action +
+  MCP + alert subscriptions; trust ladder = OpenSSF + design-partner
+  testimonials, SOC 2 deferred; 90-day kill criteria). 4 parallel agents:
+  CAN-1 engine work (193 tests, adversarial cases pass, independently
+  re-gated), dist pack, 15 verified targets + snapshot template, NLnet
+  draft. Tatiana merged CAN-1 (PR #19), shipped multi-provider cron
+  (4 runs: #1 green mistral-only, #2 google 503 gemini-3.5-flash, #3 404
+  gemini-2.5-flash closed-to-new-users, #4 GREEN with gemini-3.5-flash-lite
+  — model verified live via /v1beta/models + OpenAI-compat test calls in
+  her browser), landing v3 + guide page live (75e5999), CONTRIBUTING.md
+  (d0244d7), README 134->193. GEMINI secret added via remote Chrome
+  (form_input + JS dispatch of Run-workflow — GitHub dropdown resists
+  ref-clicks; details.open=true + button click works). Board: 2 models
+  STABLE. GTM docs in business/ (plan, fixpack, targets, template, NLnet,
+  OpenSSF checklist, dist_S040/).
 - S039 (2026-07-22): FIX-2b — analytical quorum schedule ("Seismo bound").
   #5-analytical route (real-data #5 impossible pre-network). Model (exact
   binomial, scripts/experiment_quorum_bound.py): binding constraint is POWER,

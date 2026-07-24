@@ -1,14 +1,42 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-22 (Session 039: FIX-2b analytical quorum schedule
-# authored — q(M)=max(3,ceil(M/3)), QUORUM_FRAC_DEN 2->3; 151 pass on clean
-# clone; Keystone FIX-2b UNSIGNED; awaiting Tatiana branch/host-gate/merge)
+# Last updated: 2026-07-24 (Session 040, GTM sprint: CAN-1 merged -> 193
+# tests; multi-provider cron live, board 2 models; landing v3 + guide live;
+# CONTRIBUTING.md; README 193; GTM/targets/NLnet/OpenSSF packs in business/)
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S040 — 2026-07-24 (GTM sprint: CAN-1 + distribution + packaging)
+- [x] State verified via fresh GitHub clone (auto-memory lagged one session).
+- [x] CAN-1 MERGED (PR #19, c439105): tool-calling canaries +
+      output/reasoning token metrics; **main baseline 193** (host + fresh
+      sandbox clone both gated). KEYSTONE_REPORT_CAN-1.md at root.
+  - [ ] TATIANA: sign Keystone CAN-1 §6 after review.
+  - [ ] probe 1.2.0 release (CAN-1 features) + tool-calling-drift post.
+- [x] probe_weather multi-provider cron LIVE (2x daily): board shows
+      google/gemini-3.5-flash-lite + mistral/mistral-small-latest STABLE.
+      Secrets: MISTRAL/GEMINI/SEISMOGRAPH_ID_B64. Gemini lesson: 2.5-flash
+      closed to new users; 3.5-flash 503 free tier; -> 3.5-flash-lite.
+  - [ ] OPENAI_API_KEY + ANTHROPIC_API_KEY (paid ~$5 each) -> 4 models.
+- [x] Landing v3 LIVE (75e5999): 193, backtest-first card, trust row + DOI,
+      security §, alert-signup form, early-observer line, guide page at
+      /guides/detect-silent-llm-change/ (canonical for dev.to -1lia).
+  - [ ] TATIANA one-click: formsubmit.co activation email (else signups drop).
+- [x] CONTRIBUTING.md (d0244d7); README 134->193 (this commit).
+- [x] GTM packs in business/ (gitignored): GTM_30DAY_S040 (goal ~23.08:
+      >=5 scans, >=1 Baseline €2,500; kill criteria end-Oct),
+      targets_15_S040 + snapshot_template (9 Claude targets; top: Robin AI,
+      Lovable, Hebbia), dist_S040/ (GitHub Action llm-drift-check +
+      MCP server — publish next), openssf_badge_checklist, NLnet draft.
+- [ ] OpenSSF anketa (bestpractices.dev, ~1-1.5h, checklist ready).
+- [ ] NLnet: general call closed until ~01.10; check nlnet.nl/propose ~25.09.
+- [ ] Snapshot offensive: Claude targets can start now; rest after ~2wk
+      of board baseline. Briefing #1 unblocked (fill after a few days).
+
 
 ## S039 — 2026-07-22 (FIX-2b: analytical quorum schedule, the "Seismo bound")
 - [~] FIX-2b AUTHORED on a clean clone (base 2fc6108); NOT yet on a branch/

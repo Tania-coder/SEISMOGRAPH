@@ -2894,3 +2894,115 @@ from an explicit FP/power model instead of the FIX-2 synthetic frac=1/2.
 - TECHNIQUE LOGGED: in this remote browser, screenshot/CDP can freeze;
   read_page/find + click-by-ref (not pixel coords) is the reliable path for
   clicks and modals.
+
+---
+
+## Session 040 — 2026-07-24
+
+**Director:** Tatiana
+**Co-pilot:** Claude (claude-fable-5)
+**Phase:** GTM sprint (engineering parked except market-driven CAN-1)
+**Task:** "Where am I, how well is the product packaged, how do I start
+earning" -> verified state + market audit + full go-to-market execution.
+
+### Verified state (two-pass, fresh clone + independent checks)
+- Auto-memory lagged one session (S038 snapshot); fresh GitHub clone showed
+  FIX-2b already merged+signed (be8dc5f/c277740) and S039 closed 24.07.
+- PyPI 1.1.0 live (pip index); landing live but "134 tests" stale; GitHub
+  3 stars / 0 forks; /v1/weather EMPTY -> reach + shop-window = bottleneck.
+
+### Market audit (objective, web-verified)
+- Single-org LLM observability: saturated (Galileo/Arize/Confident/Langfuse)
+  — do NOT build there. Benchmarks-by-level: Artificial Analysis owns it.
+- NICHE CONFIRMED OPEN: statistically rigorous public silent-CHANGE
+  detection. Closest = daily-bench (19-star hobby, no stats, self-admits
+  variance). SEISMOGRAPH differentiators: CUSUM dated alerts, reproducible
+  incident backtest, DOI, federation (long-term moat, cold-start honest).
+- Strategy set: NO standalone app. Distribution into dev workflows
+  (GitHub Action, MCP server, alert subscription). Trust ladder: OpenSSF
+  badge + security page + DOI now; testimonials via design-partner free
+  scans; SOC 2 deferred until an enterprise prospect asks. 90-day kill
+  criteria (end-Oct): no called incident AND <20 alert signups AND 0 scan
+  requests -> fold to research+consulting.
+
+### Execution (4 parallel agents + Tatiana browser/PowerShell loop)
+- **CAN-1 MERGED (PR #19, c439105): 151 -> 193 tests.** Tool-calling
+  canaries (suite v1.1.0, frozen tool schema, tool_call_validity_rate) +
+  output/reasoning token metrics (DP-treated; additive gateway allowlist).
+  engine/ untouched. Contract-first, both mandatory adversarial cases pass
+  (Sybil metric-flood cannot promote; silent tool-schema rename caught).
+  Gate: agent clone 193 + main-session independent re-run 193 + Tatiana
+  host 193 + post-merge fresh-clone 193, ruff x2 clean everywhere.
+  Keystone CAN-1 at root (unsigned). Caveats logged: deploy gateway before
+  new probes; new metrics not column-persisted / not re-warmed.
+- **probe_weather multi-provider cron LIVE** (.github/workflows/, 2x daily,
+  matrix mistral/openai/anthropic/google, missing-secret legs skip).
+  Debug chain: run #2 google 503 (gemini-3.5-flash free-tier overload),
+  run #3 404 (gemini-2.5-flash "no longer available to new users"),
+  live model probe via /v1beta/models + OpenAI-compat test calls in
+  Tatiana's browser -> pinned gemini-3.5-flash-lite -> run #4 GREEN.
+  **Board now: google/gemini-3.5-flash-lite + mistral/mistral-small-latest,
+  both STABLE.** Google API keys now come "AQ."-prefixed (not AIza) — valid.
+- **Landing v3 LIVE (drift-defense 75e5999)**: 134->193, 38-days card
+  rewritten backtest-first ("A seeded, reproducible backtest flags..."),
+  honest "Live" card (was aspirational "4 models"), trust row (Apache-2.0 /
+  193 CI / CodeQL 0 / OIDC / DOI), security-posture §, alert-signup form
+  (formsubmit.co + GoatCounter cta-alert-signup; activation email pending),
+  early-observer program line, guide page LIVE at
+  /guides/detect-silent-llm-change/ (self-contained HTML, JSON-LD
+  Article+FAQ, canonical target of dev.to -1lia). All 5 changes verified
+  on prod post-deploy.
+- **CONTRIBUTING.md added (d0244d7)** — closes the one OpenSSF passing-level
+  gap. README 134->193 (badge + prose + test-suite line, this commit).
+- **GTM deliverables (business/, gitignored):** GTM_30DAY_S040.md (goal by
+  ~23.08: >=5 scan requests, >=1 paid Baseline EUR 2,500; weekly metric
+  ritual), landing_fixpack_S040.md (applied), targets_15_S040.md (15
+  companies w/ live-verified provider evidence; 9 Claude — top Robin AI /
+  Lovable / Hebbia; excluded all already-contacted), snapshot_template_S040
+  (locked phrasing baked), dist_S040/ (GitHub Action "llm-drift-check" w/
+  honest LIMITATIONS — engine CUSUM not in the published wheel, wrapper
+  reimplements; MCP server over /v1/weather, pin mcp<2; email-capture
+  block), openssf_badge_checklist_S040.md, nlnet_application_draft_S040.md.
+- **NLnet reality check:** general/Commons call CLOSED (final call ended
+  01.06.2026); only TALER+Fediversity open to 01.08 (poor fit). Hold for
+  first post-summer open call (~01.10, new Open Internet Stack funds);
+  draft is fund-agnostic, ask EUR 30k/12mo. Recheck nlnet.nl/propose ~25.09.
+
+### Technique log
+- GitHub "Run workflow" dropdown resists ref-clicks in remote Chrome;
+  reliable: javascript_tool -> details.textContent.includes('Run workflow')
+  -> .open=true -> wait 2.5s -> click button[type=submit]. Secrets form
+  automates cleanly via find + form_input (GEMINI_API_KEY added this way).
+- Screenshot/CDP froze again mid-session; read_page/find/JS path stable
+  (S039 lesson holds). Chrome extension dropped once; reconnected.
+- 4-agent parallel pattern worked: dist/engine/targets/grant; engine agent
+  on its own clone copy; main session re-runs the gate before shipping.
+
+### Open at close (S040)
+1. Tatiana: formsubmit.co activation email (one click, else signups drop);
+   sign Keystone CAN-1 §6; OpenSSF anketa (checklist ready).
+2. OPENAI_API_KEY + ANTHROPIC_API_KEY secrets (~$5 paid accounts) -> 4
+   models on the board automatically.
+3. probe 1.2.0 release + tool-calling-drift post (content hook ready).
+4. Snapshot offensive per GTM plan: Claude targets now; others after ~2wk
+   board baseline. Briefing #1 unblocked. NLnet recheck ~25.09.
+5. PyPI download stats (pypistats 429 x4 sessions).
+- git by Tatiana throughout (PowerShell + web UI); Claude authored, gated,
+  and verified; browser actions only via her connected Chrome.
+
+### Addendum (S040 late) — external review -> GTM PLAN V2
+- Tatiana brought an external critique; fact-checked against live state:
+  live probes / honest headline / synced numbers / SOC-2-replacement were
+  already done earlier this same session; suite size confirmed 4 prompts
+  (expansion real); "134 vs 103" stale. PLAN V2 written
+  (business/GTM_PLAN_V2_S040.md, supersedes GTM_30DAY): NEW = Migration
+  Diff offer EUR 1,500 (frequent migration pain vs rare drift), suite
+  4->~50 as CAN-2 (do early, board history young), METHODOLOGY.md freeze
+  commit, paid hosting + weather.driftdefense.dev, weekly Model Weather
+  Report ritual (first ~31.07), design partners = free forever for first
+  3-5 network observers. PUSHBACK held: Show HN week 3-4 only (account
+  flagged x2, S038 lesson); reddit/LinkedIn/LLMOps go first. Cadence stays
+  2x/day (Seismo bound vs 14d TTL at multi-org).
+- Session ended here. Tatiana's pending: S040 close commit (this file
+  146907+ bytes pre-addendum, README 193, CURRENT_STATE, backlog),
+  formsubmit activation click, hosting decision, 2 paid API keys.
