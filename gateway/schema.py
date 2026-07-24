@@ -116,8 +116,27 @@ class InboundSignalBatch(BaseModel):
 
     # Metric keys accepted in the metrics dict.  Any unknown key is
     # treated as a potential raw-text leakage vector and rejected.
+    #
+    # ADDITIVE extension (SG-FEAT-TOOLCALL-001 / SG-FEAT-TOKENS-001):
+    # tool_call_validity_rate, avg_output_tokens, avg_reasoning_tokens
+    # are DP-noised aggregates emitted by probes running suite v1.1.0
+    # or usage-reporting providers.  All previously valid payloads
+    # remain valid; every other unknown key still 422s.  Kept in
+    # lockstep with probe/privacy.py::SignalBatch._METRIC_KEYS.
+    # SG-TRACE: REQ-GW-030
+    #   | assumption: allowlist growth is additive-only and never
+    #     removes a key within a major gateway version
+    #   | test: test_gateway_accepts_new_metric_keys,
+    #           test_gateway_still_rejects_unknown_metric_key
     _ALLOWED_METRIC_KEYS: frozenset[str] = frozenset(
-        {"avg_output_length", "json_success_rate", "result_count"}
+        {
+            "avg_output_length",
+            "json_success_rate",
+            "result_count",
+            "tool_call_validity_rate",
+            "avg_output_tokens",
+            "avg_reasoning_tokens",
+        }
     )
 
     @model_validator(mode="after")

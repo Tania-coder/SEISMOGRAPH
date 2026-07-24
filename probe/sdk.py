@@ -412,6 +412,31 @@ class ProbeSDK:
         output_tokens = span.attributes.get("gen_ai.usage.output_tokens", 0)
         output_length = int(output_tokens) if output_tokens else 0
 
+        # SG-FEAT-TOKENS-001: carry token counters (None-safe) so the
+        # Aggregator can emit avg_output_tokens / avg_reasoning_tokens.
+        # SG-TRACE: REQ-TOKMET-003
+        #   | assumption: absent attributes mean the provider reported
+        #     no usage; None (not 0) preserves that distinction
+        #   | test: test_finish_span_captures_token_attributes
+        output_tokens_field: int | None = (
+            int(output_tokens)
+            if "gen_ai.usage.output_tokens" in span.attributes
+            else None
+        )
+        _reasoning = span.attributes.get("gen_ai.usage.reasoning_tokens")
+        reasoning_tokens_field: int | None = (
+            int(_reasoning) if _reasoning is not None else None
+        )
+        # SG-FEAT-TOOLCALL-001: optional tool-call validity flag.
+        # SG-TRACE: REQ-TOOLCAN-012
+        #   | assumption: absent attribute -> None (not a tool canary);
+        #     only an explicit boolean marks a tool canary span
+        #   | test: test_finish_span_captures_tool_call_valid
+        _tool_valid = span.attributes.get("gen_ai.response.tool_call_valid")
+        tool_call_valid_field: bool | None = (
+            bool(_tool_valid) if _tool_valid is not None else None
+        )
+
         json_valid = bool(
             span.attributes.get("gen_ai.response.json_valid", False)
         )
@@ -434,6 +459,9 @@ class ProbeSDK:
             output_length=output_length,
             json_valid=json_valid,
             latency_ms=latency_ms,
+            tool_call_valid=tool_call_valid_field,
+            output_tokens=output_tokens_field,
+            reasoning_tokens=reasoning_tokens_field,
         )
 
         self._aggregator.add_result(result)

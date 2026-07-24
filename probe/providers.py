@@ -45,6 +45,7 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable
+from dataclasses import dataclass
 
 # A transport takes (url, headers, body_bytes, timeout) and returns the
 # decoded JSON response dict. Injectable so tests never touch the network.
@@ -101,6 +102,83 @@ def _urllib_transport(
         raise ProviderError("provider returned non-JSON body") from None
 
 
+@dataclass(frozen=True)
+class CompletionResult:
+    """Structured result of one chat completion call.
+
+    Carries the raw text / raw tool-call JSON back to the caller
+    (probe.canary.execute_canary), which immediately derives
+    booleans/hashes and discards the raw strings.  Nothing here is
+    logged or persisted by this module.
+
+    Fields
+    ------
+    text:
+        Raw assistant message content.  Empty string when the model
+        answered with a tool call only (content null).
+    tool_calls_json:
+        Canonical JSON string (sorted keys, ASCII) of the
+        ``message.tool_calls`` list, or None when the response
+        contained no tool calls.
+    output_tokens:
+        ``usage.completion_tokens`` if present and integral, else None.
+    reasoning_tokens:
+        ``usage.completion_tokens_details.reasoning_tokens`` if present
+        and integral, else None.
+    latency_ms:
+        Wall-clock milliseconds for the API call.
+
+    #SG-TRACE: REQ-TOKMET-001
+    #   | assumption: usage fields are optional in OpenAI-compatible
+    #     responses; None-safe capture, never an exception
+    #   | test: test_usage_fields_none_safe
+    """
+
+    text: str
+    tool_calls_json: str | None
+    output_tokens: int | None
+    reasoning_tokens: int | None
+    latency_ms: int
+
+
+def _int_or_none(value: object) -> int | None:
+    """Coerce a usage counter to int, or None if absent/non-integral.
+
+    #SG-TRACE: REQ-TOKMET-001
+    #   | assumption: providers may send usage counters as int or
+    #     float; bool and strings are treated as absent (None)
+    #   | test: test_usage_fields_none_safe
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return int(value)
+
+
+def _parse_usage(data: dict) -> tuple[int | None, int | None]:
+    """Extract (output_tokens, reasoning_tokens) from a response dict.
+
+    None-safe: any missing or malformed level yields None for that
+    field, never an exception.
+
+    #SG-TRACE: REQ-TOKMET-001
+    #   | assumption: usage.completion_tokens and
+    #     usage.completion_tokens_details.reasoning_tokens are the
+    #     OpenAI-compatible field names; other providers omit them
+    #   | test: test_usage_fields_none_safe
+    """
+    usage = data.get("usage")
+    if not isinstance(usage, dict):
+        return None, None
+    output_tokens = _int_or_none(usage.get("completion_tokens"))
+    details = usage.get("completion_tokens_details")
+    reasoning_tokens = (
+        _int_or_none(details.get("reasoning_tokens"))
+        if isinstance(details, dict)
+        else None
+    )
+    return output_tokens, reasoning_tokens
+
+
 class OpenAICompatibleProvider:
     """Minimal OpenAI-compatible Chat Completions client for canaries.
 
@@ -151,25 +229,72 @@ class OpenAICompatibleProvider:
         """Run one chat completion; return (raw_text, latency_ms).
 
         temperature is forced to 0 for determinism and cost control.
+        Signature and error behavior are frozen (backward-compatible
+        wrapper over complete_ex).
 
         #SG-TRACE: REQ-CANARY-021
         #   | assumption: temperature=0 + max_tokens cap keep the call
         #     deterministic and within the canary cost contract
         #   | test: test_provider_forces_temperature_zero
         """
+        res = self.complete_ex(model, system, user)
+        return res.text, res.latency_ms
+
+    def complete_ex(
+        self,
+        model: str,
+        system: str,
+        user: str,
+        tools: list[dict] | None = None,
+        max_tokens: int | None = None,
+    ) -> CompletionResult:
+        """Run one chat completion; return a structured CompletionResult.
+
+        temperature is forced to 0.  When ``tools`` is given, the
+        OpenAI-compatible ``tools`` parameter is included verbatim and
+        a content of null is tolerated (tool-call-only answers).
+        Without ``tools``, behavior matches the historical complete()
+        contract exactly: non-string content raises ProviderError.
+
+        Parameters
+        ----------
+        tools:
+            Optional OpenAI-format tool definitions list.  Omitted
+            from the payload when None (wire-format unchanged for all
+            pre-existing callers).
+        max_tokens:
+            Optional per-call override of the constructor cap.  Used
+            by the tool canary (needs ~64 tokens for arguments) while
+            keeping the plain-text canaries at the tight default.
+
+        #SG-TRACE: REQ-TOOLCAN-020
+        #   | assumption: adding "tools" only when not None keeps the
+        #     request byte-identical for non-tool canaries (backward
+        #     compatible with providers rejecting unknown params)
+        #   | test: test_complete_ex_payload_omits_tools_when_none
+        #SG-TRACE: REQ-TOOLCAN-021
+        #   | assumption: tool_calls serialised with sorted keys /
+        #     ASCII so the caller's hash is canonical; raw string is
+        #     returned to caller only, never logged here
+        #   | test: test_complete_ex_returns_tool_calls_json
+        """
         url = f"{self._base_url}/chat/completions"
         headers = {"Content-Type": "application/json"}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
-        payload = {
+        payload: dict = {
             "model": model,
             "temperature": 0,
-            "max_tokens": self._max_tokens,
+            "max_tokens": (
+                self._max_tokens if max_tokens is None else max_tokens
+            ),
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
         }
+        if tools is not None:
+            payload["tools"] = tools
         body = json.dumps(payload).encode("utf-8")
 
         start = time.perf_counter()
@@ -184,9 +309,36 @@ class OpenAICompatibleProvider:
         latency_ms = int((time.perf_counter() - start) * 1000)
 
         try:
-            raw = data["choices"][0]["message"]["content"]
+            message = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError):
             raise ProviderError("unexpected completion schema") from None
+        if not isinstance(message, dict):
+            raise ProviderError("unexpected completion schema") from None
+
+        raw = message.get("content")
+        tool_calls = message.get("tool_calls")
+        tool_calls_json: str | None = None
+        if isinstance(tool_calls, list) and tool_calls:
+            tool_calls_json = json.dumps(
+                tool_calls, sort_keys=True, ensure_ascii=True
+            )
+
         if not isinstance(raw, str):
-            raise ProviderError("completion content not a string") from None
-        return raw, latency_ms
+            if tools is None:
+                # Frozen historical contract: text canaries require a
+                # string content.
+                raise ProviderError(
+                    "completion content not a string"
+                ) from None
+            # Tool mode: content may legitimately be null.
+            raw = ""
+
+        output_tokens, reasoning_tokens = _parse_usage(data)
+
+        return CompletionResult(
+            text=raw,
+            tool_calls_json=tool_calls_json,
+            output_tokens=output_tokens,
+            reasoning_tokens=reasoning_tokens,
+            latency_ms=latency_ms,
+        )

@@ -45,6 +45,16 @@ from probe.providers import model_name_from_tuple
 
 SUITE_VERSION: str = "v1.0.0"
 
+# Suite v1.1.0 adds the tool_calling canary category on top of the
+# frozen v1.0.0 prompts.  v1.0.0 itself is never mutated (append-only
+# corpus policy, REQ-CANARY-001).
+SUITE_VERSION_V1_1: str = "v1.1.0"
+
+# Cost cap for the tool canary: arguments for the frozen schema fit in
+# well under 64 tokens; text canaries keep the provider's tighter
+# default.  Total suite remains 4 prompts (<= 200 cap).
+TOOL_CANARY_MAX_TOKENS: int = 64
+
 # Each entry: (prompt_id, system_prompt, user_prompt)
 # Prompt texts are ASCII-only and frozen for this suite version.
 # To change any text, create SUITE_VERSION = "v1.0.1" and a new list.
@@ -106,6 +116,83 @@ CANARY_SUITE_V1: list[dict[str, str]] = [
 
 
 # ---------------------------------------------------------------------------
+# Tool-calling canary (suite v1.1.0) -- SG-FEAT-TOOLCALL-001
+# ---------------------------------------------------------------------------
+
+# Frozen OpenAI-compatible tool definition.  Any change to this schema
+# is a corpus change and MUST ship as a new suite version (the schema
+# is included in suite_content_hash below).
+
+# SG-TRACE: REQ-TOOLCAN-001
+#   | assumption: a single small function schema is a sufficient
+#     tool-calling fingerprint; enum + required + additionalProperties
+#     cover the common silent-drift failure modes
+#   | test: test_frozen_tool_schema_shape
+
+FROZEN_TOOL_SCHEMA_V1: dict = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": (
+            "Get the current weather for a location in the given unit."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string"},
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                },
+            },
+            "required": ["location", "unit"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+_TOOL_CANARY_PROMPT: dict[str, str] = {
+    "prompt_id": "v1.1.0-toolcall",
+    "category": "tool_calling",
+    "system": (
+        "You are a function-calling assistant. "
+        "Always answer by calling the provided tool with valid "
+        "arguments. Never answer in prose."
+    ),
+    "user": ("What is the current weather in Paris, France, in celsius?"),
+}
+
+# v1.1.0 corpus = frozen v1.0.0 prompts + the tool canary (append-only).
+CANARY_SUITE_V1_1: list[dict[str, str]] = [
+    *CANARY_SUITE_V1,
+    _TOOL_CANARY_PROMPT,
+]
+
+
+def suite_content_hash(
+    suite: list[dict[str, str]],
+    tools: list[dict] | None = None,
+) -> str:
+    """Content-address a suite corpus (prompts + frozen tool schemas).
+
+    Mirrors CanarySuiteVersion.from_prompts (canonical JSON, sorted
+    keys, ASCII) but also folds in the frozen tool definitions so a
+    tool-schema change produces a new version hash even when prompt
+    texts are unchanged.
+
+    #SG-TRACE: REQ-TOOLCAN-002
+    #   | assumption: SHA-256 over canonical JSON of prompts+tools is
+    #     deterministic and collision-resistant for corpus addressing
+    #   | test: test_suite_content_hash_covers_tool_schema
+    """
+    corpus = {"prompts": suite, "tools": tools or []}
+    corpus_bytes = json.dumps(
+        corpus, sort_keys=True, ensure_ascii=True
+    ).encode("utf-8")
+    return hashlib.sha256(corpus_bytes).hexdigest()
+
+
+# ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
 
@@ -130,6 +217,17 @@ class CanaryResult:
                         Set to False for all other categories.
         latency_ms:     Wall-clock milliseconds for the API call.
                         Set to -1 in mock mode.
+        tool_call_valid:
+                        True/False iff category=tool_calling: did the
+                        response contain a tool call that parses and
+                        validates against the frozen schema.
+                        None for all non-tool categories (None-safe;
+                        distinguishes "not applicable" from "failed").
+        output_tokens:  usage.completion_tokens from the provider
+                        response, or None when usage is absent.
+        reasoning_tokens:
+                        usage.completion_tokens_details
+                        .reasoning_tokens, or None when absent.
 
     #SG-TRACE: REQ-CANARY-013
     #   | assumption: SHA-256(output) is a sufficient fingerprint for
@@ -146,6 +244,13 @@ class CanaryResult:
     output_length: int
     json_valid: bool
     latency_ms: int = field(default=-1)
+    # SG-TRACE: REQ-TOOLCAN-010
+    #   | assumption: defaulted fields keep every pre-existing keyword
+    #     construction of CanaryResult valid (backward compatible)
+    #   | test: test_canary_result_backward_compatible_defaults
+    tool_call_valid: bool | None = field(default=None)
+    output_tokens: int | None = field(default=None)
+    reasoning_tokens: int | None = field(default=None)
 
     def to_dict(self) -> dict[str, object]:
         """Serialise to a plain dict for transmission."""
@@ -158,6 +263,9 @@ class CanaryResult:
             "output_length": self.output_length,
             "json_valid": self.json_valid,
             "latency_ms": self.latency_ms,
+            "tool_call_valid": self.tool_call_valid,
+            "output_tokens": self.output_tokens,
+            "reasoning_tokens": self.reasoning_tokens,
         }
 
 
@@ -201,6 +309,89 @@ def _is_json_valid(raw: str) -> bool:
         return False
 
 
+def _validate_tool_args(args: object, schema: dict) -> bool:
+    """Minimal JSON-schema check for the frozen tool parameter schema.
+
+    Supports exactly the constructs used by FROZEN_TOOL_SCHEMA_V1:
+    type=object, string properties, enum, required,
+    additionalProperties=False.  Stdlib-only by design (the probe
+    package stays dependency-light; no jsonschema dependency).
+
+    #SG-TRACE: REQ-TOOLCAN-003
+    #   | assumption: the frozen schema only uses object/string/enum/
+    #     required/additionalProperties; extending the schema requires
+    #     extending this validator AND a new suite version
+    #   | test: test_tool_call_validity_matrix
+    """
+    if not isinstance(args, dict):
+        return False
+    properties: dict = schema.get("properties", {})
+    if schema.get("additionalProperties") is False:
+        if set(args) - set(properties):
+            return False
+    for req in schema.get("required", []):
+        if req not in args:
+            return False
+    for key, value in args.items():
+        prop = properties.get(key)
+        if prop is None:
+            continue
+        if prop.get("type") == "string" and not isinstance(value, str):
+            return False
+        if "enum" in prop and value not in prop["enum"]:
+            return False
+    return True
+
+
+def _is_tool_call_valid(
+    tool_calls_json: str | None,
+    tool_schema: dict | None = None,
+) -> bool:
+    """Return True iff the response contains a schema-valid tool call.
+
+    Checks, in order (any failure -> False, never an exception):
+      1. tool_calls_json is present and parses as a non-empty list.
+      2. The first call is a function call targeting the frozen
+         function name.
+      3. ``function.arguments`` parses as JSON.
+      4. The arguments validate against the frozen parameter schema.
+
+    Raw argument text never leaves this function -- only the boolean.
+
+    #SG-TRACE: REQ-TOOLCAN-004
+    #   | assumption: first tool call is the fingerprint; multi-call
+    #     responses are scored on call[0] (deterministic at temp=0)
+    #   | test: test_tool_call_validity_matrix
+    """
+    if tool_schema is None:
+        tool_schema = FROZEN_TOOL_SCHEMA_V1
+    if not tool_calls_json:
+        return False
+    try:
+        calls = json.loads(tool_calls_json)
+    except (json.JSONDecodeError, ValueError):
+        return False
+    if not isinstance(calls, list) or not calls:
+        return False
+    call = calls[0]
+    if not isinstance(call, dict):
+        return False
+    function = call.get("function")
+    if not isinstance(function, dict):
+        return False
+    expected_name = tool_schema["function"]["name"]
+    if function.get("name") != expected_name:
+        return False
+    raw_args = function.get("arguments")
+    if not isinstance(raw_args, str):
+        return False
+    try:
+        args = json.loads(raw_args)
+    except (json.JSONDecodeError, ValueError):
+        return False
+    return _validate_tool_args(args, tool_schema["function"]["parameters"])
+
+
 # ---------------------------------------------------------------------------
 # Mock provider responses (offline structural testing)
 # ---------------------------------------------------------------------------
@@ -240,6 +431,34 @@ _MOCK_RESPONSES: dict[str, str] = {
     ),
 }
 
+# Mock tool-call responses (offline structural testing of the
+# tool_calling category).  Stored as the canonical tool_calls JSON a
+# provider would return; hashed and discarded like any raw output.
+
+# SG-TRACE: REQ-TOOLCAN-005
+#   | assumption: mock tool call is schema-valid so the mock path
+#     exercises tool_call_valid=True; live hashes will differ
+#   | test: test_execute_canary_mock_tool_suite
+
+_MOCK_TOOL_CALLS: dict[str, str] = {
+    "v1.1.0-toolcall": json.dumps(
+        [
+            {
+                "id": "call_mock_0",
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "arguments": (
+                        '{"location": "Paris, France", "unit": "celsius"}'
+                    ),
+                },
+            }
+        ],
+        sort_keys=True,
+        ensure_ascii=True,
+    ),
+}
+
 
 # ---------------------------------------------------------------------------
 # Canary executor
@@ -251,6 +470,7 @@ def execute_canary(
     suite: list[dict[str, str]] | None = None,
     mock: bool = True,
     provider: object | None = None,
+    suite_version: str | None = None,
 ) -> list[CanaryResult]:
     """Execute all prompts in the canary suite and return results.
 
@@ -268,6 +488,15 @@ def execute_canary(
         An object exposing ``complete(model, system, user) ->
         (raw_text, latency_ms)`` (see probe.providers
         .OpenAICompatibleProvider). Required when mock=False.
+        Suites containing a ``tool_calling`` category additionally
+        require ``complete_ex(model, system, user, tools=...,
+        max_tokens=...) -> CompletionResult``.  When ``complete_ex``
+        is available it is also used for text canaries so token
+        usage (Feature B) is captured; otherwise usage stays None.
+    suite_version:
+        Version string stamped on every result.  Defaults to
+        SUITE_VERSION ("v1.0.0") for the default suite; pass
+        SUITE_VERSION_V1_1 when running CANARY_SUITE_V1_1.
 
     Returns
     -------
@@ -283,6 +512,8 @@ def execute_canary(
     """
     if suite is None:
         suite = CANARY_SUITE_V1
+    if suite_version is None:
+        suite_version = SUITE_VERSION
 
     if not mock and provider is None:
         raise ValueError(
@@ -290,15 +521,71 @@ def execute_canary(
             "provider=OpenAICompatibleProvider(...) or set mock=True."
         )
 
+    # complete_ex is the richer entry point (tools + usage capture);
+    # legacy duck-typed providers exposing only complete() still work
+    # for text canaries (tokens stay None).
+    complete_ex = getattr(provider, "complete_ex", None)
+
     results: list[CanaryResult] = []
     ts = datetime.now(tz=timezone.utc).isoformat()
     model_name = model_name_from_tuple(model_tuple)
 
     for prompt in suite:
         pid = prompt["prompt_id"]
+        is_tool = prompt.get("category") == "tool_calling"
+        tool_call_valid: bool | None = None
+        output_tokens: int | None = None
+        reasoning_tokens: int | None = None
+
         if mock:
-            raw_output: str = _MOCK_RESPONSES.get(pid, "")
+            # SG-TRACE: REQ-TOOLCAN-005
+            #   | assumption: mock path is offline-only; tool canaries
+            #     score against the frozen mock tool_calls JSON
+            #   | test: test_execute_canary_mock_tool_suite
+            if is_tool:
+                raw_output: str = _MOCK_TOOL_CALLS.get(pid, "")
+                tool_call_valid = _is_tool_call_valid(raw_output or None)
+            else:
+                raw_output = _MOCK_RESPONSES.get(pid, "")
             latency_ms = -1
+        elif is_tool:
+            # SG-TRACE: REQ-TOOLCAN-006
+            #   | assumption: tool canaries require complete_ex; a
+            #     provider without tools support fails loudly rather
+            #     than silently emitting tool_call_valid=False
+            #   | test: test_execute_canary_tool_requires_complete_ex
+            if complete_ex is None:
+                raise ValueError(
+                    "Suite contains a tool_calling canary but the "
+                    "provider does not expose complete_ex(...); use "
+                    "probe.providers.OpenAICompatibleProvider."
+                )
+            res = complete_ex(
+                model_name,
+                prompt["system"],
+                prompt["user"],
+                tools=[FROZEN_TOOL_SCHEMA_V1],
+                max_tokens=TOOL_CANARY_MAX_TOKENS,
+            )
+            # Fingerprint the tool_calls JSON when present, else the
+            # (unexpected) prose answer -- either way only hash/length
+            # survive.
+            raw_output = res.tool_calls_json or res.text
+            tool_call_valid = _is_tool_call_valid(res.tool_calls_json)
+            output_tokens = res.output_tokens
+            reasoning_tokens = res.reasoning_tokens
+            latency_ms = res.latency_ms
+        elif complete_ex is not None:
+            # SG-TRACE: REQ-TOKMET-002
+            #   | assumption: usage capture for text canaries is free
+            #     when the provider supports complete_ex; behavior is
+            #     otherwise identical to the legacy complete() path
+            #   | test: test_execute_canary_captures_usage_tokens
+            res = complete_ex(model_name, prompt["system"], prompt["user"])
+            raw_output = res.text
+            output_tokens = res.output_tokens
+            reasoning_tokens = res.reasoning_tokens
+            latency_ms = res.latency_ms
         else:
             raw_output, latency_ms = provider.complete(  # type: ignore
                 model_name, prompt["system"], prompt["user"]
@@ -307,7 +594,7 @@ def execute_canary(
         result = CanaryResult(
             timestamp=ts,
             model_tuple=model_tuple,
-            suite_version=SUITE_VERSION,
+            suite_version=suite_version,
             prompt_id=pid,
             response_hash=_hash_output(raw_output),
             output_length=len(raw_output),
@@ -317,6 +604,9 @@ def execute_canary(
                 else False
             ),
             latency_ms=latency_ms,
+            tool_call_valid=tool_call_valid,
+            output_tokens=output_tokens,
+            reasoning_tokens=reasoning_tokens,
         )
         # raw_output is explicitly NOT stored; discard here
         del raw_output
