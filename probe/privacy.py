@@ -19,6 +19,12 @@ Differential privacy design (epsilon=2.0 per flush window):
     averaging; delta_f = 8192/n; noise scale b = 4096/n.
   - json_success_rate: bounded [0,1] by construction; delta_f = 1/n;
     noise scale b = 0.5/n.
+  - tool_call_validity_rate (SG-FEAT-TOOLCALL-001): bounded [0,1];
+    delta_f = 1/n.  Emitted only when the batch contains >= 1 tool
+    canary (legacy batches keep the legacy key set).
+  - avg_output_tokens / avg_reasoning_tokens (SG-FEAT-TOKENS-001):
+    clamped to [0, MAX_TOKEN_COUNT=8192]; delta_f = 8192/n.  Emitted
+    only when >= 1 record carries the counter (None-safe).
   - result_count: infrastructure counter, not DP-noised (Phase 0).
   REQ-PRIV-010 IMPLEMENTED (2026-07-15): batch-aware sensitivity via
   _metric_sensitivity(metric, n).  n=1 degrades exactly to the former
@@ -84,9 +90,21 @@ if TYPE_CHECKING:
 EPSILON: float = 2.0
 MAX_OUTPUT_LENGTH: int = 8192
 
+# Token counters are clamped to the same 8192 ceiling as output length
+# before averaging (bounds the substitution-DP sensitivity to MAX/n).
+# SG-TRACE: REQ-TOKMET-010
+#   | assumption: 8192 is a safe upper bound for canary completions
+#     (max_tokens <= 64 on the wire); clamp only bounds sensitivity
+#   | test: test_token_metrics_clamped_and_noised
+MAX_TOKEN_COUNT: int = 8192
+
 _METRIC_SENSITIVITY: dict[str, float] = {
     "avg_output_length": float(MAX_OUTPUT_LENGTH),
     "json_success_rate": 1.0,
+    # SG-FEAT-TOOLCALL-001 / SG-FEAT-TOKENS-001 (additive):
+    "tool_call_validity_rate": 1.0,
+    "avg_output_tokens": float(MAX_TOKEN_COUNT),
+    "avg_reasoning_tokens": float(MAX_TOKEN_COUNT),
 }
 
 
@@ -435,9 +453,22 @@ class SignalBatch:
     result_count: int
     fleet_id: str | None = None
 
+    # Allow-list of metric keys permitted on the wire.  Kept in
+    # lockstep with gateway/schema.py::_ALLOWED_METRIC_KEYS.
+    # SG-TRACE: REQ-GW-030
+    #   | assumption: additive extension only; batches without
+    #     tool/token data emit exactly the legacy key set
+    #   | test: test_signal_batch_accepts_new_metric_keys
     _METRIC_KEYS: frozenset[str] = field(
         default=frozenset(
-            {"avg_output_length", "json_success_rate", "result_count"}
+            {
+                "avg_output_length",
+                "json_success_rate",
+                "result_count",
+                "tool_call_validity_rate",
+                "avg_output_tokens",
+                "avg_reasoning_tokens",
+            }
         ),
         init=False,
         repr=False,
@@ -643,6 +674,70 @@ class Aggregator:
             "json_success_rate": round(noised_rate, 4),
             "result_count": float(len(results)),
         }
+
+        # ------------------------------------------------------------------
+        # SG-FEAT-TOOLCALL-001: tool_call_validity_rate.
+        # Emitted only when the batch contains at least one tool
+        # canary (tool_call_valid is not None), so legacy batches keep
+        # the exact legacy key set (old-gateway compatibility).
+        # Rate is a mean over the full batch of n records with
+        # per-record values in {0, 1} (None counts 0, mirroring
+        # json_valid=False on non-format canaries) -> delta_f = 1/n.
+        # SG-TRACE: REQ-TOOLCAN-011
+        #   | assumption: mean over the full public batch size n keeps
+        #     the substitution-DP sensitivity at exactly 1/n
+        #   | test: test_tool_validity_rate_dp_noised
+        # ------------------------------------------------------------------
+        if any(r.tool_call_valid is not None for r in results):
+            raw_tool_rate = sum(
+                1 for r in results if r.tool_call_valid is True
+            ) / len(results)
+            noised_tool_rate = max(
+                0.0,
+                min(
+                    1.0,
+                    raw_tool_rate
+                    + _laplace_noise(
+                        _metric_sensitivity("tool_call_validity_rate", n)
+                        / EPSILON,
+                        self._rng,
+                    ),
+                ),
+            )
+            metrics["tool_call_validity_rate"] = round(noised_tool_rate, 4)
+
+        # ------------------------------------------------------------------
+        # SG-FEAT-TOKENS-001: avg_output_tokens / avg_reasoning_tokens.
+        # Emitted only when at least one record carries the counter.
+        # None-safe: missing counters contribute 0 (documented bias;
+        # a fixed provider either always or never reports usage, so
+        # like-for-like windows stay comparable).  Clamp to
+        # [0, MAX_TOKEN_COUNT] before averaging -> delta_f = MAX/n.
+        # SG-TRACE: REQ-TOKMET-011
+        #   | assumption: None->0 keeps the mean over fixed public n
+        #     (substitution DP holds); per-provider usage presence is
+        #     stable within a model_tuple stream
+        #   | test: test_token_metrics_clamped_and_noised
+        # ------------------------------------------------------------------
+        for metric_key, attr in (
+            ("avg_output_tokens", "output_tokens"),
+            ("avg_reasoning_tokens", "reasoning_tokens"),
+        ):
+            if all(getattr(r, attr) is None for r in results):
+                continue
+            clamped_tokens = [
+                float(max(0, min(getattr(r, attr) or 0, MAX_TOKEN_COUNT)))
+                for r in results
+            ]
+            noised_tokens = max(
+                0.0,
+                mean(clamped_tokens)
+                + _laplace_noise(
+                    _metric_sensitivity(metric_key, n) / EPSILON,
+                    self._rng,
+                ),
+            )
+            metrics[metric_key] = round(noised_tokens, 4)
 
         canary_hashes: dict[str, str] = {
             r.prompt_id: r.response_hash for r in results
