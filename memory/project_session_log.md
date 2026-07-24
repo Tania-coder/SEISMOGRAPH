@@ -2873,3 +2873,24 @@ from an explicit FP/power model instead of the FIX-2 synthetic frac=1/2.
   (2) radar handles live waves; (3) optional HTML version of the guide for
   driftdefense.dev/guides (owned SEO, set as canonical). Short tails unchanged
   (Briefing #1 /v1/weather, PyPI stats, Martin/Lars invites, hn@ draft).
+
+### Closing (S039, 2026-07-24) — #6 execution + verification
+- Evergreen guide PUBLISHED on dev.to (24.07):
+  .../did-the-model-get-worse-...-how-to-tell-...-1lia . Composed in-browser
+  (title/tags/body/code verified rendering). A duplicate copy
+  (...how-to-actually-tell-...-305b) was created too; UNPUBLISHED to Draft
+  (kept, not deleted) so only one live article.
+- LinkedIn invites Martin Raison + Lars Maaloe WITHDRAWN (browser, via
+  accessibility-tree ref clicks — screenshot renderer kept freezing, but
+  find()+click-by-ref is stable and bypassed the S038 coordinate-drift
+  failure). Kept Jose/Joel/Delphine. Sent People 5 -> 3.
+- Final verification: origin/main at 9c1cba7; FIX-2b commits present
+  (be8dc5f squash, c277740 sign+memory, 9c1cba7 addendum); QUORUM_FRAC_DEN=3
+  on origin/main; KEYSTONE_REPORT_FIX-2b + quorum_seismo_bound + scripts
+  tracked. Drift-radar task live (trig_01PPnjrGBoCzYD5MDFwAhZYQ).
+- Still open (carried): PyPI download stats (pypistats 429; retry later);
+  hn@ Gmail draft (Tatiana's call, advised not to send); Briefing #1 (board
+  empty -> needs regular emissions); optional HTML guide for driftdefense.dev.
+- TECHNIQUE LOGGED: in this remote browser, screenshot/CDP can freeze;
+  read_page/find + click-by-ref (not pixel coords) is the reliable path for
+  clicks and modals.

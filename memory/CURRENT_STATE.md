@@ -94,6 +94,9 @@
 - Analytics: https://driftdefense.goatcounter.com (GoatCounter, free
   tier, code driftdefense). Adblockers undercount — lower bound only.
 - dev.to:    https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl
+- dev.to guide (S039, evergreen how-to, PUBLISHED 2026-07-24):
+  https://dev.to/taniacoder/did-the-model-get-worse-or-is-it-just-you-how-to-tell-when-an-llm-api-silently-changes-1lia
+  (a duplicate "...how-to-actually-tell...-305b" was unpublished to Draft same day)
   (reply posted to Void Stitch's comment)
 - Show HN:   https://news.ycombinator.com/item?id=48773957 (posted + first comment)
 - PyPI:      https://pypi.org/project/seismograph-probe/ (1.1.0 LIVE, published
