@@ -39,7 +39,7 @@ name: probe-weather-multi
 
 on:
   schedule:
-    - cron: "17 5,17 * * *"   # 05:17 & 17:17 UTC daily (off-minute on purpose)
+    - cron: "17 1,6,11,16,21 * * *"  # WARM-UP 5x/day (DP budget ceiling); REVERT to "17 5,17 * * *" by 2026-08-05; M=1 only
   workflow_dispatch: {}        # manual "emit now" button
 
 permissions:
