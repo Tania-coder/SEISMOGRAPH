@@ -2,7 +2,7 @@
 seismograph.engine.detector
 ============================
 Single-metric CUSUM change-point detector with per-(model_tuple,
-metric_name) state management.
+suite_version, metric_name) state management.
 
 Algorithm
 ---------
@@ -20,10 +20,20 @@ production deployment.
 
 Baseline phase
 --------------
-Each (model_tuple, metric_name) stream accumulates
+Each (model_tuple, suite_version, metric_name) stream accumulates
 _MetricState.MIN_BASELINE_SAMPLES observations to estimate mu0 and
 sigma0 before CUSUM becomes active.  Observations during the baseline
 phase never generate alerts.
+
+Suite scoping (ENG-1)
+---------------------
+``suite_version`` is part of the stream identity.  Observations produced
+under different canary corpora are never mixed into one baseline, so a
+corpus cutover (e.g. v1.1.0 -> v2.0.0) starts a fresh, cold baseline
+instead of writing a step change into the incumbent stream.  The
+parameter is defaulted to ``""`` everywhere (the legacy catch-all
+bucket) so every pre-ENG-1 call site remains valid, exactly as
+``metric_name`` was introduced in FIX-2.
 
 Architectural notes
 -------------------
@@ -42,6 +52,11 @@ candidate alerts; correlation.py decides whether to surface them.
 #     for stable mu0/sigma0 estimates for Phase 0 mock data;
 #     Phase 1 will tune this on real probe traffic
 #   | test: test_cusum_baseline_stability
+#SG-TRACE: REQ-ENGSCOPE-001
+#   | assumption: the caller-asserted suite_version string is a
+#     sufficient corpus label for stream identity; content-hash scoping
+#     is stronger but needs a wire change (contract ENG-1 D1, deferred)
+#   | test: test_suite_scoped_streams_are_independent
 """
 
 from __future__ import annotations
@@ -78,13 +93,23 @@ class DriftAlert:
     threshold:
         The h value that was exceeded.
     window_count:
-        Total observations fed to this (model_tuple, metric_name)
-        stream since last reset, including baseline samples.
+        Total observations fed to this (model_tuple, suite_version,
+        metric_name) stream since last reset, including baseline
+        samples.
+    suite_version:
+        Canary suite version the drifting observations were produced
+        under, e.g. "v1.1.0".  Empty string is the legacy catch-all
+        bucket (callers that predate ENG-1).
 
     #SG-TRACE: REQ-ENGINE-010
     #   | assumption: direction field is sufficient to distinguish
     #     degradation (negative) from unexpected improvement (positive)
     #   | test: test_drift_alert_direction
+    #SG-TRACE: REQ-ENGSCOPE-002
+    #   | assumption: suite_version is appended LAST with a "" default so
+    #     every existing positional and keyword construction of DriftAlert
+    #     stays valid (contract C2)
+    #   | test: test_drift_alert_legacy_construction_defaults_suite
     """
 
     timestamp_ns: int
@@ -94,6 +119,7 @@ class DriftAlert:
     cusum_score: float
     threshold: float
     window_count: int
+    suite_version: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +128,7 @@ class DriftAlert:
 
 
 class _MetricState:
-    """CUSUM state for one (model_tuple, metric_name) pair.
+    """CUSUM state for one (model_tuple, suite_version, metric_name) key.
 
     Baseline accumulation phase: first MIN_BASELINE_SAMPLES observations
     are used to compute mu0 and sigma0.  No alert can fire during this
@@ -153,11 +179,22 @@ class _MetricState:
         model_tuple: str,
         metric_name: str,
         timestamp_ns: int,
+        suite_version: str = "",
     ) -> DriftAlert | None:
         """Process one observation.
 
         Returns a DriftAlert if a threshold is exceeded, else None.
         During the baseline phase always returns None.
+
+        ``suite_version`` is carried through onto the emitted alert only;
+        the CUSUM arithmetic (h, k, baseline window) is untouched by it,
+        so detection power on a single stream is identical to pre-ENG-1.
+
+        #SG-TRACE: REQ-ENGSCOPE-002
+        #   | assumption: relabelling a stream must not change its
+        #     detection threshold or delay -- suite_version is metadata
+        #     on the alert, never an input to the accumulators
+        #   | test: test_adv2_silent_provider_change_alerts_unchanged
         """
         self._n += 1
 
@@ -186,6 +223,7 @@ class _MetricState:
                 cusum_score=self._s_pos,
                 threshold=self.h,
                 window_count=self._n,
+                suite_version=suite_version,
             )
 
         # Check for negative shift
@@ -198,6 +236,7 @@ class _MetricState:
                 cusum_score=self._s_neg,
                 threshold=self.h,
                 window_count=self._n,
+                suite_version=suite_version,
             )
 
         return None
@@ -212,17 +251,21 @@ class CUSUMDetector:
     """Multi-stream CUSUM detector.
 
     Maintains independent _MetricState instances keyed by
-    (model_tuple, metric_name).  Each stream has its own baseline,
-    mu0/sigma0 estimates, and S+/S- accumulators.
+    (model_tuple, suite_version, metric_name).  Each stream has its own
+    baseline, mu0/sigma0 estimates, and S+/S- accumulators.
 
     Usage
     -----
     detector = CUSUMDetector(h=5.0, k=0.5)
     alert = detector.update("openai/gpt-4o@2025-08",
                             "json_success_rate",
-                            0.65)
+                            0.65,
+                            suite_version="v1.1.0")
     if alert:
         # hand alert to AgreementScorer in correlation.py
+
+    Omitting ``suite_version`` puts the observation in the legacy ``""``
+    bucket, which is what every pre-ENG-1 call site does.
 
     #SG-TRACE: REQ-ENGINE-006
     #   | assumption: h=5.0 and k=0.5 are reasonable defaults for
@@ -232,6 +275,11 @@ class CUSUMDetector:
     #   | assumption: reset() is called by the caller after a confirmed
     #     public alert to restart accumulation post-changepoint
     #   | test: test_cusum_reset_clears_state
+    #SG-TRACE: REQ-ENGSCOPE-001
+    #   | assumption: two batches identical except for suite_version warm
+    #     two independent baselines and never contribute to one another's
+    #     CUSUM score
+    #   | test: test_suite_scoped_streams_are_independent
     """
 
     def __init__(
@@ -262,7 +310,7 @@ class CUSUMDetector:
             if baseline_samples is not None
             else _MetricState.MIN_BASELINE_SAMPLES
         )
-        self._states: dict[tuple[str, str], _MetricState] = {}
+        self._states: dict[tuple[str, str, str], _MetricState] = {}
 
     def update(
         self,
@@ -270,11 +318,12 @@ class CUSUMDetector:
         metric_name: str,
         value: float,
         timestamp_ns: int | None = None,
+        suite_version: str = "",
     ) -> DriftAlert | None:
         """Feed one scalar observation to the appropriate stream.
 
         Creates a new stream on first call for this
-        (model_tuple, metric_name) pair.
+        (model_tuple, suite_version, metric_name) triple.
 
         Parameters
         ----------
@@ -287,25 +336,40 @@ class CUSUMDetector:
         timestamp_ns:
             Monotonic nanosecond timestamp.  Defaults to
             time.monotonic_ns() if not supplied.
+        suite_version:
+            Canary suite version the observation was produced under.
+            Part of the stream identity: two otherwise identical
+            observations under different suite versions warm two
+            independent baselines.  Defaults to "" (legacy catch-all
+            bucket) so pre-ENG-1 call sites keep working unchanged.
 
         Returns
         -------
         DriftAlert or None
             Alert if the CUSUM threshold was exceeded; None otherwise.
             None is always returned during the baseline phase.
+
+        #SG-TRACE: REQ-ENGSCOPE-001
+        #   | assumption: suite_version is appended after timestamp_ns so
+        #     every existing positional call (mt, metric, value[, ts])
+        #     is unchanged (contract C2)
+        #   | test: test_legacy_update_call_lands_in_empty_suite_bucket
         """
-        key = (model_tuple, metric_name)
+        key = (model_tuple, suite_version, metric_name)
         if key not in self._states:
             state = _MetricState(h=self.h, k=self.k)
             state.MIN_BASELINE_SAMPLES = self._baseline_samples
             self._states[key] = state
         ts = timestamp_ns if timestamp_ns is not None else time.monotonic_ns()
-        return self._states[key].update(value, model_tuple, metric_name, ts)
+        return self._states[key].update(
+            value, model_tuple, metric_name, ts, suite_version
+        )
 
     def reset(
         self,
         model_tuple: str,
         metric_name: str | None = None,
+        suite_version: str | None = None,
     ) -> None:
         """Reset CUSUM state for a model_tuple.
 
@@ -315,16 +379,29 @@ class CUSUMDetector:
             Which model tuple to reset.
         metric_name:
             If provided, reset only this metric stream.
-            If None, reset all streams for model_tuple.
+            If None, reset every metric for the selected suites.
+        suite_version:
+            If provided, reset only streams under this suite version.
+            If None (the pre-ENG-1 behaviour), reset the selected
+            metric(s) across ALL suite versions of this model_tuple.
+
+        #SG-TRACE: REQ-ENGSCOPE-003
+        #   | assumption: a legacy reset(mt, metric) call means "drop this
+        #     metric everywhere", so it must span suites; narrowing to one
+        #     suite is opt-in via the new parameter
+        #   | test: test_reset_scopes_by_suite_version
         """
-        if metric_name is not None:
-            self._states.pop((model_tuple, metric_name), None)
-        else:
-            keys = [k for k in self._states if k[0] == model_tuple]
-            for k in keys:
-                del self._states[k]
+        keys = [
+            k
+            for k in self._states
+            if k[0] == model_tuple
+            and (suite_version is None or k[1] == suite_version)
+            and (metric_name is None or k[2] == metric_name)
+        ]
+        for k in keys:
+            del self._states[k]
 
     @property
-    def tracked_streams(self) -> list[tuple[str, str]]:
-        """Return all (model_tuple, metric_name) pairs being tracked."""
+    def tracked_streams(self) -> list[tuple[str, str, str]]:
+        """Return all tracked (model_tuple, suite_version, metric_name)."""
         return list(self._states.keys())

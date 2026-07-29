@@ -18,6 +18,9 @@ EN4  fleet_id_stored_in_local_drift_alert
 EN5  public_batch_unaffected_by_private_fleet
        A public-path batch (fleet_id=None) on the same model_tuple
        does not interact with a private-fleet detector.
+EN6  private_fleet_detector_is_suite_scoped  (ENG-1)
+       A fleet's own corpus cutover starts a fresh stream instead of
+       step-changing the incumbent baseline.
 
 Design notes
 ------------
@@ -60,6 +63,7 @@ def _batch(
     prefix: str,
     metrics: dict,
     fleet_id: str | None = None,
+    suite_version: str = "v3.0.0",
 ) -> dict:
     """Build a minimal valid InboundSignalBatch dict."""
     bid = f"{prefix}{n:06d}-0000-0000-0000-000000000000"
@@ -69,7 +73,7 @@ def _batch(
         "window_start": "2026-06-01T00:00:00Z",
         "window_end": "2026-06-01T01:00:00Z",
         "model_tuple": "openai/gpt-4o@2026-fleet-test",
-        "suite_version": "v3.0.0",
+        "suite_version": suite_version,
         "metrics": metrics,
         "canary_hashes": {
             "p001": _sha256(f"fleet-canary-{n}"),
@@ -355,3 +359,60 @@ def test_public_batch_unaffected_by_private_fleet() -> None:
     assert body["status"] == "accepted", (
         f"EN5 FAIL: public batch rejected; body={body!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# EN6 -- ENG-1: the private fleet detector is suite-scoped too
+# ---------------------------------------------------------------------------
+
+
+def test_private_fleet_detector_is_suite_scoped() -> None:
+    """A fleet's corpus cutover opens a new stream, not a step change.
+
+    The private path shares CUSUMDetector with the public one, so it gets
+    the same (model_tuple, suite_version, metric_name) identity.  Here a
+    fleet warms a baseline on v3.0.0, then cuts over to v4.0.0 with a
+    wildly different absolute level: the new corpus must land in its own
+    cold stream and emit no alert, while the v3.0.0 baseline is preserved.
+
+    #SG-TRACE: REQ-ENGSCOPE-010
+    #   | test: test_private_fleet_detector_is_suite_scoped
+    """
+    with patch("gateway.main.verify_signature", return_value=True):
+        with TestClient(app) as c:
+            detector = CUSUMDetector(h=5.0, k=0.5, baseline_samples=3)
+            app.state.private_detectors[_FLEET_ID] = detector
+
+            for i in range(3):
+                resp = c.post(
+                    "/v1/signals",
+                    json=_batch(i, "e6", _STABLE_METRICS, _FLEET_ID),
+                )
+                assert resp.status_code == 202, resp.text
+
+            # Corpus cutover: same model+metric, new suite, extreme value.
+            for i in range(5):
+                resp = c.post(
+                    "/v1/signals",
+                    json=_batch(
+                        200 + i,
+                        "e6",
+                        _DRIFT_METRICS,
+                        _FLEET_ID,
+                        suite_version="v4.0.0",
+                    ),
+                )
+                assert resp.status_code == 202, resp.text
+                assert resp.json()["alerts"] == [], (
+                    "a fresh suite stream must not alert on its own baseline"
+                )
+
+    key_v3 = (_MODEL, "v3.0.0", "json_success_rate")
+    key_v4 = (_MODEL, "v4.0.0", "json_success_rate")
+    assert key_v3 in detector.tracked_streams
+    assert key_v4 in detector.tracked_streams
+    assert detector._states[key_v3]._n == 3
+    assert detector._states[key_v4]._n == 5
+    # The incumbent baseline was not contaminated by the new corpus.
+    assert detector._states[key_v3].baseline_ready
+    assert detector._states[key_v3]._s_neg == 0.0

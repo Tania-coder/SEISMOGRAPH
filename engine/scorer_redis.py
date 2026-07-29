@@ -7,9 +7,11 @@ Redis-backed twin of ``engine.correlation.AgreementScorer`` so that multiple
 gateway instances can coordinate quorum state without all traffic hitting a
 single node.  Implements the same FIX-2 semantics as the in-process scorer:
 
-1. **Metric-scoped agreement.**  Each stream is keyed by
-   ``(model_tuple, metric_name)``.  Two orgs drifting on different metrics of
-   the same model do not agree.
+1. **Metric- and suite-scoped agreement.**  Each stream is keyed by
+   ``(model_tuple, suite_version, metric_name)`` (ENG-1).  Two orgs drifting
+   on different metrics of the same model do not agree, and neither do two
+   orgs running different canary corpora.  The key tuple is IDENTICAL to the
+   in-process ``AgreementScorer`` -- contract C3 forbids divergence.
 
 2. **Per-candidate TTL.**  Agreement and observer state are Redis Sorted Sets
    scored by event-time.  A candidate counts only while its score is within
@@ -43,9 +45,11 @@ promotion (those orgs are still watching).
 
 Privacy invariants
 ------------------
-* Redis keys ``sg:quorum:{mt}:{metric}`` and ``sg:observers:{mt}:{metric}``
-  are derived from public identifiers only.  No raw prompts, outputs, or org
-  secrets appear in any key or value.
+* Redis keys ``sg:quorum:{mt}:{suite}:{metric}`` and
+  ``sg:observers:{mt}:{suite}:{metric}`` are derived from public identifiers
+  only -- ``suite_version`` is a public, non-identifying corpus label
+  (contract C6).  No raw prompts, outputs, or org secrets appear in any key
+  or value.
 * Members are pseudonymous Ed25519 public-key fingerprints bound at probe
   installation time.  The store never receives a private key or cleartext org
   identity.
@@ -53,10 +57,14 @@ Privacy invariants
 Interface conformance
 ---------------------
 ``RedisAgreementScorer`` mirrors ``AgreementScorer``:
-  ``observe(mt, metric, org, ts)``       -- record an observer (population M)
-  ``ingest(result)``                     -- record one change-point candidate
-  ``promote_to_public_alert(mt, metric)``-- return org count or None (atomic)
-  ``clear(mt, metric)``                  -- evict agreeing candidates (stream)
+  ``observe(mt, metric, org, ts, suite)`` -- record an observer (population M)
+  ``ingest(result)``                      -- record one change-point candidate
+  ``promote_to_public_alert(mt, metric, now_ns, suite)``
+                                          -- org count or None (atomic)
+  ``clear(mt, metric, suite)``            -- evict agreeing candidates
+
+``suite_version`` is the LAST parameter everywhere and defaults to ``""``,
+so every pre-ENG-1 call site keeps working and lands in the legacy bucket.
 
 Gateway code can switch implementations via the ``QUORUM_BACKEND`` env var
 without any changes to the calling code in gateway/main.py.
@@ -74,6 +82,12 @@ without any changes to the calling code in gateway/main.py.
 #   | assumption: Lua EVAL atomicity eliminates the prune/check/DEL race in
 #     multi-node deployments; Redis guarantees single-threaded Lua
 #   | test: test_redis_scorer_promote_uses_lua_eval
+#SG-TRACE: REQ-ENGSCOPE-006
+#   | assumption: suite scoping is a KEY-NAME change only -- the two-key
+#     atomic Lua script and the millisecond score domain are untouched, so
+#     no nanosecond value is ever written to a ZSET (risk R1)
+#   | test: test_redis_scorer_suite_key_format,
+#           test_redis_scorer_suite_scoped_ns_to_ms
 """
 
 from __future__ import annotations
@@ -146,14 +160,39 @@ return 0
 """
 
 
-def _agree_key(model_tuple: str, metric_name: str) -> str:
-    """Redis key for the agreeing-candidate sorted set of a stream."""
-    return f"{_AGREE_PREFIX}:{model_tuple}:{metric_name}"
+def _agree_key(
+    model_tuple: str,
+    metric_name: str,
+    suite_version: str = "",
+) -> str:
+    """Redis key for the agreeing-candidate sorted set of a stream.
+
+    Layout: ``sg:quorum:{model_tuple}:{suite_version}:{metric_name}``.
+    ``metric_name`` comes from the gateway allowlist and therefore never
+    contains a colon, so the trailing segment disambiguates the split even
+    when a caller-supplied ``suite_version`` contains colons.
+
+    #SG-TRACE: REQ-ENGSCOPE-006
+    #   | assumption: suite_version is the 3rd positional arg with a ""
+    #     default so pre-ENG-1 two-arg calls still resolve
+    #   | test: test_redis_scorer_suite_key_format
+    """
+    return f"{_AGREE_PREFIX}:{model_tuple}:{suite_version}:{metric_name}"
 
 
-def _obs_key(model_tuple: str, metric_name: str) -> str:
-    """Redis key for the observer-population sorted set of a stream."""
-    return f"{_OBS_PREFIX}:{model_tuple}:{metric_name}"
+def _obs_key(
+    model_tuple: str,
+    metric_name: str,
+    suite_version: str = "",
+) -> str:
+    """Redis key for the observer-population sorted set of a stream.
+
+    Layout: ``sg:observers:{model_tuple}:{suite_version}:{metric_name}``.
+
+    #SG-TRACE: REQ-ENGSCOPE-006
+    #   | test: test_redis_scorer_suite_key_format
+    """
+    return f"{_OBS_PREFIX}:{model_tuple}:{suite_version}:{metric_name}"
 
 
 # ---------------------------------------------------------------------------
@@ -166,8 +205,9 @@ class RedisAgreementScorer:
 
     Drop-in replacement for ``engine.correlation.AgreementScorer`` storing
     quorum and observer state in Redis Sorted Sets keyed per
-    ``(model_tuple, metric_name)``.  Gateway restarts no longer wipe pending
-    quorum state, and multiple gateway nodes share one view.
+    ``(model_tuple, suite_version, metric_name)``.  Gateway restarts no
+    longer wipe pending quorum state, and multiple gateway nodes share one
+    view.
 
     Attributes:
         floor: Minimum quorum q(M) regardless of population size.
@@ -237,6 +277,7 @@ class RedisAgreementScorer:
         metric_name: str,
         org_id: str,
         timestamp_ns: int | None = None,
+        suite_version: str = "",
     ) -> None:
         """Record that ``org_id`` is watching this stream (population M).
 
@@ -245,9 +286,12 @@ class RedisAgreementScorer:
 
         #SG-TRACE: REQ-ENGINE-012
         #   | test: test_redis_scorer_observe_calls_zadd
+        #SG-TRACE: REQ-ENGSCOPE-006
+        #   | assumption: the ms score domain is unchanged by suite scoping
+        #   | test: test_redis_scorer_suite_scoped_observe
         """
         ts = self._stamp_ms(timestamp_ns)
-        okey = _obs_key(model_tuple, metric_name)
+        okey = _obs_key(model_tuple, metric_name, suite_version)
         self._redis.zadd(okey, {org_id: ts})
         self._redis.expire(okey, self._backstop_s)
 
@@ -256,11 +300,11 @@ class RedisAgreementScorer:
 
         For each org in ``result.contributing_orgs``:
 
-        1. ``ZADD sg:observers:{mt}:{metric} {org: ts_ms}`` -- the org is an
-           observer of the stream.
+        1. ``ZADD sg:observers:{mt}:{suite}:{metric} {org: ts_ms}`` -- the
+           org is an observer of the stream.
         2. If ``result.change_detected``:
-           ``ZADD sg:quorum:{mt}:{metric} {org: ts_ms}`` -- and an agreeing
-           candidate.
+           ``ZADD sg:quorum:{mt}:{suite}:{metric} {org: ts_ms}`` -- and an
+           agreeing candidate.
 
         Sorted-set semantics deduplicate on member: re-ingesting the same
         org updates its score, never inflating cardinality (Sybil-replay
@@ -268,17 +312,25 @@ class RedisAgreementScorer:
 
         Args:
             result: A ``ChangePointResult`` with model_tuple, metric_name,
-                contributing_orgs, and optional timestamp_ns.
+                suite_version, contributing_orgs, and optional timestamp_ns.
 
         #SG-TRACE: REQ-ENGINE-009
         #   | assumption: empty contributing_orgs is a no-op
         #   | test: test_redis_scorer_ingest_empty_contributing_orgs_noop
+        #SG-TRACE: REQ-ENGSCOPE-006
+        #   | assumption: both ZSET keys carry the same suite_version, so
+        #     the two-key EVAL stays atomic over one logical stream
+        #   | test: test_redis_scorer_suite_scoped_ingest
         """
         if not result.contributing_orgs:
             return
         ts = self._stamp_ms(result.timestamp_ns)
-        akey = _agree_key(result.model_tuple, result.metric_name)
-        okey = _obs_key(result.model_tuple, result.metric_name)
+        akey = _agree_key(
+            result.model_tuple, result.metric_name, result.suite_version
+        )
+        okey = _obs_key(
+            result.model_tuple, result.metric_name, result.suite_version
+        )
         for org_id in result.contributing_orgs:
             self._redis.zadd(okey, {org_id: ts})
             if result.change_detected:
@@ -292,6 +344,7 @@ class RedisAgreementScorer:
         model_tuple: str,
         metric_name: str = "",
         now_ns: int | None = None,
+        suite_version: str = "",
     ) -> int | None:
         """Atomically prune, check population-scaled quorum, and promote.
 
@@ -304,17 +357,22 @@ class RedisAgreementScorer:
             model_tuple: Composite model identifier to evaluate.
             metric_name: Metric stream to evaluate.
             now_ns: Event-time reference for TTL; defaults to now.
+            suite_version: Canary suite bucket to evaluate; "" is legacy.
 
         Returns:
             int count of distinct live agreeing orgs if >= q(M), else None.
 
         #SG-TRACE: REQ-ENGINE-011
         #   | test: test_redis_scorer_promote_uses_lua_eval
+        #SG-TRACE: REQ-ENGSCOPE-006
+        #   | assumption: the Lua script itself is UNCHANGED -- only the two
+        #     KEYS it receives are suite-scoped; scores stay in ms
+        #   | test: test_redis_scorer_suite_scoped_promote_eval_args
         """
         now_ms = self._now_ms() if now_ns is None else now_ns // _NS_PER_MS
         cutoff = now_ms - self.ttl_ms
-        akey = _agree_key(model_tuple, metric_name)
-        okey = _obs_key(model_tuple, metric_name)
+        akey = _agree_key(model_tuple, metric_name, suite_version)
+        okey = _obs_key(model_tuple, metric_name, suite_version)
         result: int = self._redis.eval(
             _PROMOTE_LUA_SCRIPT,
             2,
@@ -328,7 +386,12 @@ class RedisAgreementScorer:
         )
         return result if result else None
 
-    def clear(self, model_tuple: str, metric_name: str = "") -> None:
+    def clear(
+        self,
+        model_tuple: str,
+        metric_name: str = "",
+        suite_version: str = "",
+    ) -> None:
         """Delete the agreeing-candidate set for a stream.
 
         Observer state is retained.  After a successful atomic promotion the
@@ -337,5 +400,8 @@ class RedisAgreementScorer:
 
         #SG-TRACE: REQ-ENGINE-009
         #   | test: test_redis_scorer_clear_calls_delete
+        #SG-TRACE: REQ-ENGSCOPE-006
+        #   | assumption: DEL targets one suite bucket only
+        #   | test: test_redis_scorer_suite_scoped_clear
         """
-        self._redis.delete(_agree_key(model_tuple, metric_name))
+        self._redis.delete(_agree_key(model_tuple, metric_name, suite_version))

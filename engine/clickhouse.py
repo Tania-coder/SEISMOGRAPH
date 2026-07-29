@@ -33,6 +33,7 @@ telemetry_signals
     json_success_rate Nullable(Float64)
     result_count      Float64
     fleet_id          Nullable(String)
+    suite_version     String DEFAULT ''      -- ENG-1
     ORDER BY (model_tuple, timestamp)
 
 local_drift_alerts
@@ -65,6 +66,12 @@ the SQLite backend (STORAGE_BACKEND=sqlite, the default).
 #     optimal for range scans in get_recent_signals and
 #     get_recent_alerts; no secondary index required at Phase 2
 #   | test: test_ch_setup_tables_creates_all_three_tables
+#SG-TRACE: REQ-ENGSCOPE-009
+#   | assumption: this backend must stay duck-type compatible with the
+#     SQLite one, so suite_version is persisted, projected and defaulted
+#     exactly the same way (contract A4)
+#   | test: test_ch_save_batch_includes_suite_version,
+#           test_ch_get_recent_signals_returns_suite_version
 """
 
 from __future__ import annotations
@@ -80,6 +87,34 @@ from engine.models import WebhookConfig
 from engine.repository import AlertRow, BaseRepository, SignalRow
 
 logger = logging.getLogger(__name__)
+
+
+def _to_signal_row(row: Any) -> SignalRow:
+    """Map one telemetry_signals result tuple onto a SignalRow.
+
+    Column order is the SELECT order used by both read methods:
+    ``batch_id, model_tuple, timestamp, avg_output_length,
+    json_success_rate, result_count, suite_version``.
+
+    A row that predates the suite_version projection (6 columns) maps to
+    the legacy ``""`` bucket instead of raising, mirroring how the SQLite
+    backend coerces a NULL column (contract A5).
+
+    #SG-TRACE: REQ-ENGSCOPE-009
+    #   | assumption: a short tuple means "column not present", not
+    #     "corrupt row"; defaulting is safer than an IndexError on the
+    #     gateway start-up path
+    #   | test: test_ch_get_recent_signals_legacy_row_defaults_suite
+    """
+    return SignalRow(
+        batch_id=row[0],
+        model_tuple=row[1],
+        timestamp=row[2],
+        avg_output_length=row[3],
+        json_success_rate=row[4],
+        result_count=row[5],
+        suite_version=(row[6] or "") if len(row) > 6 else "",
+    )
 
 
 class ClickHouseRepository(BaseRepository):
@@ -132,9 +167,22 @@ class ClickHouseRepository(BaseRepository):
             " avg_output_length Nullable(Float64),"
             " json_success_rate Nullable(Float64),"
             " result_count Float64,"
-            " fleet_id Nullable(String)"
+            " fleet_id Nullable(String),"
+            " suite_version String DEFAULT ''"
             ") ENGINE = MergeTree()"
             " ORDER BY (model_tuple, timestamp)"
+        )
+        # Back-fill for clusters whose telemetry_signals predates ENG-1.
+        # ClickHouse ALTER ... ADD COLUMN IF NOT EXISTS is idempotent and
+        # metadata-only; existing parts read the DEFAULT ''.
+        # #SG-TRACE: REQ-ENGSCOPE-009
+        # #   | assumption: mirrors the SQLite ADD COLUMN back-fill so an
+        # #     existing deployment does not start failing INSERTs on the
+        # #     new column list (contract C4 parity)
+        # #   | test: test_ch_setup_tables_backfills_suite_version
+        self._client.command(
+            "ALTER TABLE telemetry_signals"
+            " ADD COLUMN IF NOT EXISTS suite_version String DEFAULT ''"
         )
         self._client.command(
             "CREATE TABLE IF NOT EXISTS local_drift_alerts ("
@@ -160,6 +208,7 @@ class ClickHouseRepository(BaseRepository):
         )
         logger.info(
             "ClickHouseRepository.setup_tables: all three tables ensured"
+            " (telemetry_signals.suite_version back-filled if absent)"
         )
 
     def save_batch(self, batch: InboundSignalBatch) -> None:
@@ -170,11 +219,16 @@ class ClickHouseRepository(BaseRepository):
         batch:
             Validated InboundSignalBatch from the gateway endpoint.
             Only distributional metric values are stored -- no raw text.
-            fleet_id is read from batch.fleet_id.
+            fleet_id is read from batch.fleet_id, suite_version from
+            batch.suite_version (ENG-1).
 
         #SG-TRACE: REQ-STORE-008
         #   | assumption: batch.metrics keys are validated upstream
         #   | test: test_ch_save_batch_inserts_to_telemetry_signals
+        #SG-TRACE: REQ-ENGSCOPE-009
+        #   | assumption: column order in the data row matches
+        #     column_names exactly; suite_version appended last
+        #   | test: test_ch_save_batch_includes_suite_version
         """
         metrics = batch.metrics
         ts = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -189,6 +243,7 @@ class ClickHouseRepository(BaseRepository):
                     metrics.get("json_success_rate"),
                     float(metrics.get("result_count", batch.result_count)),
                     batch.fleet_id,
+                    batch.suite_version,
                 ]
             ],
             column_names=[
@@ -199,13 +254,15 @@ class ClickHouseRepository(BaseRepository):
                 "json_success_rate",
                 "result_count",
                 "fleet_id",
+                "suite_version",
             ],
         )
         logger.debug(
-            "CH save_batch | batch_id=%s model=%s fleet_id=%s",
+            "CH save_batch | batch_id=%s model=%s fleet_id=%s suite=%s",
             batch.batch_id,
             batch.model_tuple,
             batch.fleet_id,
+            batch.suite_version,
         )
 
     def save_local_alert(
@@ -341,29 +398,22 @@ class ClickHouseRepository(BaseRepository):
         #     MergeTree because timestamp is the second column in the
         #     sort key
         #   | test: test_ch_get_recent_signals_returns_signal_rows
+        #SG-TRACE: REQ-ENGSCOPE-009
+        #   | assumption: suite_version is projected LAST so the tuple
+        #     positions of every pre-ENG-1 column are unchanged
+        #   | test: test_ch_get_recent_signals_returns_suite_version
         """
         result = self._client.query(
             "SELECT batch_id, model_tuple, timestamp,"
-            " avg_output_length, json_success_rate, result_count"
+            " avg_output_length, json_success_rate, result_count,"
+            " suite_version"
             " FROM telemetry_signals"
             " WHERE model_tuple = {mt:String}"
             " ORDER BY timestamp DESC"
             " LIMIT {lim:Int32}",
             parameters={"mt": model_tuple, "lim": limit},
         )
-        rows: list[SignalRow] = []
-        for row in result.result_rows:
-            rows.append(
-                SignalRow(
-                    batch_id=row[0],
-                    model_tuple=row[1],
-                    timestamp=row[2],
-                    avg_output_length=row[3],
-                    json_success_rate=row[4],
-                    result_count=row[5],
-                )
-            )
-        return rows
+        return [_to_signal_row(row) for row in result.result_rows]
 
     def get_all_model_tuples(self) -> list[str]:
         """Return sorted distinct model_tuple strings.
@@ -561,7 +611,8 @@ class ClickHouseRepository(BaseRepository):
         if fleet_id is not None:
             result = self._client.query(
                 "SELECT batch_id, model_tuple, timestamp,"
-                " avg_output_length, json_success_rate, result_count"
+                " avg_output_length, json_success_rate, result_count,"
+                " suite_version"
                 " FROM telemetry_signals"
                 " WHERE model_tuple = {mt:String}"
                 "  AND timestamp < {ts:DateTime}"
@@ -578,7 +629,8 @@ class ClickHouseRepository(BaseRepository):
         else:
             result = self._client.query(
                 "SELECT batch_id, model_tuple, timestamp,"
-                " avg_output_length, json_success_rate, result_count"
+                " avg_output_length, json_success_rate, result_count,"
+                " suite_version"
                 " FROM telemetry_signals"
                 " WHERE model_tuple = {mt:String}"
                 "  AND timestamp < {ts:DateTime}"
@@ -590,16 +642,4 @@ class ClickHouseRepository(BaseRepository):
                     "lim": limit,
                 },
             )
-        rows: list[SignalRow] = []
-        for row in result.result_rows:
-            rows.append(
-                SignalRow(
-                    batch_id=row[0],
-                    model_tuple=row[1],
-                    timestamp=row[2],
-                    avg_output_length=row[3],
-                    json_success_rate=row[4],
-                    result_count=row[5],
-                )
-            )
-        return rows
+        return [_to_signal_row(row) for row in result.result_rows]

@@ -10,6 +10,9 @@ TelemetrySignal (table: telemetry_signals)
     metric values only -- no raw prompt text or model output.
     fleet_id is nullable: NULL for public-network probes; non-NULL
     for private fleet probes.
+    suite_version is nullable (ENG-1): NULL on rows written before the
+    column existed.  Readers coerce NULL to "" (the legacy detector
+    bucket) rather than raising -- see contract C4/A5.
 
 LocalDriftAlert (table: local_drift_alerts)
     One row per CUSUMDetector alert, attributed to the submitting
@@ -45,6 +48,11 @@ Privacy invariant (Aegis):
 #   | assumption: WebhookConfig uses fleet_id as unique key; registering
 #     a new URL for the same fleet replaces the prior config atomically
 #   | test: test_register_webhook_upsert
+#SG-TRACE: REQ-ENGSCOPE-007
+#   | assumption: suite_version is NULLABLE so an existing DB file can be
+#     back-filled by ALTER TABLE ADD COLUMN without a rewrite, and so a
+#     row predating the column reads back as NULL -> "" legacy bucket
+#   | test: test_legacy_db_without_suite_column_bootstraps
 """
 
 from __future__ import annotations
@@ -73,11 +81,18 @@ class TelemetrySignal(Base):
     result_count: Number of canary prompts in this batch.
     fleet_id:    Optional tenant identifier for private fleet isolation.
                  NULL for public-network probes.
+    suite_version: Canary suite version the batch was produced under
+                 (ENG-1).  Nullable: NULL on rows written before the
+                 column existed; readers coerce NULL to "".
 
     #SG-TRACE: REQ-STORE-003
     #   | assumption: batch_id index supports duplicate-detection for
     #     Sybil resistance (Phase 2); not enforced as UNIQUE in Phase 1
     #   | test: test_save_batch_persists_to_db
+    #SG-TRACE: REQ-ENGSCOPE-007
+    #   | assumption: String(64) is wide enough for a semver-ish corpus
+    #     label; the wire field is only length-validated (min_length=1)
+    #   | test: test_save_batch_persists_suite_version
     """
 
     __tablename__ = "telemetry_signals"
@@ -100,6 +115,9 @@ class TelemetrySignal(Base):
     )
     result_count: Mapped[float] = mapped_column(Float, nullable=False)
     fleet_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    suite_version: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
 
 
 class LocalDriftAlert(Base):

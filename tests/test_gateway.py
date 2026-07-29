@@ -191,10 +191,14 @@ def test_bootstrap_warms_cusum_detector() -> None:
 
     count = bootstrap_detector(detector, repo)
 
+    suite = VALID_PAYLOAD["suite_version"]
     assert count >= 8, f"Expected >= 8 observations, got {count}"
-    assert (mt, "json_success_rate") in detector.tracked_streams
-    assert (mt, "avg_output_length") in detector.tracked_streams
-    state = detector._states[(mt, "json_success_rate")]
+    # ENG-1: stream keys are 3-tuples (model_tuple, suite_version,
+    # metric_name).  The 2-tuple literals below encoded the pre-ENG-1
+    # key shape and were updated, not weakened.
+    assert (mt, suite, "json_success_rate") in detector.tracked_streams
+    assert (mt, suite, "avg_output_length") in detector.tracked_streams
+    state = detector._states[(mt, suite, "json_success_rate")]
     assert state.baseline_ready
 
 
@@ -604,3 +608,284 @@ def test_tampered_payload_rejected(crypto_client: TestClient) -> None:
     assert response.status_code == 401, response.text
     detail = response.json()["detail"]
     assert detail["error"] == "signature_verification_failed"
+
+
+# ---------------------------------------------------------------------------
+# ENG-1 -- suite-scoped streams end-to-end (contract A1, A3, A4, A5, A6)
+# ---------------------------------------------------------------------------
+
+
+def _warm_and_drift(
+    c: TestClient,
+    *,
+    suite: str,
+    warm_client: str,
+    drift_clients: list[str],
+    prefix: str,
+) -> None:
+    """Warm one suite's stream, then have each drift_client fire on it.
+
+    baseline_samples=3, so three stable batches finalise the baseline for
+    (model_tuple, suite, json_success_rate); afterwards a 0.0 reading is a
+    hard negative shift that trips CUSUM.
+    """
+    for i in range(3):
+        resp = c.post(
+            "/v1/signals",
+            json={
+                **VALID_PAYLOAD,
+                "batch_id": f"{prefix}{i:02d}0000-0000-0000-0000-000000000000",
+                "client_id": warm_client,
+                "suite_version": suite,
+                "metrics": {"json_success_rate": 0.95},
+            },
+        )
+        assert resp.status_code == 202, resp.text
+
+    for n, cid in enumerate(drift_clients):
+        fired = False
+        for i in range(15):
+            resp = c.post(
+                "/v1/signals",
+                json={
+                    **VALID_PAYLOAD,
+                    "batch_id": (
+                        f"{prefix}{n:02d}{i:02d}00-0000-0000-0000-000000000000"
+                    ),
+                    "client_id": cid,
+                    "suite_version": suite,
+                    "metrics": {"json_success_rate": 0.0},
+                },
+            )
+            assert resp.status_code == 202, resp.text
+            if resp.json().get("alerts"):
+                fired = True
+                break
+        assert fired, f"CUSUM should fire for {cid} on suite {suite}"
+
+
+def test_gateway_two_suites_do_not_reach_quorum() -> None:
+    """A3: 3 orgs drift on one (model, metric) but under split suites.
+
+    Suites v1.1.0 / v1.1.0 / v2.0.0 -> the v1 bucket holds 2 agreeing orgs
+    and the v2 bucket 1, both below q=3, so /v1/weather stays STABLE.
+    Pre-ENG-1 these three would have pooled into one agreeing set of 3 and
+    published a drift alert for corpora that are not comparable.
+
+    #SG-TRACE: REQ-ENGSCOPE-010
+    #   | test: test_gateway_two_suites_do_not_reach_quorum
+    """
+    from engine.correlation import AgreementScorer
+    from engine.detector import CUSUMDetector
+
+    mt = VALID_PAYLOAD["model_tuple"]
+    with patch("gateway.main.verify_signature", return_value=True):
+        with TestClient(app) as c:
+            app.state.detector = CUSUMDetector(
+                h=5.0, k=0.5, baseline_samples=3
+            )
+            app.state.scorer = AgreementScorer()
+
+            _warm_and_drift(
+                c,
+                suite="v1.1.0",
+                warm_client="dddddddd-dddd-dddd-dddd-dddddddddddd",
+                drift_clients=[
+                    "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                ],
+                prefix="41",
+            )
+            _warm_and_drift(
+                c,
+                suite="v2.0.0",
+                warm_client="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+                drift_clients=["cccccccc-cccc-cccc-cccc-cccccccccccc"],
+                prefix="42",
+            )
+
+            weather = c.get("/v1/weather")
+
+    assert weather.status_code == 200, weather.text
+    entry = next((e for e in weather.json() if e["model_tuple"] == mt), None)
+    assert entry is not None
+    assert entry["status"] == "STABLE", (
+        "orgs on different canary corpora must not form a quorum, got "
+        f"{entry['status']!r}"
+    )
+
+
+def test_gateway_same_suite_three_orgs_reach_quorum() -> None:
+    """A3 positive control: the same three orgs on ONE suite DO promote.
+
+    Guards against the suite key silently suppressing genuine agreement.
+
+    #SG-TRACE: REQ-ENGSCOPE-010
+    #   | test: test_gateway_same_suite_three_orgs_reach_quorum
+    """
+    from engine.correlation import AgreementScorer
+    from engine.detector import CUSUMDetector
+
+    mt = VALID_PAYLOAD["model_tuple"]
+    with patch("gateway.main.verify_signature", return_value=True):
+        with TestClient(app) as c:
+            app.state.detector = CUSUMDetector(
+                h=5.0, k=0.5, baseline_samples=3
+            )
+            app.state.scorer = AgreementScorer()
+
+            _warm_and_drift(
+                c,
+                suite="v2.0.0",
+                warm_client="dddddddd-dddd-dddd-dddd-dddddddddddd",
+                drift_clients=[
+                    "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                    "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                ],
+                prefix="43",
+            )
+            weather = c.get("/v1/weather")
+
+    entry = next((e for e in weather.json() if e["model_tuple"] == mt), None)
+    assert entry is not None
+    assert entry["status"] == "DRIFTING", (
+        f"three orgs on one suite must promote, got {entry['status']!r}"
+    )
+    # A6: the weather payload keys are unchanged for existing consumers.
+    assert set(entry) == {
+        "model_tuple",
+        "status",
+        "last_alert_timestamp",
+        "recent_avg_output_length",
+        "recent_json_success_rate",
+    }
+
+
+def test_bootstrap_rewarms_per_suite_version() -> None:
+    """A4: bootstrap replays each row into its own suite's stream.
+
+    #SG-TRACE: REQ-ENGSCOPE-011
+    #   | test: test_bootstrap_rewarms_per_suite_version
+    """
+    from engine.detector import CUSUMDetector
+    from engine.repository import SignalRepository
+    from gateway.main import bootstrap_detector
+    from gateway.schema import InboundSignalBatch
+
+    detector = CUSUMDetector(h=5.0, k=0.5, baseline_samples=5)
+    repo = SignalRepository("sqlite:///:memory:")
+    mt = VALID_PAYLOAD["model_tuple"]
+
+    for i in range(8):
+        payload = copy.deepcopy(VALID_PAYLOAD)
+        payload["batch_id"] = f"50000000-0000-0000-0000-{str(i).zfill(12)}"
+        payload["suite_version"] = "v1.1.0" if i < 6 else "v2.0.0"
+        repo.save_batch(InboundSignalBatch.model_validate(payload))
+
+    count = bootstrap_detector(detector, repo)
+
+    assert count == 16  # 8 rows x 2 metrics
+    assert (mt, "v1.1.0", "json_success_rate") in detector.tracked_streams
+    assert (mt, "v2.0.0", "json_success_rate") in detector.tracked_streams
+    # 6 rows warmed v1.1.0 (baseline of 5 reached), 2 warmed v2.0.0.
+    assert detector._states[(mt, "v1.1.0", "json_success_rate")]._n == 6
+    assert detector._states[(mt, "v2.0.0", "json_success_rate")]._n == 2
+    assert detector._states[(mt, "v1.1.0", "json_success_rate")].baseline_ready
+    assert not detector._states[
+        (mt, "v2.0.0", "json_success_rate")
+    ].baseline_ready
+
+
+def test_bootstrap_logs_per_suite_stream_count(caplog) -> None:
+    """R2: per-suite key-space growth is visible in the start-up log.
+
+    #SG-TRACE: REQ-ENGSCOPE-011
+    #   | test: test_bootstrap_logs_per_suite_stream_count
+    """
+    import logging
+
+    from engine.detector import CUSUMDetector
+    from engine.repository import SignalRepository
+    from gateway.main import bootstrap_detector
+    from gateway.schema import InboundSignalBatch
+
+    detector = CUSUMDetector(h=5.0, k=0.5, baseline_samples=5)
+    repo = SignalRepository("sqlite:///:memory:")
+    for i, suite in enumerate(("v1.1.0", "v1.1.0", "v2.0.0")):
+        payload = copy.deepcopy(VALID_PAYLOAD)
+        payload["batch_id"] = f"51000000-0000-0000-0000-{str(i).zfill(12)}"
+        payload["suite_version"] = suite
+        repo.save_batch(InboundSignalBatch.model_validate(payload))
+
+    with caplog.at_level(logging.INFO, logger="gateway.main"):
+        bootstrap_detector(detector, repo)
+
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("suite=v1.1.0" in m for m in messages)
+    assert any("suite=v2.0.0" in m for m in messages)
+    assert any("model_suite_streams=2" in m for m in messages)
+
+
+def test_legacy_db_without_suite_column_bootstraps(tmp_path) -> None:
+    """A5: rows predating the column bootstrap into the "" bucket.
+
+    Opens a SQLite file written with the pre-ENG-1 schema, back-fills it in
+    place, and replays it through bootstrap_detector -- no exception, and
+    every observation lands in the legacy suite bucket.
+
+    #SG-TRACE: REQ-ENGSCOPE-008
+    #SG-TRACE: REQ-ENGSCOPE-011
+    #   | test: test_legacy_db_without_suite_column_bootstraps
+    """
+    import sqlite3
+    from datetime import datetime
+
+    from engine.detector import CUSUMDetector
+    from engine.repository import SignalRepository
+    from gateway.main import bootstrap_detector
+
+    mt = VALID_PAYLOAD["model_tuple"]
+    db_file = tmp_path / "pre_eng1.db"
+    conn = sqlite3.connect(str(db_file))
+    try:
+        conn.execute(
+            "CREATE TABLE telemetry_signals ("
+            " id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"
+            " batch_id VARCHAR(36) NOT NULL,"
+            " timestamp DATETIME NOT NULL,"
+            " model_tuple VARCHAR(128) NOT NULL,"
+            " avg_output_length FLOAT,"
+            " json_success_rate FLOAT,"
+            " result_count FLOAT NOT NULL,"
+            " fleet_id VARCHAR(128))"
+        )
+        for i in range(6):
+            conn.execute(
+                "INSERT INTO telemetry_signals (batch_id, timestamp,"
+                " model_tuple, avg_output_length, json_success_rate,"
+                " result_count, fleet_id) VALUES (?, ?, ?, ?, ?, ?, NULL)",
+                (
+                    f"legacy-{i}",
+                    datetime(2025, 8, 1, 12, i, 0),
+                    mt,
+                    500.0 + i,
+                    0.9,
+                    3.0,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    detector = CUSUMDetector(h=5.0, k=0.5, baseline_samples=5)
+    repo = SignalRepository(f"sqlite:///{db_file}")
+
+    count = bootstrap_detector(detector, repo)
+
+    assert count == 12  # 6 rows x 2 metrics
+    assert sorted(detector.tracked_streams) == [
+        (mt, "", "avg_output_length"),
+        (mt, "", "json_success_rate"),
+    ]
+    assert detector._states[(mt, "", "json_success_rate")].baseline_ready

@@ -13,10 +13,12 @@ This module has two distinct roles:
 
 2. **AgreementScorer (LIVE)** -- Cross-observer quorum gate (FIX-2).  A
    single-org signal is NEVER promoted to a public drift alert.  Agreement
-   is scoped per (model_tuple, metric_name); each candidate expires after a
-   candidate TTL; and the required quorum scales with the live observer
-   population M as q(M) = max(QUORUM_FLOOR, ceil(M/3)) before
-   promote_to_public_alert() returns a non-None count (FIX-2b Seismo bound).
+   is scoped per (model_tuple, suite_version, metric_name) (ENG-1); each
+   candidate expires after a candidate TTL; and the required quorum scales
+   with the live observer population M as q(M) = max(QUORUM_FLOOR,
+   ceil(M/3)) before promote_to_public_alert() returns a non-None count
+   (FIX-2b Seismo bound).  Two orgs running DIFFERENT canary corpora are
+   not comparable and therefore never count as agreeing.
 
 3. **BayesianOnlineDetector (IMPLEMENTED, not wired)** -- Adams & MacKay 2007
    BOCD with Normal-Inverse-Gamma conjugate prior.  Implemented here but NOT
@@ -36,6 +38,10 @@ data/drift_labels/ before any production deployment.
 #SG-TRACE: REQ-ENGINE-003
 #   | assumption: cross-observer quorum >= 2 orgs sufficient for Phase 0
 #   | test: test_agreement_scorer_quorum
+#SG-TRACE: REQ-ENGSCOPE-004
+#   | assumption: suite_version is a public, non-identifying corpus label
+#     (contract C6), safe to use as an agreement bucket key
+#   | test: test_suite_scoped_split_suites_block
 """
 
 from __future__ import annotations
@@ -48,8 +54,9 @@ from dataclasses import dataclass, field
 # Quorum-scaling policy (FIX-2)
 # ---------------------------------------------------------------------------
 # The public-alert quorum scales with the live observer population M for a
-# (model_tuple, metric_name) stream so that a fixed absolute threshold cannot
-# be trivially met as the network grows.
+# (model_tuple, suite_version, metric_name) stream so that a fixed absolute
+# threshold cannot be trivially met as the network grows.  ENG-1 changed the
+# stream KEY only; the schedule below (q, TTL, floor) is untouched.
 #
 #     q(M) = max(QUORUM_FLOOR, ceil(QUORUM_FRAC_NUM * M / QUORUM_FRAC_DEN))
 #            = max(3, ceil(M/3))   with the FIX-2b defaults
@@ -83,8 +90,9 @@ from dataclasses import dataclass, field
 # weighting + Ed25519 one-org-one-key binding (Phase 2), not this layer.
 #
 # candidate TTL: each org's candidate alert (and each observer heartbeat)
-# counts toward its (model_tuple, metric_name) stream only while it is newer
-# than DEFAULT_TTL_NS.  FIX-2b validated the 14-day window analytically: at
+# counts toward its (model_tuple, suite_version, metric_name) stream only
+# while it is newer than DEFAULT_TTL_NS.  FIX-2b validated the 14-day window
+# analytically: at
 # cadence ~1/day it sits inside the feasible band [~5 d cross-org detection
 # spread, ~25.6 d FP ceiling]; sampling faster than ~1.5/day/metric pushes 14
 # d out of band -> shorten TTL or raise the floor.
@@ -189,13 +197,18 @@ class ChangePointResult:
         threshold: The detection threshold in effect.
         contributing_orgs: Pseudonymous org_ids behind this signal.
         metric_name: Which metric drifted (e.g. "json_success_rate").  The
-            quorum gate matches agreement per (model_tuple, metric_name):
-            two orgs drifting on DIFFERENT metrics do NOT agree.  Empty
-            string means "unspecified" (legacy callers; treated as a single
-            catch-all metric bucket).
+            quorum gate matches agreement per (model_tuple, suite_version,
+            metric_name): two orgs drifting on DIFFERENT metrics do NOT
+            agree.  Empty string means "unspecified" (legacy callers;
+            treated as a single catch-all metric bucket).
         timestamp_ns: Event-time of the candidate in wall-clock nanoseconds.
             Used by AgreementScorer for candidate TTL expiry.  0 means unset;
             the scorer then stamps arrival time on ingest.
+        suite_version: Canary suite version the candidate was produced
+            under (e.g. "v1.1.0").  Part of the agreement bucket key: two
+            orgs drifting on the same (model_tuple, metric_name) but under
+            different corpora are NOT comparable and do NOT agree.  Empty
+            string is the legacy catch-all bucket.
 
     #SG-TRACE: REQ-ENGINE-005
     #   | assumption: change_detected is conservative (false-negative
@@ -205,6 +218,10 @@ class ChangePointResult:
     #   | assumption: metric_name is carried so cross-observer agreement is
     #     per (model_tuple, metric_name), not per model_tuple alone
     #   | test: test_agreement_scorer_metric_scoped
+    #SG-TRACE: REQ-ENGSCOPE-004
+    #   | assumption: suite_version is appended LAST with a "" default so
+    #     every existing keyword/positional construction stays valid (C2)
+    #   | test: test_legacy_changepointresult_lands_in_empty_suite_bucket
     """
 
     model_tuple: str
@@ -214,6 +231,7 @@ class ChangePointResult:
     contributing_orgs: list[str] = field(default_factory=list)
     metric_name: str = ""
     timestamp_ns: int = 0
+    suite_version: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -530,20 +548,28 @@ class AgreementScorer:
 
     A single-org signal is NEVER promoted to a public drift alert.  A
     quorum of distinct org_ids must independently signal a change on the
-    SAME (model_tuple, metric_name) stream, within the candidate TTL
-    window, before promote_to_public_alert() returns a non-None count.
+    SAME (model_tuple, suite_version, metric_name) stream, within the
+    candidate TTL window, before promote_to_public_alert() returns a
+    non-None count.
 
-    Three properties this class enforces (FIX-2 over the Phase 2 version):
+    Four properties this class enforces (FIX-2, extended by ENG-1):
 
     1. **Metric-scoped agreement.** Candidates are bucketed by
-       (model_tuple, metric_name).  Two orgs drifting on different metrics
-       of the same model do not agree.
+       (model_tuple, suite_version, metric_name).  Two orgs drifting on
+       different metrics of the same model do not agree.
 
-    2. **Candidate TTL.** Each org's most recent candidate counts only
+    2. **Suite-scoped agreement (ENG-1).** The same bucket key carries the
+       canary suite version.  Two orgs observing the same model+metric
+       under different corpora are not measuring the same thing, so they
+       are never counted as agreeing.  A wider key space is NOT a cheaper
+       route to quorum: the gate is still distinct orgs PER BUCKET, and
+       one org contributes at most one vote to each bucket.
+
+    3. **Candidate TTL.** Each org's most recent candidate counts only
        while newer than ``ttl_ns`` (event-time).  Stale candidates expire,
        so two orgs signalling weeks apart never form a coincidental quorum.
 
-    3. **Population-scaled quorum.** The required quorum is
+    4. **Population-scaled quorum.** The required quorum is
        ``required_quorum(M)`` where M is the live observer population for
        the stream (distinct orgs seen within the TTL window via
        ``observe()`` or ``ingest()``).  A fixed absolute threshold is
@@ -565,12 +591,17 @@ class AgreementScorer:
     #     org-identity binding (one org = one key) is the upstream gate
     #   | test: test_agreement_scorer_single_org_blocked
     #SG-TRACE: REQ-ENGINE-012
-    #   | assumption: agreement is per (model_tuple, metric_name); quorum
-    #     scales with the live observer population M
+    #   | assumption: agreement is per (model_tuple, suite_version,
+    #     metric_name); quorum scales with the live observer population M
     #   | test: test_agreement_scorer_metric_scoped
     #SG-TRACE: REQ-ENGINE-013
     #   | assumption: candidate/observer TTL is event-time in ns
     #   | test: test_agreement_scorer_ttl_expiry
+    #SG-TRACE: REQ-ENGSCOPE-005
+    #   | assumption: splitting a stream by suite_version cannot help an
+    #     adversary -- each bucket keeps the distinct-org gate and q(M) is
+    #     computed from that bucket's own live population
+    #   | test: test_adv1_sybil_suite_fanout_no_public_alert
     """
 
     QUORUM_MIN: int = 2
@@ -600,10 +631,12 @@ class AgreementScorer:
         self.ttl_ns: int = ttl_ns
         self.frac_num: int = frac_num
         self.frac_den: int = frac_den
-        # (model_tuple, metric_name) -> {org_id: latest_candidate_ts_ns}
-        self._agree: dict[tuple[str, str], dict[str, int]] = {}
-        # (model_tuple, metric_name) -> {org_id: latest_observed_ts_ns}
-        self._observers: dict[tuple[str, str], dict[str, int]] = {}
+        # (model_tuple, suite_version, metric_name)
+        #     -> {org_id: latest_candidate_ts_ns}
+        self._agree: dict[tuple[str, str, str], dict[str, int]] = {}
+        # (model_tuple, suite_version, metric_name)
+        #     -> {org_id: latest_observed_ts_ns}
+        self._observers: dict[tuple[str, str, str], dict[str, int]] = {}
 
     @property
     def quorum(self) -> int:
@@ -621,24 +654,34 @@ class AgreementScorer:
         metric_name: str,
         org_id: str,
         timestamp_ns: int | None = None,
+        suite_version: str = "",
     ) -> None:
         """Record that ``org_id`` is watching this stream (population M).
 
         Called on every accepted signal (drift or not) on the public path.
         Distinct observers within the TTL window define M, which sets the
-        required quorum q(M).
+        required quorum q(M).  M is counted PER BUCKET, so a suite cutover
+        moves an org's population contribution to the new bucket rather
+        than inflating the old one.
 
         Args:
             model_tuple: Composite model identifier.
             metric_name: Metric stream being observed.
             org_id: Pseudonymous observer identity.
             timestamp_ns: Event-time; defaults to now.
+            suite_version: Canary suite version; "" is the legacy bucket.
 
         #SG-TRACE: REQ-ENGINE-012
         #   | test: test_agreement_scorer_quorum_scales_with_population
+        #SG-TRACE: REQ-ENGSCOPE-005
+        #   | assumption: suite_version appended last so the existing
+        #     positional call observe(mt, metric, org, ts) is unchanged
+        #   | test: test_suite_scoped_observers_do_not_leak_across_suites
         """
         ts = timestamp_ns if timestamp_ns else self._now_ns()
-        bucket = self._observers.setdefault((model_tuple, metric_name), {})
+        bucket = self._observers.setdefault(
+            (model_tuple, suite_version, metric_name), {}
+        )
         prev = bucket.get(org_id, 0)
         if ts >= prev:
             bucket[org_id] = ts
@@ -652,14 +695,26 @@ class AgreementScorer:
 
         Args:
             result: A ChangePointResult carrying model_tuple, metric_name,
-                contributing_orgs, and (optionally) timestamp_ns.
+                suite_version, contributing_orgs, and (optionally)
+                timestamp_ns.
+
+        #SG-TRACE: REQ-ENGSCOPE-005
+        #   | assumption: result.suite_version defaults to "" on legacy
+        #     results, which lands them in the pre-ENG-1 catch-all bucket
+        #   | test: test_legacy_changepointresult_lands_in_empty_suite_bucket
         """
         if not result.contributing_orgs:
             return
         ts = result.timestamp_ns if result.timestamp_ns else self._now_ns()
-        key = (result.model_tuple, result.metric_name)
+        key = (result.model_tuple, result.suite_version, result.metric_name)
         for org_id in result.contributing_orgs:
-            self.observe(result.model_tuple, result.metric_name, org_id, ts)
+            self.observe(
+                result.model_tuple,
+                result.metric_name,
+                org_id,
+                ts,
+                result.suite_version,
+            )
             if result.change_detected:
                 bucket = self._agree.setdefault(key, {})
                 prev = bucket.get(org_id, 0)
@@ -680,20 +735,23 @@ class AgreementScorer:
         model_tuple: str,
         metric_name: str = "",
         now_ns: int | None = None,
+        suite_version: str = "",
     ) -> int | None:
         """Return agreeing-org count if population-scaled quorum is met.
 
         Counts distinct orgs with a live (within-TTL) candidate on the
-        (model_tuple, metric_name) stream, computes the required quorum
-        from the live observer population M, and promotes if the agreeing
-        count meets it.  On promotion the agreeing candidates are cleared;
-        observers are retained.
+        (model_tuple, suite_version, metric_name) stream, computes the
+        required quorum from that bucket's live observer population M, and
+        promotes if the agreeing count meets it.  On promotion the agreeing
+        candidates are cleared; observers are retained.
 
         Args:
             model_tuple: Composite model identifier to evaluate.
             metric_name: Metric stream to evaluate.  Empty string matches
                 the unspecified/legacy bucket.
             now_ns: Event-time reference for TTL; defaults to now.
+            suite_version: Canary suite version bucket to evaluate.  Empty
+                string matches the legacy bucket.
 
         Returns:
             int count of distinct live agreeing orgs if >= q(M), else None.
@@ -701,8 +759,13 @@ class AgreementScorer:
         #SG-TRACE: REQ-ENGINE-012
         #   | test: test_single_org_noise_blocked
         #   | test: test_agreement_scorer_quorum_scales_with_population
+        #SG-TRACE: REQ-ENGSCOPE-005
+        #   | assumption: quorum is evaluated per bucket; splitting orgs
+        #     across suites lowers each bucket's agreeing count, never
+        #     raises it (contract A3)
+        #   | test: test_three_orgs_split_suites_do_not_reach_quorum
         """
-        key = (model_tuple, metric_name)
+        key = (model_tuple, suite_version, metric_name)
         agree_tbl = self._agree.get(key)
         if not agree_tbl:
             return None
@@ -719,11 +782,16 @@ class AgreementScorer:
         )
         if len(live_agree) >= q:
             count = len(live_agree)
-            self.clear(model_tuple, metric_name)
+            self.clear(model_tuple, metric_name, suite_version)
             return count
         return None
 
-    def clear(self, model_tuple: str, metric_name: str = "") -> None:
+    def clear(
+        self,
+        model_tuple: str,
+        metric_name: str = "",
+        suite_version: str = "",
+    ) -> None:
         """Clear pending agreeing candidates for a stream after a decision.
 
         The observer population for the stream is retained (those orgs are
@@ -733,5 +801,12 @@ class AgreementScorer:
         Args:
             model_tuple: The model identifier to discard candidates for.
             metric_name: The metric stream to discard candidates for.
+            suite_version: The suite bucket to discard candidates for.
+                Empty string is the legacy bucket.
+
+        #SG-TRACE: REQ-ENGSCOPE-005
+        #   | assumption: clearing is bucket-local -- a promotion under one
+        #     suite must not wipe another suite's pending candidates
+        #   | test: test_clear_is_suite_local
         """
-        self._agree.pop((model_tuple, metric_name), None)
+        self._agree.pop((model_tuple, suite_version, metric_name), None)
