@@ -11,7 +11,8 @@ This is Track 1b: the first time a live probe result travels the full
 privacy + signing + ingestion path end to end.
 
 Pipeline:
-  execute_canary(mock=False, provider) -> [CanaryResult]
+  execute_canary_strict(suite=CANARY_SUITE_V2, mock=False, provider)
+    -> [CanaryResult]  (all 50 or nothing -- see PartialSuiteError)
     -> Aggregator.add_result / .flush  (clamp + Laplace DP noise, eps=2.0)
     -> SignalBatch (frozen, fleet_id=None => public network path)
     -> canonical_json(payload)          (the exact signed bytes)
@@ -55,7 +56,12 @@ from pathlib import Path
 # #   | test: tests/test_live_emit.py imports the build helper offline
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from probe.canary import execute_canary  # noqa: E402
+from probe.canary import (  # noqa: E402
+    CANARY_SUITE_V2,
+    SUITE_VERSION_V2,
+    PartialSuiteError,
+    execute_canary_strict,
+)
 from probe.crypto import (  # noqa: E402
     KeyManager,
     canonical_json,
@@ -163,7 +169,27 @@ def main() -> int:
         provider = OpenAICompatibleProvider(
             base_url=base_url, api_key=api_key, max_tokens=max_tokens
         )
-        results = execute_canary(model_tuple, mock=False, provider=provider)
+        # CAN-2 cutover: suite v2.0.0 (50 prompts), all-or-nothing.
+        # A partial run would flush at a reduced n, which silently changes
+        # the DP sensitivity (delta_f = MAX/n) and therefore the meaning of
+        # every metric in the batch -- so a partial run is discarded.
+        # #SG-TRACE: REQ-CAN2-CUTOVER-001
+        # #   | assumption: discarding a partial leg is strictly safer than
+        # #     emitting a batch whose n differs from the suite size
+        # #   | test: test_partial_suite_run_is_discarded_not_flushed
+        results = execute_canary_strict(
+            model_tuple,
+            suite=CANARY_SUITE_V2,
+            suite_version=SUITE_VERSION_V2,
+            mock=False,
+            provider=provider,
+        )
+    except PartialSuiteError as exc:
+        print(
+            f"Partial suite run discarded: {exc}",
+            file=sys.stderr,
+        )
+        return 1
     except ProviderError as exc:
         print(f"Provider call failed: {exc}", file=sys.stderr)
         return 1

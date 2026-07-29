@@ -65,6 +65,21 @@ CU7 test_ch_get_recent_alerts_returns_alert_rows
     get_recent_alerts() calls client.query() with public_drift_alerts.
     Mocked result_rows returns one tuple; assert AlertRow.timestamp present.
 
+ENG-1 suite scoping
+-------------------
+T7  test_save_batch_persists_suite_version /
+    test_get_recent_signals_returns_suite_version
+    suite_version round-trips through save_batch -> get_recent_signals.
+
+T8  test_legacy_db_without_suite_column_reads_none
+    A SQLite file written before the column existed is opened, back-filled
+    in place, and reads back NULL (-> "" legacy bucket) without raising.
+
+CU8 test_ch_save_batch_includes_suite_version
+CU9 test_ch_get_recent_signals_returns_suite_version /
+    test_ch_get_recent_signals_legacy_row_defaults_suite
+CU10 test_ch_setup_tables_backfills_suite_version
+
 Adversarial note
 ----------------
 T3 is the nullable-metrics gate: probes that cannot measure
@@ -83,6 +98,7 @@ must not cause a DB write failure.
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 import uuid
 from datetime import datetime
 from unittest.mock import MagicMock
@@ -90,8 +106,8 @@ from unittest.mock import MagicMock
 import pytest
 from engine.clickhouse import ClickHouseRepository
 from engine.detector import DriftAlert as DetectorDriftAlert
-from engine.models import LocalDriftAlert
-from engine.repository import AlertRow, SignalRepository
+from engine.models import LocalDriftAlert, TelemetrySignal
+from engine.repository import AlertRow, SignalRepository, SignalRow
 from gateway.schema import InboundSignalBatch
 from sqlalchemy import select
 
@@ -111,6 +127,7 @@ def _make_batch(
     model_tuple: str = _MODEL_A,
     metrics: dict | None = None,
     result_count: int = 3,
+    suite_version: str = "v1.0.0",
 ) -> InboundSignalBatch:
     """Return a valid InboundSignalBatch for testing."""
     if metrics is None:
@@ -122,7 +139,7 @@ def _make_batch(
             "window_start": "2025-08-01T00:00:00Z",
             "window_end": "2025-08-01T01:00:00Z",
             "model_tuple": model_tuple,
-            "suite_version": "v1.0.0",
+            "suite_version": suite_version,
             "metrics": metrics,
             "canary_hashes": {
                 "v1.0.0-logic": _sha256("logic"),
@@ -336,22 +353,30 @@ def test_ch_setup_tables_creates_all_three_tables(
 ) -> None:
     """CU1: setup_tables() issues 3 CREATE TABLE IF NOT EXISTS commands.
 
+    ENG-1 adds a 4th, idempotent ALTER ... ADD COLUMN IF NOT EXISTS that
+    back-fills telemetry_signals.suite_version on clusters created before
+    the column existed.  The assertion below was updated from
+    ``call_count == 3`` because it encoded the pre-ENG-1 DDL set.
+
     #SG-TRACE: REQ-STORE-014
+    #SG-TRACE: REQ-ENGSCOPE-009
     """
     ch_repo.setup_tables()
 
-    assert mock_ch_client.command.call_count == 3
+    assert mock_ch_client.command.call_count == 4
     sqls = [c.args[0] for c in mock_ch_client.command.call_args_list]
+    creates = [sql for sql in sqls if sql.startswith("CREATE TABLE")]
+    assert len(creates) == 3
     table_names = {
         "telemetry_signals",
         "local_drift_alerts",
         "public_drift_alerts",
     }
     for table in table_names:
-        assert any(table in sql for sql in sqls), (
+        assert any(table in sql for sql in creates), (
             f"Expected CREATE TABLE for {table!r}"
         )
-    for sql in sqls:
+    for sql in creates:
         assert "CREATE TABLE IF NOT EXISTS" in sql
         assert "MergeTree" in sql
 
@@ -387,7 +412,9 @@ def test_ch_save_batch_inserts_to_telemetry_signals(
 
     data = kwargs.get("data") or args[1]
     assert len(data) == 1  # one row
-    assert len(data[0]) == 7  # seven columns (fleet_id added P3-001)
+    # 7 -> 8: suite_version appended by ENG-1.  The old literal encoded
+    # the pre-ENG-1 column set.
+    assert len(data[0]) == 8  # fleet_id (P3-001) + suite_version (ENG-1)
 
 
 # ---------------------------------------------------------------------------
@@ -548,3 +575,238 @@ def test_ch_get_recent_alerts_returns_alert_rows(
     assert alert.model_tuple == _MODEL_A
     assert alert.metric_name == "json_success_rate"
     assert alert.contributing_org_count == 2
+
+
+# ===========================================================================
+# ENG-1 -- suite_version persistence (contract A4, A5; tests T7, T8)
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# T7 -- suite_version round-trips through the SQLite backend
+# ---------------------------------------------------------------------------
+
+
+def test_save_batch_persists_suite_version(repo: SignalRepository) -> None:
+    """T7: batch.suite_version is written to the telemetry_signals row.
+
+    #SG-TRACE: REQ-ENGSCOPE-007 | test: test_save_batch_persists_suite_version
+    """
+    repo.save_batch(_make_batch(suite_version="v2.0.0"))
+    with repo._db.session() as sess:
+        row = sess.scalars(select(TelemetrySignal)).one()
+    assert row.suite_version == "v2.0.0"
+
+
+def test_get_recent_signals_returns_suite_version(
+    repo: SignalRepository,
+) -> None:
+    """T7: get_recent_signals() exposes suite_version per row.
+
+    Two batches under different corpora stay distinguishable on read, which
+    is what lets bootstrap_detector re-warm per suite.
+
+    #SG-TRACE: REQ-ENGSCOPE-007
+    #   | test: test_get_recent_signals_returns_suite_version
+    """
+    repo.save_batch(_make_batch(suite_version="v1.1.0"))
+    repo.save_batch(_make_batch(suite_version="v2.0.0"))
+
+    rows = repo.get_recent_signals(_MODEL_A)
+    assert len(rows) == 2
+    assert {r.suite_version for r in rows} == {"v1.1.0", "v2.0.0"}
+
+
+def test_signal_row_defaults_suite_version_to_empty() -> None:
+    """SignalRow keeps its pre-ENG-1 positional arity (contract C2).
+
+    #SG-TRACE: REQ-ENGSCOPE-007
+    #   | test: test_signal_row_defaults_suite_version_to_empty
+    """
+    row = SignalRow(
+        "batch-legacy",
+        _MODEL_A,
+        datetime(2025, 8, 1, 12, 0, 0),
+        512.0,
+        0.95,
+        10.0,
+    )
+    assert row.suite_version == ""
+
+
+# ---------------------------------------------------------------------------
+# T8 -- a pre-ENG-1 SQLite file must not crash the gateway (contract C4/A5)
+# ---------------------------------------------------------------------------
+
+
+_LEGACY_TELEMETRY_DDL = """
+CREATE TABLE telemetry_signals (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    batch_id VARCHAR(36) NOT NULL,
+    timestamp DATETIME NOT NULL,
+    model_tuple VARCHAR(128) NOT NULL,
+    avg_output_length FLOAT,
+    json_success_rate FLOAT,
+    result_count FLOAT NOT NULL,
+    fleet_id VARCHAR(128)
+)
+"""
+
+
+def _write_legacy_db(path: str, rows: int = 4) -> None:
+    """Create a SQLite file with the PRE-ENG-1 telemetry_signals schema."""
+    conn = sqlite3.connect(path)
+    try:
+        conn.execute(_LEGACY_TELEMETRY_DDL)
+        for i in range(rows):
+            conn.execute(
+                "INSERT INTO telemetry_signals (batch_id, timestamp,"
+                " model_tuple, avg_output_length, json_success_rate,"
+                " result_count, fleet_id)"
+                " VALUES (?, ?, ?, ?, ?, ?, NULL)",
+                (
+                    f"legacy-{i}",
+                    datetime(2025, 8, 1, 12, i, 0),
+                    _MODEL_A,
+                    500.0 + i,
+                    0.9,
+                    3.0,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_legacy_db_without_suite_column_reads_none(tmp_path) -> None:
+    """T8: an existing DB file lacking suite_version opens and reads.
+
+    SQLAlchemy's create_all() never ALTERs an existing table, so without
+    the additive back-fill the first SELECT would raise OperationalError
+    ("no such column") and 500 the gateway on start-up (contract C4).
+
+    #SG-TRACE: REQ-ENGSCOPE-008
+    #   | test: test_legacy_db_without_suite_column_reads_none
+    """
+    db_file = tmp_path / "legacy.db"
+    _write_legacy_db(str(db_file))
+
+    repo = SignalRepository(f"sqlite:///{db_file}")
+    rows = repo.get_recent_signals(_MODEL_A)
+
+    assert len(rows) == 4
+    # Pre-existing rows carry NULL, which readers coerce to the "" bucket.
+    assert all(r.suite_version is None for r in rows)
+    assert all((getattr(r, "suite_version", None) or "") == "" for r in rows)
+
+
+def test_legacy_db_backfill_is_idempotent(tmp_path) -> None:
+    """Re-opening an already-migrated DB is a no-op and keeps the data.
+
+    #SG-TRACE: REQ-ENGSCOPE-008 | test: test_legacy_db_backfill_is_idempotent
+    """
+    db_file = tmp_path / "legacy_twice.db"
+    _write_legacy_db(str(db_file), rows=2)
+
+    SignalRepository(f"sqlite:///{db_file}")
+    repo2 = SignalRepository(f"sqlite:///{db_file}")
+    # A new write after the back-fill stores its suite normally, and the
+    # legacy rows are untouched.
+    repo2.save_batch(_make_batch(suite_version="v2.0.0"))
+
+    rows = repo2.get_recent_signals(_MODEL_A)
+    assert len(rows) == 3
+    assert sorted((r.suite_version or "") for r in rows) == ["", "", "v2.0.0"]
+
+
+# ---------------------------------------------------------------------------
+# CU8-CU10 -- ClickHouse mirrors the SQLite behaviour (contract A4)
+# ---------------------------------------------------------------------------
+
+
+def test_ch_setup_tables_backfills_suite_version(
+    ch_repo: ClickHouseRepository,
+    mock_ch_client: MagicMock,
+) -> None:
+    """CU10: setup_tables() issues an idempotent ADD COLUMN back-fill.
+
+    Mirrors the SQLite ALTER so a cluster whose telemetry_signals predates
+    ENG-1 does not start rejecting INSERTs on the new column list.
+
+    #SG-TRACE: REQ-ENGSCOPE-009
+    #   | test: test_ch_setup_tables_backfills_suite_version
+    """
+    ch_repo.setup_tables()
+    sqls = [c.args[0] for c in mock_ch_client.command.call_args_list]
+    alters = [sql for sql in sqls if sql.startswith("ALTER TABLE")]
+    assert len(alters) == 1
+    assert "telemetry_signals" in alters[0]
+    assert "ADD COLUMN IF NOT EXISTS suite_version" in alters[0]
+    create_signals = next(
+        sql
+        for sql in sqls
+        if "CREATE TABLE IF NOT EXISTS telemetry_signals" in sql
+    )
+    assert "suite_version String DEFAULT ''" in create_signals
+
+
+def test_ch_save_batch_includes_suite_version(
+    ch_repo: ClickHouseRepository,
+    mock_ch_client: MagicMock,
+) -> None:
+    """CU8: save_batch() inserts suite_version as the last column.
+
+    #SG-TRACE: REQ-ENGSCOPE-009
+    #   | test: test_ch_save_batch_includes_suite_version
+    """
+    ch_repo.save_batch(_make_batch(suite_version="v2.0.0"))
+    args, kwargs = mock_ch_client.insert.call_args
+    columns = kwargs["column_names"]
+    data = kwargs.get("data") or args[1]
+    assert columns[-1] == "suite_version"
+    assert data[0][columns.index("suite_version")] == "v2.0.0"
+
+
+def test_ch_get_recent_signals_returns_suite_version(
+    ch_repo: ClickHouseRepository,
+    mock_ch_client: MagicMock,
+) -> None:
+    """CU9: the projection selects suite_version and maps it onto SignalRow.
+
+    #SG-TRACE: REQ-ENGSCOPE-009
+    #   | test: test_ch_get_recent_signals_returns_suite_version
+    """
+    ts = datetime(2025, 8, 1, 12, 0, 0)
+    mock_ch_client.query.return_value.result_rows = [
+        ("batch-001", _MODEL_A, ts, 512.0, 0.95, 10.0, "v2.0.0"),
+    ]
+    rows = ch_repo.get_recent_signals(_MODEL_A, limit=5)
+
+    sql_arg = mock_ch_client.query.call_args.args[0]
+    assert "suite_version" in sql_arg
+    assert len(rows) == 1
+    assert rows[0].suite_version == "v2.0.0"
+    # Pre-ENG-1 column positions are unchanged.
+    assert rows[0].batch_id == "batch-001"
+    assert rows[0].result_count == pytest.approx(10.0)
+
+
+def test_ch_get_recent_signals_legacy_row_defaults_suite(
+    ch_repo: ClickHouseRepository,
+    mock_ch_client: MagicMock,
+) -> None:
+    """CU9: a short (pre-ENG-1) result tuple maps to the "" legacy bucket.
+
+    Mirrors the SQLite NULL -> "" coercion (contract A5) rather than
+    raising IndexError on the gateway start-up path.
+
+    #SG-TRACE: REQ-ENGSCOPE-009
+    #   | test: test_ch_get_recent_signals_legacy_row_defaults_suite
+    """
+    ts = datetime(2025, 8, 1, 12, 0, 0)
+    mock_ch_client.query.return_value.result_rows = [
+        ("batch-legacy", _MODEL_A, ts, 512.0, 0.95, 10.0),
+        ("batch-null", _MODEL_A, ts, 512.0, 0.95, 10.0, None),
+    ]
+    rows = ch_repo.get_recent_signals(_MODEL_A, limit=5)
+    assert [r.suite_version for r in rows] == ["", ""]

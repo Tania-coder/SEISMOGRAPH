@@ -14,8 +14,9 @@ Public path (fleet_id is None)
   3. Any local DriftAlerts are persisted via save_local_alert() with
      the submitting client_id and fleet_id=None.
   4. Each local alert is fed into AgreementScorer.  If quorum is reached
-     (>= QUORUM_MIN distinct orgs), a PublicDriftAlert is saved and the
-     scorer state is cleared for that model_tuple.
+     (>= QUORUM_MIN distinct orgs on the SAME (model_tuple, suite_version,
+     metric_name) stream), a PublicDriftAlert is saved and the scorer
+     state is cleared for that stream.
   5. 202 response returns the local alert list (CUSUM events).
 
 Private fleet path (fleet_id is non-None)
@@ -200,13 +201,19 @@ def bootstrap_detector(
     recent signals for each, and feeds them into the detector
     in chronological (oldest-first) order.
 
+    Re-warming is PER SUITE VERSION (ENG-1): each row is replayed into
+    the (model_tuple, suite_version, metric_name) stream it was recorded
+    under, so a corpus cutover does not pour v1 history into the v2
+    baseline.  Rows written before the column existed carry a NULL
+    suite_version and are replayed into the legacy ``""`` bucket.
+
     Alerts emitted during bootstrap are DISCARDED -- we only restore
     the baseline accumulation state, not re-fire historical alerts.
     AgreementScorer is NOT involved during bootstrap.
 
     Works with any BaseRepository implementation (SQLite or ClickHouse):
-    both return objects with .avg_output_length and .json_success_rate
-    attributes via duck typing.
+    both return objects with .avg_output_length, .json_success_rate and
+    .suite_version attributes via duck typing.
 
     Parameters
     ----------
@@ -218,20 +225,34 @@ def bootstrap_detector(
     Returns
     -------
     int
-        Total number of (model_tuple, metric_name) observations fed
-        to the detector across all streams.
+        Total number of (model_tuple, suite_version, metric_name)
+        observations fed to the detector across all streams.
 
     #SG-TRACE: REQ-GW-022
     #   | assumption: reversed(get_recent_signals(limit=50)) gives
     #     chronological order since get_recent_signals returns DESC
     #   | test: test_bootstrap_warms_cusum_detector
+    #SG-TRACE: REQ-ENGSCOPE-011
+    #   | assumption: getattr(..., None) or "" is the safe read-site
+    #     default -- it covers a NULL column, a legacy DB where the
+    #     column was just back-filled, and a backend row object that
+    #     predates the field entirely (contract A5)
+    #   | test: test_bootstrap_rewarms_per_suite_version,
+    #           test_legacy_db_without_suite_column_bootstraps
+    #SG-TRACE: REQ-ENGSCOPE-011
+    #   | assumption: key-space growth per suite must be VISIBLE, not
+    #     silent (contract R2) -- the per-suite stream count is logged
+    #   | test: test_bootstrap_logs_per_suite_stream_count
     """
     total = 0
+    # (model_tuple, suite_version) -> observations replayed
+    per_suite: dict[tuple[str, str], int] = {}
     for model_tuple in repo.get_all_model_tuples():
         signals = repo.get_recent_signals(model_tuple, limit=50)
         # signals are newest-first; feed oldest-first for correct order
         for i, signal in enumerate(reversed(signals)):
             ts = i * 1_000_000  # synthetic monotonic ns: 1 ms apart
+            suite_version = getattr(signal, "suite_version", None) or ""
             for metric_name in ("json_success_rate", "avg_output_length"):
                 value = getattr(signal, metric_name, None)
                 if value is not None:
@@ -241,8 +262,22 @@ def bootstrap_detector(
                         metric_name=metric_name,
                         value=float(value),
                         timestamp_ns=ts,
+                        suite_version=suite_version,
                     )
                     total += 1
+                    key = (model_tuple, suite_version)
+                    per_suite[key] = per_suite.get(key, 0) + 1
+    for (model_tuple, suite_version), count in sorted(per_suite.items()):
+        logger.info(
+            "bootstrap stream | model=%s suite=%s observations=%d",
+            model_tuple,
+            suite_version or "(legacy)",
+            count,
+        )
+    logger.info(
+        "bootstrap suite fan-out | model_suite_streams=%d",
+        len(per_suite),
+    )
     return total
 
 
@@ -624,11 +659,16 @@ async def ingest_signals(
         dispatcher: WebhookDispatcher = request.app.state.dispatcher
 
         for metric_name, value in batch.metrics.items():
+            # Suite-scoped stream identity on the private path too, so a
+            # fleet's corpus cutover does not step-change its own baseline.
+            # #SG-TRACE: REQ-ENGSCOPE-010
+            # #   | test: test_private_fleet_detector_is_suite_scoped
             alert: DetectorDriftAlert | None = fleet_detector.update(
                 model_tuple=batch.model_tuple,
                 metric_name=metric_name,
                 value=float(value),
                 timestamp_ns=ts,
+                suite_version=batch.suite_version,
             )
             if alert is not None:
                 logger.warning(
@@ -694,9 +734,20 @@ async def ingest_signals(
         for metric_name, value in batch.metrics.items():
             # Record this org as an observer of the stream (population M for
             # the population-scaled quorum), whether or not it drifts.
+            # The observed stream is (model_tuple, suite_version, metric):
+            # an org watching under a different corpus does not inflate this
+            # bucket's M.
             # #SG-TRACE: REQ-ENGINE-012 | test: test_gateway_quorum_scoped
+            # #SG-TRACE: REQ-ENGSCOPE-010
+            # #   | assumption: batch.suite_version is required on the wire
+            # #     (min_length=1) and inside the signed payload, so it is
+            # #     never absent and never attacker-mutable post-signature
+            # #   | test: test_gateway_two_suites_do_not_reach_quorum
             scorer.observe(
-                batch.model_tuple, metric_name, str(batch.client_id)
+                batch.model_tuple,
+                metric_name,
+                str(batch.client_id),
+                suite_version=batch.suite_version,
             )
 
             alert = detector.update(
@@ -704,6 +755,7 @@ async def ingest_signals(
                 metric_name=metric_name,
                 value=float(value),
                 timestamp_ns=ts,
+                suite_version=batch.suite_version,
             )
             if alert is not None:
                 logger.warning(
@@ -718,9 +770,10 @@ async def ingest_signals(
                 repo.save_local_alert(alert, str(batch.client_id))
 
                 # Bridge DetectorDriftAlert -> ChangePointResult.
-                # metric_name scopes agreement to this stream; timestamp is
-                # left unset so the scorer stamps wall-clock event-time
-                # (gateway `ts` is monotonic, not comparable across nodes).
+                # (metric_name, suite_version) scope agreement to this
+                # stream; timestamp is left unset so the scorer stamps
+                # wall-clock event-time (gateway `ts` is monotonic, not
+                # comparable across nodes).
                 cp = ChangePointResult(
                     model_tuple=alert.model_tuple,
                     change_detected=True,
@@ -728,12 +781,16 @@ async def ingest_signals(
                     threshold=alert.threshold,
                     contributing_orgs=[str(batch.client_id)],
                     metric_name=alert.metric_name,
+                    suite_version=alert.suite_version,
                 )
                 scorer.ingest(cp)
 
-                # Quorum check: population-scaled q(M), per (model, metric).
+                # Quorum check: population-scaled q(M), per
+                # (model, suite, metric).
                 org_count = scorer.promote_to_public_alert(
-                    alert.model_tuple, alert.metric_name
+                    alert.model_tuple,
+                    alert.metric_name,
+                    suite_version=alert.suite_version,
                 )
                 if org_count is not None:
                     repo.save_public_alert(
@@ -741,10 +798,15 @@ async def ingest_signals(
                         metric_name=alert.metric_name,
                         contributing_org_count=org_count,
                     )
-                    scorer.clear(alert.model_tuple, alert.metric_name)
-                    logger.warning(
-                        "PUBLIC ALERT | model=%s metric=%s orgs=%d",
+                    scorer.clear(
                         alert.model_tuple,
+                        alert.metric_name,
+                        alert.suite_version,
+                    )
+                    logger.warning(
+                        "PUBLIC ALERT | model=%s suite=%s metric=%s orgs=%d",
+                        alert.model_tuple,
+                        alert.suite_version,
                         alert.metric_name,
                         org_count,
                     )

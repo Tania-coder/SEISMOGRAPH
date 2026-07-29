@@ -78,7 +78,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from gateway.schema import InboundSignalBatch
-from sqlalchemy import create_engine, delete, select
+from sqlalchemy import Engine, create_engine, delete, inspect, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -115,6 +115,11 @@ class SignalRow:
     #     add latency_p99 or error_rate columns under a new schema
     #     version
     #   | test: test_ch_get_recent_signals_returns_signal_rows
+    #SG-TRACE: REQ-ENGSCOPE-007
+    #   | assumption: suite_version is appended LAST with a "" default so
+    #     existing positional SignalRow(...) construction stays valid (C2);
+    #     "" is the legacy detector bucket
+    #   | test: test_signal_row_defaults_suite_version_to_empty
     """
 
     batch_id: str
@@ -123,6 +128,7 @@ class SignalRow:
     avg_output_length: float | None
     json_success_rate: float | None
     result_count: float
+    suite_version: str = ""
 
 
 @dataclass
@@ -383,6 +389,56 @@ class BaseRepository(ABC):
 # ---------------------------------------------------------------------------
 
 
+# Columns added after the first release, back-filled in place on an
+# existing SQLite file.  Maps table -> {column: DDL type + default}.
+#
+# #SG-TRACE: REQ-ENGSCOPE-008
+# #   | assumption: SQLAlchemy create_all() only CREATEs missing tables and
+# #     never ALTERs an existing one, so a DB file written before ENG-1
+# #     would 500 the gateway on the first SELECT; an idempotent
+# #     ADD COLUMN is the least invasive safe fix (contract C4)
+# #   | test: test_legacy_db_without_suite_column_bootstraps
+_ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
+    "telemetry_signals": {"suite_version": "VARCHAR(64)"},
+}
+
+
+def _apply_additive_columns(engine: Engine) -> list[str]:
+    """Add any missing additive columns to existing tables, in place.
+
+    Returns the list of ``table.column`` names actually added (empty on a
+    freshly created schema, where create_all() already made them).  Safe to
+    call on every start-up: the inspector is consulted first, so this is a
+    no-op once the column exists.  Failures are logged and swallowed --
+    a read-only or exotic backend must never block gateway start-up over
+    an optional column.
+    """
+    added: list[str] = []
+    try:
+        inspector = inspect(engine)
+        existing_tables = set(inspector.get_table_names())
+        for table, columns in _ADDITIVE_COLUMNS.items():
+            if table not in existing_tables:
+                continue
+            present = {c["name"] for c in inspector.get_columns(table)}
+            for column, ddl_type in columns.items():
+                if column in present:
+                    continue
+                with engine.begin() as conn:
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE {table} "
+                            f"ADD COLUMN {column} {ddl_type}"
+                        )
+                    )
+                added.append(f"{table}.{column}")
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("additive column migration skipped | %s", exc)
+    if added:
+        logger.info("additive columns added | %s", ", ".join(added))
+    return added
+
+
 class DatabaseSession:
     """SQLAlchemy engine factory with table auto-creation.
 
@@ -424,6 +480,10 @@ class DatabaseSession:
             )
 
         Base.metadata.create_all(self._engine)
+        # Back-fill columns added after this DB file was first written.
+        # #SG-TRACE: REQ-ENGSCOPE-008
+        # #   | test: test_legacy_db_without_suite_column_bootstraps
+        _apply_additive_columns(self._engine)
         logger.info("DatabaseSession initialised | url=%s", db_url)
 
     @contextmanager
@@ -480,6 +540,8 @@ class SignalRepository(BaseRepository):
         Extracts allowed metric keys from batch.metrics.  Missing metric
         keys are stored as NULL (nullable columns on TelemetrySignal).
         fleet_id is read from batch.fleet_id and stored on the row.
+        suite_version is read from batch.suite_version (always present on
+        the wire; ``min_length=1``) so bootstrap can re-warm per suite.
 
         Parameters
         ----------
@@ -490,6 +552,10 @@ class SignalRepository(BaseRepository):
         #   | assumption: batch.metrics keys are validated upstream by
         #     InboundSignalBatch.check_metrics_keys; no unknown keys here
         #   | test: test_save_batch_persists_to_db
+        #SG-TRACE: REQ-ENGSCOPE-007
+        #   | assumption: batch.suite_version is already schema-validated
+        #     non-empty, so no coercion is needed on the write path
+        #   | test: test_save_batch_persists_suite_version
         """
         metrics = batch.metrics
         signal = TelemetrySignal(
@@ -502,14 +568,16 @@ class SignalRepository(BaseRepository):
                 metrics.get("result_count", batch.result_count)
             ),
             fleet_id=batch.fleet_id,
+            suite_version=batch.suite_version,
         )
         with self._db.session() as sess:
             sess.add(signal)
         logger.debug(
-            "save_batch | batch_id=%s model=%s fleet_id=%s",
+            "save_batch | batch_id=%s model=%s fleet_id=%s suite=%s",
             batch.batch_id,
             batch.model_tuple,
             batch.fleet_id,
+            batch.suite_version,
         )
 
     def save_local_alert(
@@ -629,11 +697,17 @@ class SignalRepository(BaseRepository):
         -------
         list[TelemetrySignal]
             Most recent rows first.  Empty list if no data exists.
+            Each row exposes ``.suite_version`` (None on rows written
+            before the column existed); callers coerce None to "".
 
         #SG-TRACE: REQ-STORE-010
         #   | assumption: id ordering is sufficient as a recency proxy
         #     for Phase 1; Phase 2 orders by timestamp column
         #   | test: test_get_recent_signals_respects_limit
+        #SG-TRACE: REQ-ENGSCOPE-007
+        #   | assumption: the ORM row carries suite_version natively, so no
+        #     projection change is needed here
+        #   | test: test_get_recent_signals_returns_suite_version
         """
         stmt = (
             select(TelemetrySignal)
