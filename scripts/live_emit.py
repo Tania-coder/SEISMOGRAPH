@@ -29,8 +29,17 @@ Configuration (environment variables):
   SEISMOGRAPH_PROBE_API_KEY      bearer token (omit for local Ollama)
   SEISMOGRAPH_PROBE_MODEL_TUPLE  default ollama/llama3.1
   SEISMOGRAPH_PROBE_MAX_TOKENS   default 64
+  SEISMOGRAPH_PROBE_DELAY_MS     default 0    (inter-prompt pacing, CAN-2a)
+  SEISMOGRAPH_PROBE_MAX_RETRIES  default 2    (transient 429/503 only)
   SEISMOGRAPH_GATEWAY_ENDPOINT   default http://localhost:8000/v1/signals
   SEISMOGRAPH_PROBE_KEY_PATH     default .seismograph_id
+
+Pacing (CAN-2a): a rate-limited free tier cannot serve 50 sequential
+calls -- google/gemini-3.5-flash-lite completed 18 of 50 on 2026-07-31
+and the whole run was (correctly) discarded.  Set
+SEISMOGRAPH_PROBE_DELAY_MS per matrix leg to spread the suite under the
+provider's requests-per-minute quota.  The default of 0 leaves every
+other leg exactly as it was.
 
 Example (Mistral -> local gateway):
   # terminal 1:  uvicorn gateway.main:app --port 8000
@@ -58,9 +67,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from probe.canary import (  # noqa: E402
     CANARY_SUITE_V2,
+    DEFAULT_MAX_RETRIES,
     SUITE_VERSION_V2,
     PartialSuiteError,
     execute_canary_strict,
+    pacing_budget_ms,
 )
 from probe.crypto import (  # noqa: E402
     KeyManager,
@@ -158,6 +169,20 @@ def main() -> int:
         "SEISMOGRAPH_PROBE_MODEL_TUPLE", "ollama/llama3.1"
     )
     max_tokens = int(os.environ.get("SEISMOGRAPH_PROBE_MAX_TOKENS", "64"))
+    # CAN-2a: per-leg pacing.  Both default to the pre-CAN-2a behaviour
+    # of the runner (no pacing; the runner's own retry default), so a
+    # leg that sets neither variable is unchanged.
+    # SG-TRACE: REQ-CAN2A-011
+    #   | assumption: pacing is a per-leg operational setting, not a
+    #     property of the corpus, so it arrives from the environment
+    #     (the workflow matrix) and never from a constant in the probe
+    #   | test: test_live_emit_reads_pacing_env_and_passes_it_through
+    delay_ms = int(os.environ.get("SEISMOGRAPH_PROBE_DELAY_MS", "0"))
+    max_retries = int(
+        os.environ.get(
+            "SEISMOGRAPH_PROBE_MAX_RETRIES", str(DEFAULT_MAX_RETRIES)
+        )
+    )
     gateway = os.environ.get(
         "SEISMOGRAPH_GATEWAY_ENDPOINT", "http://localhost:8000/v1/signals"
     )
@@ -165,6 +190,13 @@ def main() -> int:
     gateway_base = gateway.split("/v1/signals")[0]
 
     print(f"Probing {model_tuple} via {base_url} ...")
+    if delay_ms > 0:
+        budget_s = pacing_budget_ms(len(CANARY_SUITE_V2), delay_ms) / 1000.0
+        print(
+            f"  pacing: {delay_ms} ms between prompts, "
+            f"<= {max_retries} retries on 429/503, "
+            f"worst-case added wall-clock {budget_s:.0f}s"
+        )
     try:
         provider = OpenAICompatibleProvider(
             base_url=base_url, api_key=api_key, max_tokens=max_tokens
@@ -183,6 +215,8 @@ def main() -> int:
             suite_version=SUITE_VERSION_V2,
             mock=False,
             provider=provider,
+            delay_ms=delay_ms,
+            max_retries=max_retries,
         )
     except PartialSuiteError as exc:
         print(
