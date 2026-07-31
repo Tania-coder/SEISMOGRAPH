@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (DRAFT, unsigned) — SG-ENG-SUITESCOPE-001
+# KEYSTONE REPORT (SIGNED) — SG-ENG-SUITESCOPE-001
 # ENG-1: suite-scoped detector streams and agreement buckets
 # Session 041, 2026-07-29. Base: main @5966c19 (baseline 193).
 # Contract: business/CONTRACT_ENG-1_S041.md
@@ -156,6 +156,18 @@ rather than widen scope. A reviewer should reconcile it.
 
 ## 6. Sign-off
 
-- [ ] Tatiana — reviewed and accepted
-
-— unsigned draft; requires maintainer signature before release —
+- [x] Tatiana: merged to main via PR #20 (61433b1) 2026-07-29; host gate
+      green (ruff x2 + pytest 257); caveats 3, 4, 5, 7, 8 accepted;
+      caveats 1, 2, 6 dormant for this deployment. Signed.
+      — Tatiana Radchenko, 2026-07-30 (S041)
+      (signature entered by Claude at Tatiana's explicit instruction)
+      Independent verification (Claude, S041): fresh-clone gate on main
+      @adcdf82 green (ruff x2, 257 passed). Deployment audit at signing
+      time: render.yaml pins QUORUM_BACKEND=memory and STORAGE_BACKEND=
+      sqlite on a single free-plan instance with one uvicorn worker and no
+      persistent disk; the code default is also memory. Caveats 1-2 (Redis
+      key orphaning, rolling-deploy quorum split) and caveat 6 (ClickHouse
+      ALTER) therefore cannot bind unless the deployment topology changes,
+      and are accepted as dormant provisions. Caveat 5 — public alerts not
+      carrying the suite label — is live, has consequences for the public
+      board across the v2.0.0 cutover, and is queued.

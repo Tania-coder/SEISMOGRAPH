@@ -156,13 +156,27 @@ only cost is saturation for outputs above the bound, which the probe's own
 
 ## 6. Compatibility caveats
 
-1. **CAN-1 was inert in production until this commit.** The cron called
+1. **CAN-1's tool-calling canary was inert in production until this
+   commit; its token metrics were not.** The cron called
    `execute_canary(model_tuple, mock=False, provider=provider)` with the
-   *default* suite — `CANARY_SUITE_V1`, 3 prompts, `suite_version="v1.0.0"`.
-   The tool-calling canary and the token metrics merged in S040 had never
-   been emitted live. The board's observed `json_success_rate` clustering
-   near 0.33 is consistent with n=3, not n=4. This commit is the first time
-   any suite past v1.0.0 reaches the wire.
+   *default* suite — `CANARY_SUITE_V1`, 3 prompts, `suite_version="v1.0.0"`
+   — so the tool canary and `tool_call_validity_rate` never reached the
+   wire, and **suite v1.1.0 was never deployed at all**: production went
+   v1.0.0 -> v2.0.0 directly. The token metrics DID ship from the first cron
+   run after `c439105`: `execute_canary` routes text canaries through
+   `provider.complete_ex` whenever the provider exposes it, and
+   `scripts/live_emit.py` constructs exactly such a provider, so
+   `avg_output_tokens` (and `avg_reasoning_tokens` on providers returning
+   `completion_tokens_details`) were emitted on every usage-reporting leg.
+   CAN-1's own caveat 1 anticipated this ("or usage-reporting providers").
+   The dispositive observable for the suite question is `result_count`,
+   persisted un-noised as a column by `save_batch` — 3.0 vs 4.0. A
+   `json_success_rate` argument (0.33 vs 0.25) does NOT discriminate: at
+   n=3 the single-batch Laplace SD is 0.236 against a 0.083 separation of
+   means, and even the board's 10-batch rolling mean classifies at only
+   ~77.5% from one model row. This commit is the first time any suite past
+   v1.0.0 reaches the wire; the first production v2.0.0 emission was the
+   cron fire following `61433b1`.
 2. **`execute_canary_strict` is a new entry point, not a change to
    `execute_canary`.** Existing callers keep fail-fast semantics; all 193
    pre-existing tests pass unmodified.

@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (DRAFT, unsigned) — SG-FEAT-TOOLCALL-001 + SG-FEAT-TOKENS-001
+# KEYSTONE REPORT (SIGNED) — SG-FEAT-TOOLCALL-001 + SG-FEAT-TOKENS-001
 
 Date: 2026-07-24 | Status: draft for review | Contract: /tmp/agents/engine/CONTRACT.md
 
@@ -86,4 +86,22 @@ tests/test_token_metrics.py. Full copies in patch/. Trace comments
    `gen_ai.usage.output_tokens` span attribute will start emitting this
    key after upgrade (accepted by the upgraded gateway).
 
-— unsigned draft; requires maintainer signature before release —
+## Sign-off
+
+- [x] Tatiana: merged to main via PR #19 (c439105) 2026-07-24; host gate
+      green (ruff x2 + pytest 193); both mandatory adversarial cases pass;
+      caveats 1-3 accepted. Signed.
+      — Tatiana Radchenko, 2026-07-30 (S041)
+      (signature entered by Claude at Tatiana's explicit instruction)
+      Independent verification (Claude, S041): fresh-clone gate on main
+      @adcdf82 green (ruff x2, 257 passed). Correction recorded at signing
+      time: the tool-calling canary and tool_call_validity_rate shipped in
+      this commit did NOT reach production until the S041 cutover — suite
+      v1.1.0 was never deployed at all; production went v1.0.0 -> v2.0.0
+      directly. The token metrics DID reach production from the first cron
+      run after c439105, via the complete_ex path for text canaries,
+      exactly as caveat 1 of this report anticipated ("or usage-reporting
+      providers"). Established adversarially against the source-code chain
+      at c439105; the dispositive observable is the un-noised result_count
+      column (3.0 vs 4.0), not json_success_rate, which cannot discriminate
+      at this sample size.
