@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (DRAFT, unsigned) — SG-FEAT-CANARY-V2-001
+# KEYSTONE REPORT (SIGNED) — SG-FEAT-CANARY-V2-001
 # CAN-2: canary suite v2.0.0 — corpus expansion 4 -> 50 prompts
 # Session 041, 2026-07-29. Base: seismograph/task-eng-1 (ENG-1 must land first).
 # Contract: business/CONTRACT_CAN-2_S041.md
@@ -200,6 +200,26 @@ only cost is saturation for outputs above the bound, which the probe's own
 
 ## 7. Sign-off
 
-- [ ] Tatiana — reviewed and accepted
-
-— unsigned draft; requires maintainer signature before release —
+- [x] Tatiana: merged to main via PR #20 (61433b1) 2026-07-29; host gate
+      green (ruff x2 + pytest 257); first production v2.0.0 emission
+      verified 2026-07-31 09:16 UTC — mistral leg result_count=50, batch
+      accepted (batch_id 3213f1ed-…). Signed.
+      — Tatiana Radchenko, 2026-07-31 (S041)
+      (signature entered by Claude at Tatiana's explicit instruction)
+      Caveat 6.7 MATERIALISED on first contact: the google leg completed
+      18/50 prompts and was correctly DISCARDED rather than flushed at a
+      reduced n, so no batch with mismatched DP sensitivity reached the
+      gateway. The Gemini free tier cannot sustain 50 sequential calls.
+      Consequence accepted: the public board runs on one model tuple
+      (mistral) until fixed. Mitigation queued as CAN-2a — inter-prompt
+      pacing plus retry-with-backoff on 429/503 in execute_canary_strict.
+      Two empirical confirmations from the same run, recorded here because
+      both were open questions at drafting time:
+      (a) json_success_rate=0.198 against a true rate of 9/50=0.18 at DP
+          sigma 0.0141 (1.3 sigma) — structured_output prompts are NOT
+          truncated by max_tokens=64, which §6.7 and the PRIV-011 analysis
+          had both flagged as a risk. Closed.
+      (b) avg_output_length=136.6 against DP sigma 115.85 at n=50 — the
+          metric fluctuates by nearly its own magnitude. §4's negative
+          result is now confirmed on live data, not only by arithmetic.
+          PRIV-011 stands as the next engineering task.
