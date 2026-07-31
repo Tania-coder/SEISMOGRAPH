@@ -48,10 +48,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from probe.providers import model_name_from_tuple
+from probe.providers import ProviderError, model_name_from_tuple
 
 # ---------------------------------------------------------------------------
 # Suite definition
@@ -1458,12 +1460,120 @@ class PartialSuiteError(RuntimeError):
         )
 
 
+# ---------------------------------------------------------------------------
+# Pacing + transient-failure backoff (contract CAN-2a s3-s5)
+# ---------------------------------------------------------------------------
+
+# Only these two HTTP statuses mean "the same request may succeed if you
+# ask again later".  429 is a rate limit, 503 is a temporarily
+# unavailable upstream.  Everything else -- 400 bad request, 401/403 bad
+# key, 404 wrong model, 500 -- is a fault that a retry cannot fix and
+# that must fail the prompt immediately, exactly as before CAN-2a.
+# SG-TRACE: REQ-CAN2A-003
+#   | assumption: 429/503 are the only statuses worth re-issuing a
+#     temperature-0 canary for; retrying a 4xx that is not 429 would
+#     spend quota to obtain the identical failure
+#   | test: test_p5_non_transient_status_is_not_retried
+TRANSIENT_STATUS_CODES: frozenset[int] = frozenset({429, 503})
+
+# Extra attempts per prompt on top of the first one (contract C4).
+DEFAULT_MAX_RETRIES: int = 2
+
+# First backoff wait; each further wait doubles it (5s, 10s, 20s...).
+# A 429 from a per-minute quota is only cleared by the quota window
+# rolling, so sub-second waits are pointless; 5s is the smallest wait
+# that plausibly clears a 15 req/min bucket without the leg stalling.
+RETRY_BACKOFF_BASE_MS: int = 5_000
+
+# Hard ceiling on the TOTAL backoff a single run may spend (contract
+# C4).  Without it, a 50-prompt suite against a provider that 429s
+# every call would spend 50 * (5s + 10s) = 12.5 minutes of pure
+# sleeping and blow the 15-minute GitHub Actions job timeout.  Once the
+# budget is exhausted the remaining prompts fail without retrying and
+# the run is discarded as usual -- fast failure, not a slow one.
+# SG-TRACE: REQ-CAN2A-004
+#   | assumption: a run-scoped budget bounds added wall-clock
+#     independently of suite size, delay, and max_retries, so no
+#     configuration can make a leg run forever
+#   | test: test_p4_transient_forever_is_bounded_by_total_budget
+DEFAULT_MAX_TOTAL_BACKOFF_MS: int = 60_000
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """True iff *exc* is a ProviderError with a transient HTTP status.
+
+    Classification is STRUCTURAL: it reads ``ProviderError.status_code``
+    (REQ-CAN2A-001) and never inspects the message text.  An error with
+    ``status_code is None`` -- a transport failure, a non-JSON body, a
+    schema error, or a ProviderError raised by test code without the
+    keyword -- is therefore not transient and is not retried.
+
+    #SG-TRACE: REQ-CAN2A-003
+    #   | assumption: only the transport's HTTPError branch knows a real
+    #     status; anything else genuinely has none, and guessing one by
+    #     parsing the message would resurrect the string contract C3
+    #     forbids
+    #   | test: test_p7_transport_failure_has_no_status_and_is_not_retried
+    """
+    if not isinstance(exc, ProviderError):
+        return False
+    return exc.status_code in TRANSIENT_STATUS_CODES
+
+
+def _backoff_ms(attempt: int, backoff_base_ms: int) -> int:
+    """Wait before retry number *attempt* (1-based), exponential.
+
+    attempt 1 -> base, attempt 2 -> 2*base, attempt 3 -> 4*base ...
+    Strictly increasing for any positive base, which is what stops a
+    retry storm from deepening the rate limit it is reacting to (R2).
+
+    #SG-TRACE: REQ-CAN2A-005
+    #   | assumption: a fixed base doubled per attempt is enough backoff
+    #     structure for a bounded 2-retry budget; jitter is deliberately
+    #     absent so the wait sequence stays deterministic and testable
+    #   | test: test_p3_transient_then_success_waits_strictly_increase
+    """
+    return backoff_base_ms * (2 ** (attempt - 1))
+
+
+def pacing_budget_ms(
+    prompt_count: int,
+    delay_ms: int,
+    max_total_backoff_ms: int = DEFAULT_MAX_TOTAL_BACKOFF_MS,
+) -> int:
+    """Upper bound on wall-clock a paced run can ADD, in milliseconds.
+
+    ``(prompt_count - 1) * delay_ms`` is the pacing component (there is
+    no sleep before the first prompt or after the last), and
+    ``max_total_backoff_ms`` is the run-scoped retry ceiling.  Provider
+    latency is not counted: this is the added time only.
+
+    Operators size a leg with this function rather than with arithmetic
+    in a comment, and A8 asserts the google setting against it.
+
+    #SG-TRACE: REQ-CAN2A-006
+    #   | assumption: the two components are additive and independent;
+    #     retry waits never replace pacing waits, they are spent on top
+    #   | test: test_p8_google_leg_pacing_budget_fits_actions_timeout
+    """
+    if prompt_count <= 1:
+        paced = 0
+    else:
+        paced = (prompt_count - 1) * max(0, delay_ms)
+    return paced + max(0, max_total_backoff_ms)
+
+
 def execute_canary_strict(
     model_tuple: str,
     suite: list[dict[str, str]] | None = None,
     mock: bool = True,
     provider: object | None = None,
     suite_version: str | None = None,
+    delay_ms: int = 0,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+    backoff_base_ms: int = RETRY_BACKOFF_BASE_MS,
+    max_total_backoff_ms: int = DEFAULT_MAX_TOTAL_BACKOFF_MS,
+    sleeper: Callable[[float], None] = time.sleep,
 ) -> list[CanaryResult]:
     """Run a suite all-or-nothing: complete, or raise and discard.
 
@@ -1480,10 +1590,40 @@ def execute_canary_strict(
     and still fail loudly as ValueError -- they are not per-prompt
     failures and must not be masked as a partial run.
 
+    Pacing (CAN-2a).  ``delay_ms`` sleeps BETWEEN prompt attempts --
+    never before the first and never after the last, so a suite of n
+    prompts sleeps exactly n-1 times.  A rate-limited free tier
+    (google/gemini-3.5-flash-lite served 18 of 50 sequential calls on
+    2026-07-31) can then complete the corpus, while a leg that does not
+    need pacing keeps ``delay_ms=0`` and is bit-for-bit unchanged: at 0
+    the sleeper is not called at all.
+
+    Backoff (CAN-2a).  A prompt whose ProviderError carries a transient
+    status (429, 503) is re-attempted up to ``max_retries`` times with
+    exponentially increasing waits, bounded run-wide by
+    ``max_total_backoff_ms``.  Retries happen strictly WITHIN one
+    prompt attempt: they make a complete run more likely, they do not
+    weaken discard-on-partial.  A prompt that still fails after its
+    retries fails, and the whole run is still discarded (contract C5).
+
     Parameters
     ----------
     model_tuple, suite, mock, provider, suite_version:
         As ``execute_canary``.
+    delay_ms:
+        Inter-prompt pacing in milliseconds.  Default 0 = no pacing.
+    max_retries:
+        Extra attempts per prompt for transient failures.  Default 2.
+        0 disables retrying entirely (pre-CAN-2a behaviour).
+    backoff_base_ms:
+        First retry wait; doubled per further attempt.
+    max_total_backoff_ms:
+        Hard ceiling on the total backoff one run may spend.  When it
+        is exhausted the remaining prompts fail without retrying.
+    sleeper:
+        Injected sleep function taking SECONDS, defaulting to
+        ``time.sleep``.  Tests pass a recorder so the suite never
+        really sleeps (contract C7).
 
     Returns
     -------
@@ -1504,6 +1644,17 @@ def execute_canary_strict(
     #     from execute_canary's per-prompt semantics
     #   | test: test_partial_suite_run_is_discarded_not_flushed
     #   | test: test_strict_runner_returns_full_suite_when_complete
+    #SG-TRACE: REQ-CAN2A-007
+    #   | assumption: pacing and retrying change only WHEN calls are
+    #     made, never which features are derived from them, so the
+    #     emitted metrics of a paced run equal those of an unpaced run
+    #     over the same provider responses
+    #   | test: test_adv2_paced_and_unpaced_metrics_are_identical
+    #SG-TRACE: REQ-CAN2A-008
+    #   | assumption: every keyword added by CAN-2a has a default that
+    #     reproduces the pre-CAN-2a code path, so all existing call
+    #     sites and tests stay valid without edits
+    #   | test: test_p1_delay_zero_is_bit_for_bit_current_behaviour
     """
     if suite is None:
         suite = CANARY_SUITE_V1
@@ -1523,21 +1674,55 @@ def execute_canary_strict(
 
     results: list[CanaryResult] = []
     failed: list[str] = []
-    for prompt in suite:
-        try:
-            results.extend(
-                execute_canary(
-                    model_tuple,
-                    suite=[prompt],
-                    mock=mock,
-                    provider=provider,
-                    suite_version=suite_version,
+    backoff_spent_ms = 0
+    for index, prompt in enumerate(suite):
+        # SG-TRACE: REQ-CAN2A-009
+        #   | assumption: pacing belongs BETWEEN prompts, so a suite of
+        #     n prompts sleeps n-1 times; sleeping before the first
+        #     prompt would add latency that buys nothing and sleeping
+        #     after the last would delay the flush for no reason
+        #   | test: test_p2_fifty_prompts_sleep_exactly_forty_nine_times
+        if index and delay_ms > 0:
+            sleeper(delay_ms / 1000.0)
+
+        attempt = 0
+        while True:
+            try:
+                results.extend(
+                    execute_canary(
+                        model_tuple,
+                        suite=[prompt],
+                        mock=mock,
+                        provider=provider,
+                        suite_version=suite_version,
+                    )
                 )
-            )
-        except Exception:
-            # Error text is deliberately not retained: provider
-            # exceptions may quote request or response fragments.
-            failed.append(prompt["prompt_id"])
+                break
+            except Exception as exc:
+                # Error text is deliberately not retained: provider
+                # exceptions may quote request or response fragments.
+                # Only the STRUCTURED status is consulted.
+                attempt += 1
+                remaining_ms = max_total_backoff_ms - backoff_spent_ms
+                wait_ms = min(
+                    _backoff_ms(attempt, backoff_base_ms), remaining_ms
+                )
+                # SG-TRACE: REQ-CAN2A-010
+                #   | assumption: a retry is worth attempting only when
+                #     the failure is transient, the per-prompt budget is
+                #     not spent, and the run-wide backoff ceiling still
+                #     has room; otherwise the prompt fails now and the
+                #     run is discarded exactly as before CAN-2a
+                #   | test: test_p6_one_transient_prompt_still_yields_50
+                if (
+                    attempt > max_retries
+                    or wait_ms <= 0
+                    or not _is_transient(exc)
+                ):
+                    failed.append(prompt["prompt_id"])
+                    break
+                backoff_spent_ms += wait_ms
+                sleeper(wait_ms / 1000.0)
 
     if failed or len(results) != len(suite):
         raise PartialSuiteError(len(results), len(suite), failed)

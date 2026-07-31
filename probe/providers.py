@@ -56,7 +56,35 @@ class ProviderError(RuntimeError):
     """Raised when a live provider call fails or returns an unusable body.
 
     Carries no prompt or output text — only a short, safe diagnostic.
+
+    Attributes
+    ----------
+    status_code:
+        HTTP status of the failed call when the failure WAS an HTTP
+        response (populated by the transport's ``HTTPError`` branch), and
+        ``None`` for every other failure mode -- transport/DNS/timeout
+        errors, non-JSON bodies, schema errors, and the constructor's own
+        validation errors -- which have no status at all.
+
+        The attribute exists so callers can classify a failure
+        structurally.  The status is ALSO in the message string for human
+        readers, but that string is not a contract: no caller may parse
+        it (contract CAN-2a C3).
+
+    #SG-TRACE: REQ-CAN2A-001
+    #   | assumption: an optional keyword with a None default keeps every
+    #     pre-existing single-argument ProviderError(...) construction
+    #     site valid and unchanged in behaviour
+    #   | test: test_provider_error_status_code_optional_and_defaults_none
     """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def model_name_from_tuple(model_tuple: str) -> str:
@@ -85,6 +113,13 @@ def _urllib_transport(
     #   | assumption: a 2xx JSON body is returned; network/HTTP errors
     #     surface as ProviderError with no payload leakage
     #   | test: test_provider_timeout_raises_clean
+    #SG-TRACE: REQ-CAN2A-002
+    #   | assumption: HTTPError.code is the only place a real HTTP status
+    #     is known; it is attached structurally here so no caller ever
+    #     has to parse the message string (contract CAN-2a C3).  The
+    #     message text itself is left byte-identical to the pre-CAN-2a
+    #     wording so existing log/assert expectations still hold.
+    #   | test: test_transport_http_error_carries_structured_status
     """
     req = urllib.request.Request(
         url, data=body, headers=headers, method="POST"
@@ -93,7 +128,9 @@ def _urllib_transport(
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise ProviderError(f"provider HTTP {exc.code}") from None
+        raise ProviderError(
+            f"provider HTTP {exc.code}", status_code=exc.code
+        ) from None
     except (urllib.error.URLError, TimeoutError) as exc:
         raise ProviderError(
             f"provider unreachable: {type(exc).__name__}"
