@@ -82,6 +82,7 @@ jobs:
       # the step-level `if:` guards below can test (the secrets context
       # itself is not allowed in `if:` expressions).
       PROVIDER_API_KEY: ${{ secrets[matrix.api_key_secret] }}
+      SEISMOGRAPH_PROBE_DELAY_MS: ${{ matrix.provider == 'google' && '4500' || '0' }}
 
     steps:
       - uses: actions/checkout@v4
