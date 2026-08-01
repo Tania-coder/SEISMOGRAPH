@@ -134,7 +134,7 @@ def run() -> None:
                 first_alert_date = day
                 day_alert = alert
 
-        key = (MODEL, "json_success_rate")
+        key = (MODEL, "", "json_success_rate")
         st = detector._states.get(key)
         s_neg = round(st._s_neg, 3) if st and st.baseline_ready else None
         s_pos = round(st._s_pos, 3) if st and st.baseline_ready else None
@@ -365,3 +365,4 @@ def run() -> None:
 
 if __name__ == "__main__":
     run()
+
