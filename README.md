@@ -21,10 +21,10 @@ pip install seismograph-probe   # the probe SDK — Python 3.11+
 
 Teams build on LLM APIs they don't control. Providers update models silently — same name, same endpoint, different behavior — and prompts that worked yesterday break today, with no announcement and no alert. SEISMOGRAPH is the smoke detector for that risk: a privacy-preserving early-warning network that continuously probes models and tells you the moment one drifts from its baseline — before it costs you a customer.
 
-> In a reproducible backtest, detected the Anthropic Claude Sonnet 4 silent
+> In a reproducible **synthetic** backtest, the detector would have flagged the Anthropic Claude Sonnet 4 silent
 > degradation on 2025-08-10 -- **38 days before the official Sep 17
 > postmortem** and 19 days before the escalation became visible to users.
-> Detection occurred during the 0.8% misrouting window, before any
+> The alert fires during the modeled 0.8% misrouting window, before any
 > user-visible symptoms appeared.
 
 ![SEISMOGRAPH Model Weather dashboard — live drift status for four production LLMs](docs/dashboard.png)
@@ -39,7 +39,7 @@ Teams build on LLM APIs they don't control. Providers update models silently —
 
 ## Technical overview
 
-SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL, 193 tests). Apache-2.0. In backtest, it flagged a major provider's drift **38 days before the public postmortem**.
+SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL, 193 tests). Apache-2.0. In a synthetic backtest, the detector would have flagged a major provider's drift **38 days before the public postmortem** -- on data seeded from the incident's public timeline.
 
 ---
 
@@ -64,7 +64,7 @@ single bad actor -- or noisy probe -- can trigger a false alarm.
 
 ---
 
-## The proof: Phase 0 backtest
+## Phase 0 backtest (synthetic replay)
 
 Anthropic published a postmortem on 2025-09-17 describing three
 infrastructure bugs that silently degraded output quality (no intentional
