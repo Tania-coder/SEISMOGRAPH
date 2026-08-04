@@ -27,7 +27,8 @@
 - [x] GitHub 2FA fixed (Authenticator re-scanned; recovery codes refreshed).
 - [ ] Landing (drift-defense repo): "193" -> "291" + baseline-restart
       2026-08-04 line (PowerShell replace, separate repo).
-- [ ] Dependabot PR #22 (codeql-action 4 -> 4.37.4): merge (CI green).
+- [x] Dependabot PR #22 RESOLVED without merge (post-close): bot closed
+      it as up-to-date after @dependabot rebase (floating @v4).
 - [ ] PRIV-011 clamp fix — NEXT ENGINE TASK (contract-first; see
       auto-memory project_dp_clamp_defect.md).
 - [ ] probe 1.2.0/1.3.0 release (suite v2 + strict runner + CAN-1).

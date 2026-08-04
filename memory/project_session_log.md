@@ -3097,3 +3097,11 @@ history on origin/main + signed keystones — commit hashes are the evidence.
    -> 4 models; OpenSSF anketa; NLnet recheck ~25.09.
 5. Weather Report #1: fill after ~30 samples (~10.08); snapshot offensive
    per GTM_PLAN_V2; cron revert by 12.08.
+
+### Addendum (S044, post-close 9317166)
+- Dependabot PR #22 resolved WITHOUT merge: after "@dependabot rebase"
+  the bot declared codeql-action up-to-date (floating @v4 tag), closed
+  the PR and deleted its branch. Its red PR-CI was the pre-INFRA-1 ruff
+  format issue — moot.
+- Deferred to next session: landing 193 -> 291 + baseline-restart line
+  (drift-defense repo not connected), PRIV-011 (next engine task).
