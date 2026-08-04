@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (DRAFT, unsigned) — SG-FEAT-PACING-001
+# KEYSTONE REPORT (SIGNED) — SG-FEAT-PACING-001
 # CAN-2a: provider pacing + transient-error backoff for the strict runner
 # Session 041, 2026-07-31. Base: main @73505b7 (baseline 257).
 # Contract: business/CONTRACT_CAN-2a_S041.md
@@ -155,6 +155,6 @@ inference before the value is committed.
 
 ## 7. Sign-off
 
-- [ ] Tatiana — reviewed and accepted
+- [x] Tatiana — reviewed and accepted (2026-08-04)
 
-— unsigned draft; requires maintainer signature before release —
+— signed by the Director, 2026-08-04 —

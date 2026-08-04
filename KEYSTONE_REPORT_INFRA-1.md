@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (DRAFT, unsigned) — REQ-STORE-007
+# KEYSTONE REPORT (SIGNED) — REQ-STORE-007
 # INFRA-1: dialect-aware storage — managed Postgres for the weather board
 # Session 044, 2026-08-04. Base: main @ebff22e (baseline 286).
 # Contract: business/CONTRACT_INFRA-1_S044.md
@@ -68,5 +68,5 @@ name). Keep keep-demo-warm cron (masks Render free-tier wake latency).
 None. C1 held without edits to any existing test (291 = 286 + 5 new).
 
 ## 7. Sign-off
-- [ ] Tatiana — reviewed and accepted
-— unsigned draft; requires maintainer signature before merge —
+- [x] Tatiana — reviewed and accepted (2026-08-04)
+— signed by the Director, 2026-08-04 —

@@ -1,7 +1,8 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-07-24 (Session 040, GTM sprint: CAN-1 merged -> 193
+# Last updated: 2026-08-04 (Session 044: INFRA-1 merged, 291 tests, Neon
+# persistence proven; keystones all signed). Prior: 2026-07-24 (Session 040, GTM sprint: CAN-1 merged -> 193
 # tests; multi-provider cron live, board 2 models; landing v3 + guide live;
 # CONTRIBUTING.md; README 193; GTM/targets/NLnet/OpenSSF packs in business/)
 
@@ -9,6 +10,29 @@
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S044 — 2026-08-04 (INFRA-1: Neon Postgres persistence + close-out)
+- [x] Verified state via fresh clone: S041-S043 landed but UNLOGGED;
+      baseline 286; main not ruff-format-clean; /v1/weather EMPTY again.
+- [x] INFRA-1 MERGED (PR #23, e128235): dialect-aware DatabaseSession +
+      Neon free Postgres via SEISMOGRAPH_DB_URL; 286 -> **291**.
+      PERSISTENCE PROVEN (board survived manual Render restart).
+      v2.0.0 baseline restart date = 2026-08-04.
+- [x] Cron warm-up revert extended to 2026-08-12 (34af93e).
+  - [ ] TATIANA ~10-12.08: revert cron to "17 5,17 * * *" once ~30
+        samples collected on Neon.
+- [x] Keystones INFRA-1 + CAN-2a SIGNED (this close commit).
+- [x] Session log: S041-S043 reconstructed entries + S044 entry appended;
+      CURRENT_STATE + backlog refreshed; README 193 -> 291.
+- [x] GitHub 2FA fixed (Authenticator re-scanned; recovery codes refreshed).
+- [ ] Landing (drift-defense repo): "193" -> "291" + baseline-restart
+      2026-08-04 line (PowerShell replace, separate repo).
+- [ ] Dependabot PR #22 (codeql-action 4 -> 4.37.4): merge (CI green).
+- [ ] PRIV-011 clamp fix — NEXT ENGINE TASK (contract-first; see
+      auto-memory project_dp_clamp_defect.md).
+- [ ] probe 1.2.0/1.3.0 release (suite v2 + strict runner + CAN-1).
+- [ ] Optional hygiene: Neon DB password reset (was pasted in-session).
+
 
 ## S040 — 2026-07-24 (GTM sprint: CAN-1 + distribution + packaging)
 - [x] State verified via fresh GitHub clone (auto-memory lagged one session).

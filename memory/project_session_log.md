@@ -3006,3 +3006,94 @@ earning" -> verified state + market audit + full go-to-market execution.
 - Session ended here. Tatiana's pending: S040 close commit (this file
   146907+ bytes pre-addendum, README 193, CURRENT_STATE, backlog),
   formsubmit activation click, hosting decision, 2 paid API keys.
+
+---
+
+## Sessions 041-043 — 2026-07-29 .. 2026-08-01 (reconstructed at S044)
+
+**NOTE: these sessions closed WITHOUT log entries** (memory files stayed at
+the S040 close snapshot). Facts below reconstructed 2026-08-04 from git
+history on origin/main + signed keystones — commit hashes are the evidence.
+
+- S041 (07-29..07-31): ENG-1 + CAN-2 authored, gated and MERGED via PR #20
+  (61433b1, squash): suite-scoped CUSUM streams / agreement buckets /
+  persisted rows (fixes B1 cutover-false-alert + B2 cross-suite federation
+  bug) + canary suite v2.0.0 (50 prompts, append-only over v1.1.0,
+  execute_canary_strict all-or-nothing) + live_emit cutover. 193 -> 257.
+  Warm-up cadence commit adcdf82 (5x/day until 2026-08-05). METHODOLOGY
+  freeze cb7472a (07-30). Keystones CAN-1 + ENG-1 signed 09dcf3e; CAN-2
+  signed 73505b7 (caveat 6.7 materialised, first live v2.0.0 emission
+  verified). PRIV-011 defect found and deliberately deferred (see
+  auto-memory project_dp_clamp_defect.md).
+- S042 addendum (07-31): CAN-2a — per-leg pacing + transient backoff for
+  the strict runner, MERGED via PR #21 (ba4c1c0): 257 -> 286. Google leg
+  paced 4500ms (2862f53). KEYSTONE_REPORT_CAN-2a at root, UNSIGNED at the
+  time (signed S044).
+- S043 (08-01): backtest state key fixed to 3-tuple (model, suite_version,
+  metric) f10df69; honest wording commit ebff22e ("synthetic replay /
+  would-have" framing). Side effect: scripts/anthropic_backtest.py left
+  ruff-format-unclean on main (caught + fixed S044).
+
+## Session 044 — 2026-08-04
+
+**Director:** Tatiana
+**Co-pilot:** Claude (claude-fable-5)
+**Task:** verified session-start synthesis -> hosting decision + INFRA-1
+(weather-board persistence), the S042 BLOCKING item.
+
+### Verified state (two-pass: fresh clone + live checks)
+- Memory drift found: repo memory stale at S040 close; S041-S043 unlogged
+  (entries above reconstructed). main=ebff22e, baseline 286 (sandbox gate
+  confirmed), ruff format FAILING on scripts/anthropic_backtest.py.
+- **/v1/weather = [] AGAIN** despite keep-demo-warm cron green and 6 days
+  of 5x/day warm-up: Render free tier wipes SQLite on every restart ->
+  every warm-up burned. Hosting = the blocking decision, cron revert
+  deadline (08-05) colliding.
+
+### INFRA-1 (REQ-STORE-007) — dialect-aware storage, Neon cutover
+- Decision (Tatiana): Neon free Postgres (EUR 0, eu-central-1) over Render
+  paid (~$7.25/mo) and Hetzner (~EUR 4/mo + ops).
+- Contract-first (business/CONTRACT_INFRA-1_S044.md): C1 SQLite behaviour
+  byte-for-byte; C3 engine detection untouched; C5 no host psycopg2 dep.
+- Change: _engine_kwargs(db_url) dialect router in engine/repository.py —
+  sqlite keeps StaticPool/check_same_thread/makedirs exactly; any other
+  URL gets pool_pre_ping=True (Neon autosuspend drops pooled conns) and
+  NO sqlite-only args (old code mangled the DSN into os.makedirs).
+  Dockerfile + psycopg2-binary>=2.9; render.yaml SEISMOGRAPH_DB_URL
+  sync:false; +5 tests (tests/test_repository_backend.py, PG test uses
+  stubbed create_engine — no driver dep); ruff-format hygiene fix.
+- Gate: sandbox ruff x2 + 291; Tatiana host gate ruff x2 + **291 passed**.
+  MERGED PR #23 squash e128235 (Claude clicked merge in her Chrome with
+  explicit approval; new GitHub UI: second button "Confirm squash and
+  merge"). Cron revert extended 08-05 -> 2026-08-12 (34af93e).
+- Deploy chain: env var added first -> old-code deploy FAILED status 3
+  (expected, no psycopg2; Render kept old instance) -> post-merge deploy
+  e128235 LIVE 20:36 CEST.
+- **VERIFICATION: persistence PROVEN.** Manual probe-weather run #45 ->
+  /v1/weather 2 models STABLE -> Render "Restart service" (20:47) ->
+  board STILL populated. Wipe-on-restart failure mode closed.
+  **v2.0.0 baseline restart date = 2026-08-04** (landing must state it).
+  ~30 warm-up samples expected by ~10.08; revert cron by 12.08.
+
+### Also this session
+- GitHub 2FA incident: Google Authenticator had NO GitHub entry (checkup
+  screen rejected everything). Desktop Chrome was still logged in ->
+  settings -> re-scanned QR into Authenticator; GitHub Mobile confirmed
+  as configured fallback; fresh recovery codes advised.
+- Render env editor + workflow_dispatch + PR merge all driven via
+  claude-in-chrome (read_page/find/JS path; techniques logged in
+  auto-memory).
+- Neon DSN password was pasted in chat once — Reset password in Neon
+  offered as optional hygiene.
+- Keystones INFRA-1 + CAN-2a SIGNED this session (S044 close commit).
+- Dependabot PR #22 (codeql-action 4 -> 4.37.4) noted open.
+
+### Open at close (S044)
+1. PRIV-011 (DP clamp) — next engine task, full contract.
+2. probe 1.2.0/1.3.0 release (PyPI still 1.1.0).
+3. Landing (drift-defense repo): 193 -> 291 + baseline-restart 2026-08-04
+   line.
+4. Carried Tatiana clicks: formsubmit activation; OPENAI + ANTHROPIC keys
+   -> 4 models; OpenSSF anketa; NLnet recheck ~25.09.
+5. Weather Report #1: fill after ~30 samples (~10.08); snapshot offensive
+   per GTM_PLAN_V2; cron revert by 12.08.
