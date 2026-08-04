@@ -27,3 +27,7 @@ services:
         value: sqlite
       - key: QUORUM_BACKEND
         value: memory
+      # INFRA-1: managed Postgres DSN (Neon). Value is set once in the
+      # Render dashboard and never synced from this file.
+      - key: SEISMOGRAPH_DB_URL
+        sync: false
