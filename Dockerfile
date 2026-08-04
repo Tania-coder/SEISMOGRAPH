@@ -46,6 +46,7 @@ RUN pip install --no-cache-dir --upgrade pip \
         "uvicorn[standard]>=0.23" \
         "httpx>=0.24" \
         "sqlalchemy>=2.0" \
+        "psycopg2-binary>=2.9" \
         "pydantic>=2.0"
 
 # ---------------------------------------------------------------------------

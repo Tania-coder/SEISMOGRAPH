@@ -439,15 +439,46 @@ def _apply_additive_columns(engine: Engine) -> list[str]:
     return added
 
 
+def _engine_kwargs(db_url: str) -> dict[str, object]:
+    """Return create_engine keyword arguments appropriate for db_url.
+
+    SQLite URLs keep the historical behaviour byte-for-byte: a shared
+    in-memory StaticPool for tests, and check_same_thread=False so the
+    threaded gateway can use one file-backed engine.  Any other dialect
+    (e.g. "postgresql+psycopg2://" for a managed Postgres such as Neon)
+    must NOT receive SQLite-only connect_args -- psycopg2 rejects
+    check_same_thread with a TypeError.  Non-SQLite engines get
+    pool_pre_ping=True instead: serverless Postgres suspends idle
+    databases and silently drops pooled connections, and pre-ping swaps
+    a stale connection for a fresh one rather than failing the first
+    request after a resume.
+
+    #SG-TRACE: REQ-STORE-007
+    #   | assumption: the dialect can be decided from the URL scheme
+    #     prefix alone; no DB driver import is needed to compute kwargs
+    #   | test: test_engine_kwargs_postgres_has_no_sqlite_args
+    """
+    if db_url.startswith("sqlite"):
+        if ":memory:" in db_url:
+            return {
+                "connect_args": {"check_same_thread": False},
+                "poolclass": StaticPool,
+            }
+        return {"connect_args": {"check_same_thread": False}}
+    return {"pool_pre_ping": True}
+
+
 class DatabaseSession:
     """SQLAlchemy engine factory with table auto-creation.
 
-    Handles two URL patterns:
+    Handles three URL patterns:
     - "sqlite:///:memory:" -- uses StaticPool so all sessions share one
       connection and therefore one in-memory database.  Designed for
       testing.
-    - Any file-backed URL -- uses the default NullPool / QueuePool and
-      creates the parent directory automatically if it does not exist.
+    - Any file-backed SQLite URL -- uses the default NullPool / QueuePool
+      and creates the parent directory automatically if it does not exist.
+    - Any other SQLAlchemy URL (e.g. managed Postgres) -- passed through
+      with pool_pre_ping=True and no SQLite-only arguments (INFRA-1).
 
     Parameters
     ----------
@@ -463,21 +494,14 @@ class DatabaseSession:
     def __init__(self, db_url: str = DEFAULT_DB_URL) -> None:
         self.db_url = db_url
 
-        if ":memory:" in db_url:
-            self._engine = create_engine(
-                db_url,
-                connect_args={"check_same_thread": False},
-                poolclass=StaticPool,
-            )
-        else:
-            # Ensure parent directory exists for file-backed SQLite
+        if db_url.startswith("sqlite") and ":memory:" not in db_url:
+            # Ensure parent directory exists for file-backed SQLite.
+            # Non-SQLite URLs must never reach os.makedirs: the old code
+            # mangled a DSN into a fake relative path (INFRA-1).
             db_file = db_url.replace("sqlite:///", "")
             if db_file and os.path.dirname(db_file):
                 os.makedirs(os.path.dirname(db_file), exist_ok=True)
-            self._engine = create_engine(
-                db_url,
-                connect_args={"check_same_thread": False},
-            )
+        self._engine = create_engine(db_url, **_engine_kwargs(db_url))
 
         Base.metadata.create_all(self._engine)
         # Back-fill columns added after this DB file was first written.
