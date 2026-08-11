@@ -15,8 +15,17 @@ Differential privacy design (epsilon=2.0 per flush window):
     batch.  Under substitution DP (one record replaced; n fixed and
     public -- transmitted in the clear as result_count), the
     sensitivity of a bounded mean is delta_f = MAX/n.
-  - avg_output_length: clamped to [0, MAX_OUTPUT_LENGTH=8192] before
-    averaging; delta_f = 8192/n; noise scale b = 4096/n.
+  - avg_output_length: clamped to [0, MAX_OUTPUT_LENGTH=320] before
+    averaging; delta_f = 320/n; noise scale b = 160/n.
+    PRIV-011 FIXED (2026-08-06): was 8192 (~32x looser than the
+    probe's own wire bound), which made this metric unable to carry
+    drift signal at any batch size (see KEYSTONE_REPORT_CAN-2.md sec
+    4). 320 = 64 (max_tokens ceiling: TOOL_CANARY_MAX_TOKENS /
+    SEISMOGRAPH_PROBE_MAX_TOKENS default) * 5 chars/token -- a
+    documented +25% margin over the ~4 chars/token English-text
+    average, not a bare max_tokens*4 estimate. See REQ-PRIV-013 below
+    and KEYSTONE_REPORT_PRIV-011.md for the empirical before/after
+    CUSUM detection rate.
   - json_success_rate: bounded [0,1] by construction; delta_f = 1/n;
     noise scale b = 0.5/n.
   - tool_call_validity_rate (SG-FEAT-TOOLCALL-001): bounded [0,1];
@@ -25,10 +34,16 @@ Differential privacy design (epsilon=2.0 per flush window):
   - avg_output_tokens / avg_reasoning_tokens (SG-FEAT-TOKENS-001):
     clamped to [0, MAX_TOKEN_COUNT=8192]; delta_f = 8192/n.  Emitted
     only when >= 1 record carries the counter (None-safe).
+    KNOWN LIMITATION (flagged, not fixed, by PRIV-011): avg_output_tokens
+    counts completion tokens, which max_tokens bounds directly (same
+    defect class as avg_output_length pre-fix). avg_reasoning_tokens is
+    not capped by max_tokens (reasoning budgets run far higher), so
+    8192 remains a defensible bound for that one metric only. See
+    KEYSTONE_REPORT_PRIV-011.md sec "Known limitations".
   - result_count: infrastructure counter, not DP-noised (Phase 0).
   REQ-PRIV-010 IMPLEMENTED (2026-07-15): batch-aware sensitivity via
   _metric_sensitivity(metric, n).  n=1 degrades exactly to the former
-  global worst-case bounds (delta_f=8192 / 1.0).
+  global worst-case bounds (delta_f=320 / 1.0, post PRIV-011).
 
 Privacy budget (P2-004):
   - DPAccountant enforces a rolling 24-hour epsilon budget per probe.
@@ -66,6 +81,13 @@ Collection vs transmission cadence (P2-012):
 #   | assumption: DPAccountant 24h window is wall-clock based; clock
 #     skew or system hibernation may shorten the effective window
 #   | test: test_dp_accountant_resets_after_24h
+#SG-TRACE: REQ-PRIV-013
+#   | assumption: MAX_OUTPUT_LENGTH=320 (64 max_tokens * 5 chars/token
+#     margin) is a true upper bound on canary output_length; a
+#     tokenizer that regularly emits >5 chars/token would silently
+#     truncate the mean (utility bias, not a privacy violation)
+#   | test: test_metric_sensitivity_at_n50_is_12_5x_quieter,
+#     test_adv2_output_length_shift_detected_via_cusum_accumulation
 """
 
 from __future__ import annotations
@@ -88,7 +110,16 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 EPSILON: float = 2.0
-MAX_OUTPUT_LENGTH: int = 8192
+
+# PRIV-011 (2026-08-06): the probe's real wire ceiling is max_tokens
+# (64 -- TOOL_CANARY_MAX_TOKENS and the SEISMOGRAPH_PROBE_MAX_TOKENS
+# default), not this constant. 320 = 64 * 5 chars/token: an English
+# tokenizer averages ~4 chars/token, so 5 is a documented +25% margin
+# over that average, chosen empirically (see
+# KEYSTONE_REPORT_PRIV-011.md) rather than the bare no-margin
+# max_tokens*4 estimate. The old value (8192, ~32x looser) made
+# avg_output_length unable to carry drift signal at any batch size.
+MAX_OUTPUT_LENGTH: int = 320
 
 # Token counters are clamped to the same 8192 ceiling as output length
 # before averaging (bounds the substitution-DP sensitivity to MAX/n).
