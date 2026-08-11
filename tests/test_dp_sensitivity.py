@@ -8,7 +8,7 @@ DS2 -- n=1 degrades exactly to the former global worst-case bounds
 DS3 -- invalid n rejected (0, negative)
 DS4 -- unknown metric rejected
 DS5a -- property: _laplace_noise scale is calibrated (MAD == b*ln2,
-        checked at the n=1 worst-case scale b=4096, no clamping)
+        checked at the n=1 worst-case scale b=160, no clamping)
 DS5b -- property: flush() noise deviation matches delta_f/EPSILON at
         n=100 (clamping negligible at that scale)
 DS6 -- adversarial: larger batch => strictly quieter flush metrics;
@@ -44,9 +44,16 @@ LN2 = math.log(2.0)
 
 
 def _result(
-    i: int, output_length: int = 512, json_valid: bool = True
+    i: int, output_length: int = 200, json_valid: bool = True
 ) -> CanaryResult:
-    """One synthetic CanaryResult (no raw output, per privacy contract)."""
+    """One synthetic CanaryResult (no raw output, per privacy contract).
+
+    PRIV-011 (2026-08-06): default lowered 512 -> 200. 512 exceeded the
+    tightened MAX_OUTPUT_LENGTH=320 and was silently clamped on every
+    flush, biasing DS5b's "clamp-free regime" assumption by a constant
+    -192 offset (caught running the full suite after the PRIV-011 fix).
+    200 keeps ~120 chars of headroom under the new 320 ceiling.
+    """
     return CanaryResult(
         timestamp=f"2026-07-15T12:{i // 60:02d}:{i % 60:02d}+00:00",
         model_tuple=MODEL,
@@ -138,17 +145,20 @@ def test_metric_sensitivity_rejects_unknown_metric() -> None:
 
 
 def test_laplace_noise_scale_calibrated_at_worst_case() -> None:
-    """DS5a: MAD of _laplace_noise(b) == b*ln2 at b=4096 (n=1 scale).
+    """DS5a: MAD of _laplace_noise(b) == b*ln2 at b=160 (n=1 scale).
 
     Tests the mechanism directly, without flush()'s clamps, because
     clamping truncates the tails and understates the observed scale.
 
-    #SG-TRACE: REQ-PRIV-010
+    PRIV-011 (2026-08-06): b was 4096.0 under the pre-fix
+    MAX_OUTPUT_LENGTH=8192; now 160.0 under the fixed value of 320.
+
+    #SG-TRACE: REQ-PRIV-010, REQ-PRIV-013
     #   | assumption: 8000 seeded draws give MAD within +-10% of truth
     #   | test: test_laplace_noise_scale_calibrated_at_worst_case
     """
-    b = _metric_sensitivity("avg_output_length", 1) / EPSILON  # 4096.0
-    assert b == pytest.approx(4096.0)
+    b = _metric_sensitivity("avg_output_length", 1) / EPSILON  # 160.0
+    assert b == pytest.approx(160.0)
     rng = random.Random(1337)
     mad = median(abs(_laplace_noise(b, rng)) for _ in range(8000))
     assert mad == pytest.approx(b * LN2, rel=0.10)
@@ -162,15 +172,16 @@ def test_laplace_noise_scale_calibrated_at_worst_case() -> None:
 def test_flush_noise_scale_matches_batch_sensitivity() -> None:
     """DS5b: empirical flush() noise MAD matches b*ln2 at n=100.
 
-    With n=100 identical-length records, raw_avg=512 and b=20.48, so
-    the max(0,.) clamp at 0 is ~25 MADs away -- truncation negligible.
+    With n=100 identical-length records, raw_avg=200 and b=1.6 (PRIV-011,
+    2026-08-06: was b=20.48 under the pre-fix MAX_OUTPUT_LENGTH=8192), so
+    the max(0,.) clamp at 0 is ~180 MADs away -- truncation negligible.
 
-    #SG-TRACE: REQ-PRIV-010
+    #SG-TRACE: REQ-PRIV-010, REQ-PRIV-013
     #   | assumption: seeded RNG; 4000 flushes give MAD within +-25%
     #   | test: test_flush_noise_scale_matches_batch_sensitivity
     """
     n = 100
-    raw_avg = 512.0
+    raw_avg = 200.0
     b = _metric_sensitivity("avg_output_length", n) / EPSILON
     devs = [
         _flush_metrics(n, seed=seed)["avg_output_length"] - raw_avg
