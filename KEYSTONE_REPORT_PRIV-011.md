@@ -217,8 +217,17 @@ prediction.
 
 ## 8. Sign-off
 
-- [ ] Tatiana: review sec 1 (value selection + the 512->320 revision),
+- [x] Tatiana: reviewed sec 1 (value selection + the 512->320 revision),
       sec 5 (known limitations, esp. #1 avg_output_tokens follow-up),
-      sec 6 (test fixture defects). If accepted: create branch
-      `seismograph/task-priv-011`, host gate (ruff x2 + pytest 293),
-      commit, push, PR, squash-merge, sign here.
+      sec 6 (test fixture defects). ACCEPTED.
+
+**Accountability statement.** I, Tatiana Radchenko, Director of
+SEISMOGRAPH, accept this change and take responsibility for it. I
+accept the empirically revised constant (320, not the 512 initially
+recommended), the deferral of `avg_output_tokens` to PRIV-012, and the
+five test-fixture defects documented in sec 6.
+
+Signed: Tatiana Radchenko -- 2026-08-11 (Session 046).
+
+Landed: branch `seismograph/task-priv-011` @c463905; host gate ruff x2
+clean + pytest 293 passed; PR #24 squash-merged to main @261b63d.

@@ -3105,3 +3105,125 @@ history on origin/main + signed keystones — commit hashes are the evidence.
   format issue — moot.
 - Deferred to next session: landing 193 -> 291 + baseline-restart line
   (drift-defense repo not connected), PRIV-011 (next engine task).
+
+---
+
+## Session 045 — 2026-08-06 (PRIV-011 authored; RECONSTRUCTED in S046)
+
+Reconstructed on 2026-08-11 from KEYSTONE_REPORT_PRIV-011.md and the
+working-tree diff. This session was never logged at the time and left no
+entry in CURRENT_STATE.md — the omission is itself the headline finding.
+
+- PRIV-011 implemented: probe/privacy.py MAX_OUTPUT_LENGTH 8192 -> 320.
+  320 = max_tokens(64) * 5 chars/token, a documented +25% margin over the
+  naive 4 chars/token estimate.
+- Value chosen empirically, not by judgment call: a 100-seed Monte Carlo
+  replay of the ADV-2 fixture gave 99/100 detection at 320 vs 43/100 at
+  8192. The initially recommended 512 scored 34/40 — a ~15-20% tail of
+  seeds never detect inside 90 days. The recommendation was revised and
+  the revision flagged in the report rather than silently substituted.
+- Five pre-existing tests broke, all test fixtures implicitly coupled to
+  8192. One (DS5b `_result()` default output_length=512) was a genuine
+  latent bug the old constant had been masking.
+- Honest caveat pinned in the report: a SINGLE flush at n=50 still does
+  not clear the DP floor (delta 4.42 chars vs dp_sigma 4.53). The metric
+  is restored via CUSUM cross-flush accumulation, not a single-flush sign
+  flip. A companion test asserts the floor explicitly.
+- Sandbox gate: ruff x2 clean, 293 passed (291 + 2 new).
+- **NOT committed.** No branch, no commit, no push. The work sat as
+  uncommitted modifications to three tracked files plus one untracked
+  Keystone report, on local `main`, for five days.
+
+## Session 046 — 2026-08-11 (recover S045, land PRIV-011 + INFRA-3)
+
+Session opened on the standing protocol (read backlog + last log entry).
+That briefing was WRONG: it named PRIV-011 as the next engine task. The
+error was caught only because verification of the live board led into
+probe/privacy.py, where MAX_OUTPUT_LENGTH already read 320.
+
+### Live board verification (first task, and the source of everything else)
+- /v1/weather live after a cold start: 2 models STABLE, no alerts.
+  Neon persistence intact across 7 days of free-tier autosuspend —
+  INFRA-1 now proven beyond the S044 manual restart test.
+- Independently re-verified by Tatiana from PowerShell (`irm`), matching
+  the browser read exactly.
+- Sample audit, post-Neon window (runs #45-#79, 35 scheduled):
+  mistral 35/35; google 24/35. All 11 failures are google-leg. Checked
+  every failure in the workflow's history: 24 of 25 are google-only.
+
+### Defect 1 — google-leg sample loss (OPEN)
+execute_canary_strict discards the entire 50-prompt suite when any single
+prompt exhausts retries: "Flushing at reduced n would change the DP
+sensitivity (MAX/n) of the stream." The DP reasoning is correct; the
+availability cost is 31% of google samples. Failed prompt ids differ per
+run (#74 refusal-05; #75 toolcall + format-07 + format-08 + refusal-02),
+so this is transient free-tier rate limiting, NOT a persistent refusal
+and NOT a masked provider change. Logged for a contract-first fix.
+
+### Defect 2 — json_success_rate denominator dilution (OPEN, blocks GTM)
+Board reads 0.17497 (google) / 0.17815 (mistral). This is NOT DP noise:
+at n=50, eps=2.0 the Laplace scale is 1/(50*2) = 0.01. Root cause:
+json_valid is scored only for the 9 structured_output canaries
+(probe/canary.py: "json_valid is scored only for this category") but
+averaged over all 50 records (probe/privacy.py:679). Ceiling is
+9/50 = 0.18, not 1.0 — so both models are at ~100% validity on the
+prompts that can score. Detection is unaffected (a full format collapse
+moves 0.18 -> 0, ~18 sigma against that noise scale), but published raw
+it reads as "17% JSON success" and would have gone out in Weather
+Report #1. Fix is display-layer, not statistical.
+
+### Defect 3 — avg_output_length stream contaminated by the cutover (OPEN)
+bootstrap_detector re-warms per (model_tuple, suite_version, metric_name).
+The DP constant is not part of that key and suite_version did not change,
+so 8192-era rows (Laplace scale 81.9, std ~116 chars) and 320-era rows
+(scale 3.2, std ~4.5) share one stream. recent_avg_output_length averages
+the last 10 batches, so the board value is a blend until 10 post-merge
+samples exist. Publicly contained: M=1 and required_quorum(1)==3, so no
+single-org candidate can promote to a public alert — the correlation-first
+invariant absorbs it. Metric must not be cited until the stream is
+320-era only.
+
+### PRIV-011 landed
+- Verified before acting: local .git/HEAD -> main; local refs/heads/main
+  == origin/main == efd47aa; raw main showed MAX_OUTPUT_LENGTH=8192.
+  Confirmed the work existed nowhere but Tatiana's disk.
+- Branch seismograph/task-priv-011 @c463905, 4 files, +427/-54.
+- Host gate: ruff check clean, ruff format clean (60 files), 293 passed —
+  matching the S045 Keystone claim exactly.
+- PR #24 squash-merged @261b63d, 5 checks green. main baseline 291 -> 293.
+- KEYSTONE_REPORT_PRIV-011.md sec 8 SIGNED by Tatiana 2026-08-11, after
+  explicit review of sec 1 (the 512->320 revision), sec 5 (PRIV-012
+  deferral), sec 6 (test-fixture defects).
+
+### INFRA-3 landed
+- Contract-first (goal / constraints / acceptance / both adversarial
+  cases) agreed before any edit. Adversarial (b) accepted explicitly:
+  halving cadence halves detection resolution; at M=1 with quorum 3 no
+  public alert can fire regardless, so the cost is private fleet
+  resolution only.
+- probe_weather.yml cron "17 1,6,11,16,21" -> "17 5,17 * * *"; stale COST
+  header (3 prompts / ~24 completions per day) corrected to 50 prompts /
+  ~200 per day across the two legs with keys. Cost cap (<=200) respected.
+- YAML re-parsed after the edit (schedule correct, all 4 matrix legs
+  intact); gate 293 unchanged; PR #25 merged, 5 checks green.
+- Deadline (2026-08-12) met one day early.
+
+### Process findings
+- **Memory lagged a full session, for the second time** (precedent: S040).
+  A verified, Keystone-documented task was invisible to the session-start
+  protocol and would have been redone from scratch. New HARD RULE: session
+  end must run `git status` and show a clean tree.
+- **Fenced-block hazard:** Tatiana pastes code fences straight into
+  PowerShell. Evidence tables and tool output placed in fences were pasted
+  and errored three times before the cause was identified. New rule:
+  fences contain runnable commands ONLY.
+
+### Open at close (S046)
+1. json_success_rate display fix (blocks Weather Report #1).
+2. google-leg strict-runner sample loss.
+3. avg_output_length stream contamination — let it age out; do not cite.
+4. PRIV-012 (avg_output_tokens clamp) — needs its own contract.
+5. Weather Report #1 — unblocked once (1) lands.
+6. Landing 193 -> 293 + baseline-restart line (drift-defense repo).
+7. probe 1.2.0/1.3.0 release; carried Tatiana clicks (formsubmit,
+   OPENAI/ANTHROPIC keys, OpenSSF, NLnet ~25.09, Neon password reset).

@@ -1,7 +1,11 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-08-04 (Session 044: INFRA-1 merged, 291 tests, Neon
+# Last updated: 2026-08-11 (Session 046: S045 recovered from an uncommitted
+# working tree; PRIV-011 merged -> 293 tests + Keystone signed; INFRA-3 cron
+# revert merged. Three defects opened: JSON denominator, google sample loss,
+# avg_output_length stream contamination).
+# Prior: 2026-08-04 (Session 044: INFRA-1 merged, 291 tests, Neon
 # persistence proven; keystones all signed). Prior: 2026-07-24 (Session 040, GTM sprint: CAN-1 merged -> 193
 # tests; multi-provider cron live, board 2 models; landing v3 + guide live;
 # CONTRIBUTING.md; README 193; GTM/targets/NLnet/OpenSSF packs in business/)
@@ -10,6 +14,46 @@
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S046 — 2026-08-11 (recover S045; PRIV-011 + INFRA-3 landed)
+- [x] Live board verified: Neon persistence intact 7 days, 2 models STABLE.
+      Independently re-confirmed by Tatiana from PowerShell.
+- [x] Sample audit #45-#79: mistral 35/35, google 24/35; all 11 failures
+      are google-leg (24 of 25 across all history).
+- [x] **S045 RECOVERED.** PRIV-011 had been authored 2026-08-06 and left
+      uncommitted on local main for 5 days — unlogged, unbranched.
+      Branched (c463905), host-gated (ruff x2 + 293), PR #24 merged
+      @261b63d. main baseline 291 -> **293**.
+- [x] KEYSTONE_REPORT_PRIV-011.md sec 8 SIGNED by Tatiana 2026-08-11.
+- [x] INFRA-3 (PR #25): cron 5x/day -> "17 5,17 * * *"; stale COST header
+      (3 prompts / ~24 per day) -> 50 prompts / ~200 per day. Deadline
+      2026-08-12 met a day early.
+- [x] CURRENT_STATE.md rewritten; S045 + S046 log entries reconstructed.
+- [ ] **json_success_rate denominator dilution — BLOCKS Weather Report #1.**
+      json_valid scored only for the 9 structured_output canaries but
+      averaged over all 50 => ceiling 9/50 = 0.18, not 1.0. Board's
+      0.175/0.178 = ~100% validity on scorable prompts, but reads as
+      "17% JSON success". Display-layer fix; detection unaffected.
+- [ ] **google-leg sample loss.** execute_canary_strict discards the whole
+      50-prompt suite on any single prompt's retry exhaustion (correct DP
+      reasoning re sensitivity MAX/n). 31% loss; ~1.4 samples/day after
+      the cron revert. Options: retry budget/pacing, or a documented
+      reduced-n path recomputing DP sensitivity for the actual n.
+- [ ] **avg_output_length stream contaminated by the PRIV-011 cutover.**
+      DP constant is not in the CUSUM stream key; 8192-era and 320-era
+      rows share one stream. Board value is a blend until 10 post-merge
+      samples exist. Contained publicly (M=1, quorum 3). Do NOT cite.
+- [ ] PRIV-012: avg_output_tokens same defect class (MAX_TOKEN_COUNT 8192
+      vs max_tokens 64, ~128x). avg_reasoning_tokens NOT affected.
+      Needs its own contract.
+- [ ] Weather Report #1 — unblocked once the JSON fix lands. mistral has
+      35 clean samples; state google's 24/35 honestly; omit
+      avg_output_length entirely.
+- [ ] Landing (drift-defense repo): 193 -> 293 + baseline-restart line.
+- [ ] probe 1.2.0/1.3.0 release (suite v2 + strict runner + CAN-1).
+- [ ] Carried: formsubmit activation; OPENAI + ANTHROPIC keys -> 4 models;
+      OpenSSF anketa; NLnet recheck ~25.09; optional Neon password reset.
+
 
 ## S044 — 2026-08-04 (INFRA-1: Neon Postgres persistence + close-out)
 - [x] Verified state via fresh clone: S041-S043 landed but UNLOGGED;
