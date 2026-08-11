@@ -24,7 +24,7 @@ jobs:
           mv pyproject.toml.bak pyproject.toml
       - name: Verify metadata
         run: twine check dist/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
