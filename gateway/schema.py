@@ -223,8 +223,14 @@ class ModelWeatherResponse(BaseModel):
         Average DP-noised output length over the last 10 signal
         batches, or None if insufficient data.
     recent_json_success_rate:
-        Average DP-noised JSON success rate over the last 10 batches,
-        or None if insufficient data.
+        Average DP-noised JSON validity rate over the last 10 batches,
+        rescaled onto the scorable-canary base (DASH-1) so this is a
+        true [0, 1] rate.  The raw wire metric is a mean over the whole
+        batch while json_valid is scored only for structured_output
+        canaries, so its ceiling is scorable/total -- 9/50 = 0.18 for
+        suite v2.0.0.  Batches whose suite_version cannot be
+        interpreted are excluded.  None if no batch could be
+        interpreted.
 
     #SG-TRACE: REQ-DASH-002
     #   | assumption: status=DRIFTING requires quorum

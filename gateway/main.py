@@ -424,6 +424,84 @@ app.mount(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# DASH-1: scorable-base normalisation for the published JSON rate.
+#
+# json_success_rate is a mean over the FULL batch, but json_valid is scored
+# only for structured_output canaries (probe/canary.py).  The wire metric's
+# ceiling is therefore scorable/total, not 1.0 -- for suite v2.0.0 that is
+# 9/50 = 0.18.  Published raw it reads as "17% JSON success" for a model
+# sitting at ~100% validity on every prompt that can score.
+#
+# Normalisation happens on the READ side only.  The detector keeps consuming
+# the raw wire value: rescaling a live CUSUM input mid-stream contaminates
+# the accumulated baseline, which is exactly the failure mode the PRIV-011
+# constant cutover produced on avg_output_length.
+# ---------------------------------------------------------------------------
+
+# (total prompts, scorable structured_output prompts) per suite version.
+# BOTH numbers matter: the rescaling is exact only when the batch is a
+# COMPLETE suite run, because only then does the batch contain exactly
+# `scorable` scorable records.  A partial batch labelled v2.0.0 would
+# otherwise publish valid/9 -- a 3-record partial whose single scorable
+# prompt was valid (true rate 100%) would publish 11%.
+# execute_canary_strict (CAN-2) guarantees completeness by discarding
+# partials; this table enforces it independently rather than trusting
+# every probe on the public ingest path to be strict.
+_JSON_BASE_BY_SUITE: dict[str, tuple[int, int]] = {
+    "v1.0.0": (3, 1),
+    "v1.1.0": (4, 1),
+    "v2.0.0": (50, 9),
+}
+
+
+def _scorable_json_rate(
+    raw_rate: float | None,
+    result_count: float | None,
+    suite_version: str,
+) -> float | None:
+    """Rescale a batch JSON rate onto its scorable-canary base.
+
+    Args:
+        raw_rate: DP-noised mean of json_valid over the whole batch.
+        result_count: Public batch size n the mean was taken over.
+        suite_version: Canary suite version the batch was run under.
+
+    Returns:
+        The rate on a true [0, 1] scale, or None when the row cannot be
+        interpreted -- unknown or legacy-empty suite_version, missing
+        rate, a non-positive result_count, or a result_count that does
+        not match the suite's full prompt count (a partial run, whose
+        scorable-record count is unknown).  An uninterpretable row is
+        excluded from the published average rather than published on an
+        unknown scale.
+
+    #SG-TRACE: REQ-DASH-003
+    #   | assumption: the scorable count is a public function of
+    #     suite_version (suite composition is content-addressed and
+    #     append-only), so no probe-private data is required here
+    #   | test: test_scorable_json_rate_normalises_v2_ceiling_to_one
+    #SG-TRACE: REQ-DASH-003
+    #   | assumption: DP noise can push a batch rate above its ceiling,
+    #     so the rescaled value must be clamped into [0, 1]
+    #   | test: test_scorable_json_rate_clamps_dp_overshoot
+    #SG-TRACE: REQ-DASH-003
+    #   | assumption: rescaling is exact only for a COMPLETE suite run;
+    #     a partial batch has an unknown scorable count and is excluded
+    #     rather than published on a guessed base
+    #   | test: test_partial_batch_is_excluded
+    """
+    if raw_rate is None or result_count is None or result_count <= 0:
+        return None
+    base = _JSON_BASE_BY_SUITE.get(suite_version or "")
+    if base is None:
+        return None
+    total, scorable = base
+    if int(result_count) != total:
+        return None
+    return max(0.0, min(1.0, raw_rate * total / scorable))
+
+
 def _compute_model_weather(
     repo: BaseRepository,
     model_tuple: str,
@@ -446,7 +524,16 @@ def _compute_model_weather(
         s.avg_output_length for s in signals if s.avg_output_length is not None
     ]
     rates = [
-        s.json_success_rate for s in signals if s.json_success_rate is not None
+        r
+        for r in (
+            _scorable_json_rate(
+                s.json_success_rate,
+                s.result_count,
+                getattr(s, "suite_version", "") or "",
+            )
+            for s in signals
+        )
+        if r is not None
     ]
     avg_length = sum(lengths) / len(lengths) if lengths else None
     avg_rate = sum(rates) / len(rates) if rates else None
