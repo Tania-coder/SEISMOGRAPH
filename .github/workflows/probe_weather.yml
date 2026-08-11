@@ -86,7 +86,7 @@ jobs:
       SEISMOGRAPH_PROBE_DELAY_MS: ${{ matrix.provider == 'google' && '4500' || '0' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Note missing secret (leg skips gracefully)
         if: env.PROVIDER_API_KEY == ''
