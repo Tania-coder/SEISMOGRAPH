@@ -3227,3 +3227,100 @@ invariant absorbs it. Metric must not be cited until the stream is
 6. Landing 193 -> 293 + baseline-restart line (drift-defense repo).
 7. probe 1.2.0/1.3.0 release; carried Tatiana clicks (formsubmit,
    OPENAI/ANTHROPIC keys, OpenSSF, NLnet ~25.09, Neon password reset).
+
+
+## Session 047 — 2026-08-28 (17-day gap; land DASH-1, open DASH-2)
+
+Session opened on the standing protocol. The briefing sources disagreed:
+the repo canon (CURRENT_STATE, backlog) said S046 closed after PRIV-011
+and INFRA-3, while the Cowork auto-memory carried a later timestamp and
+said S046 had continued into DASH-1 and stopped mid-push on a dead
+battery. The auto-memory was correct. Resolved by direct inspection
+rather than by trusting either source.
+
+### Resume verification
+- `git log` on the host: HEAD -> seismograph/task-dash-1 @04d6034, and
+  origin/seismograph/task-dash-1 at the same sha. The battery died AFTER
+  the push, not during it. Nothing was lost.
+- `git status`: working tree clean. The S046 HARD RULE held.
+- main unmoved at c771a73 across the whole gap, so the 17-day-old branch
+  needed no rebase and GitHub reported "Able to merge" directly.
+- Host gate re-run on the branch: ruff check clean, ruff format clean
+  (61 files), pytest **309 passed** — matching the S046 sandbox claim
+  exactly, 17 days later.
+
+### Live board after the gap
+- /v1/weather: 2 models STABLE, no alerts. Neon free-tier persistence
+  intact across **24 days**. INFRA-1 is now proven three separate ways
+  (S044 manual restart, 7 days at S046, 24 days here).
+- Raw read, pre-deploy: google json 0.17675 / length 132.23;
+  mistral json 0.18317 / length 89.08.
+
+### The clamp fires in production (new evidence, folded into the Keystone)
+mistral's raw json rate 0.18317 EXCEEDS the v2.0.0 ceiling of
+9/50 = 0.18. The excess is 0.00317, or 0.22 sigma against the DP noise
+scale (Laplace 1/(50*2) = 0.01, sd 0.0141) — expected, not anomalous.
+But it means the [0, 1] clamp in `_scorable_json_rate` is load-bearing:
+without it the board would have published 101.8% JSON validity.
+`test_scorable_json_rate_clamps_dp_overshoot` is guarding a real case,
+not a hypothetical. Normalised values: google 98.2%, mistral 100.0%.
+
+Drift since the 2026-08-11 reading: +0.13 sigma (google), +0.36 sigma
+(mistral). Both inside noise. No drift signal across the gap.
+
+### DASH-1 landed
+- PR #26 opened and squash-merged @fd4c561, 5 checks green
+  (ci/lint-and-test 3.10 + 3.11, codeql python + javascript-typescript).
+  main baseline 293 -> **309**.
+- Executed by Claude driving Tatiana's Chrome directly, with her explicit
+  approval — the first time the web-UI merge path was run by the agent
+  rather than by Tatiana clicking. Worked cleanly; the only friction was
+  GitHub's layout shifting between screenshot and click, which required
+  re-locating the submit button twice.
+- KEYSTONE_REPORT_DASH-1.md sec 9 SIGNED 2026-08-28 after review of
+  sec 3, sec 5 and sec 7. Sec 4 gained a post-merge live-verification
+  subsection; sec 7 gained limitation #6 (missing denominator).
+
+### DASH-2 opened — and why it displaced the GTM task
+Weather Report #1 was the obvious next move after DASH-1 unblocked it.
+It was deliberately NOT taken. `/v1/weather` publishes
+`recent_json_success_rate` with no sample count and no window age, so a
+reader cannot tell whether 98.2% rests on 10 samples or 2, or how old
+they are. Publishing a percentage without its base is the same defect
+class DASH-1 had just fixed, one level up — and it would have gone out
+in the network's first public artefact.
+
+The same gap blocks the avg_output_length question. Arithmetic says the
+PRIV-011 contamination aged out (17 days x 2 runs vs a 10-batch window),
+but that is inference. The observed google/mistral spread (132.23 vs
+89.08, 48%) fits a real verbosity difference AND residual 8192-era rows
+(Laplace 81.9, sd ~116) equally well, and the endpoint exposes nothing
+that separates them. DASH-2 turns an assumption into a measurement.
+
+Scope: add sample_count + window_start/window_end to
+ModelWeatherResponse. Read-side, detector untouched, smaller than DASH-1.
+
+### Incidental finding
+Four Dependabot PRs (#15-#18) are open and stale: actions/checkout 4->7,
+setup-python 5->7, upload-artifact 4->7, download-artifact 4->8. All
+major-version jumps, so they need care rather than a blind merge. Stale
+dependency PRs also count against the OpenSSF questionnaire already on
+the carried list.
+
+### Environment note
+The desktop bridge's Linux workspace (device_bash) failed to start for
+the entire session — every call returned "Workspace unavailable". The
+working fallback: device_stage_files to read, edit in the container,
+device_commit_files to write back, git from PowerShell. Browser
+automation was fully functional throughout and carried the PR end to end.
+
+### Open at close (S047)
+1. DASH-2 — sample provenance on /v1/weather. Blocks Weather Report #1.
+2. avg_output_length — do not cite until DASH-2 confirms the window.
+3. google-leg strict-runner sample loss (31%).
+4. PRIV-012 (avg_output_tokens clamp) — needs its own contract.
+5. Published metrics not quorum-gated (DASH-1 Keystone sec 7.1).
+6. Weather Report #1 — after DASH-2.
+7. Dependabot #15-#18; VALID_PAYLOAD impossible; landing 193 -> 309;
+   probe 1.2.0/1.3.0; carried Tatiana clicks (formsubmit, OPENAI/ANTHROPIC
+   keys, OpenSSF, NLnet ~25.09, Neon password reset).
