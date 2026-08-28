@@ -1,6 +1,8 @@
-# KEYSTONE REPORT (UNSIGNED) -- REQ-DASH-003
+# KEYSTONE REPORT (SIGNED) -- REQ-DASH-003
 # DASH-1: scorable-base normalisation of the published JSON validity rate
-# Session 046, 2026-08-11. Base: main @c771a73 (baseline 293).
+# Authored Session 046, 2026-08-11. Base: main @c771a73 (baseline 293).
+# LANDED Session 047, 2026-08-28: PR #26 squash-merged @fd4c561,
+# 5 checks green. main baseline 293 -> 309.
 # Contract: agreed with Tatiana in-session before any edit (goal,
 # constraints, formula, 7-case test contract, both adversarial cases).
 
@@ -57,13 +59,19 @@ stream key avoids contamination by construction.
 
 ## 4. Evidence
 
-- Gate (sandbox): `ruff check .` clean, `ruff format --check .` clean
-  (61 files), `pytest -q` **309 passed** (293 base + 16 new).
-  Host gate pending (Tatiana).
+- Gate (sandbox, 2026-08-11): `ruff check .` clean,
+  `ruff format --check .` clean (61 files), `pytest -q` **309 passed**
+  (293 base + 16 new).
+- Gate (host, 2026-08-28, on branch @04d6034): `ruff check .` clean,
+  `ruff format --check .` clean (61 files), `py -3.10 -m pytest -q`
+  **309 passed**. Matches the sandbox claim exactly.
+- CI on PR #26: 5 checks green (ci/lint-and-test 3.10 and 3.11,
+  codeql/analyze python and javascript-typescript, plus summary).
 - Files touched: `gateway/main.py`, `gateway/schema.py` (docstring only),
   `tests/test_weather_json_rate.py` (new), `tests/test_gateway.py`
-  (one fixture, see sec 6).
-- Live-value check: raw 0.17497 -> 0.9721; raw 0.17815 -> 0.9897.
+  (one fixture, see sec 6). Plus this report. +497/-5.
+- Live-value check (2026-08-11): raw 0.17497 -> 0.9721;
+  raw 0.17815 -> 0.9897.
 
 ### Adversarial case (a) -- poisoned / Sybil probe
 
@@ -88,6 +96,24 @@ Unknown suite_version, legacy-empty suite_version, missing rate, and
 non-positive `result_count` all return None and are excluded from the
 average rather than published on a guessed base. If no row is
 interpretable the field is None, not a number.
+
+### Post-merge live verification (2026-08-28, Session 047)
+
+Production `/v1/weather` read 17 days after the S046 authoring session,
+immediately before the merge:
+
+  google/gemini-3.5-flash-lite   raw 0.17675 -> 98.2%
+  mistral/mistral-small-latest   raw 0.18317 -> 100.0%
+
+**The clamp fires on live data.** mistral's raw 0.18317 exceeds the
+v2.0.0 ceiling of 9/50 = 0.18 by 0.00317, which is 0.22 sigma against
+the DP noise scale (Laplace 1/(50*2) = 0.01, sd 0.0141). Without the
+[0, 1] clamp the board would have published 101.8% JSON validity. The
+clamp asserted in `test_scorable_json_rate_clamps_dp_overshoot` is
+load-bearing in production, not defensive decoration.
+
+Drift since the 2026-08-11 reading is +0.13 sigma (google) and
++0.36 sigma (mistral) -- both inside DP noise. No drift signal.
 
 ## 5. Defects caught and fixed
 
@@ -139,6 +165,12 @@ provider is contacted.
    history becomes correctly scaled retroactively. No data was rewritten.
 5. No `bouncer.py` file-lock utility exists in this repository; writes
    followed the established RULE-1 write-then-verify pattern.
+6. **The published figure carries no denominator.** `/v1/weather`
+   exposes neither the sample count nor the age of the 10-batch window,
+   so a reader cannot tell whether 98.2% rests on 10 samples or 2, or
+   how old they are. Opened as DASH-2 in Session 047: publishing a rate
+   without its base is the same class of defect this task just fixed,
+   one level up. Weather Report #1 must not go out before it lands.
 
 ## 8. Methodology note
 
@@ -153,8 +185,9 @@ solely from the contract inherits the contract's blind spots.
 
 ## 9. Sign-off
 
-- [ ] Tatiana: review sec 3 (why read-side, and the Option C
-      recommendation for the next suite bump), sec 5 (both defects),
-      sec 7 (esp. #1 the un-gated published metric, and #2 the
-      duplicated suite table). If accepted: host gate (ruff x2 +
-      pytest 309), commit, push, PR, squash-merge, sign here.
+- [x] **Tatiana, 2026-08-28.** Reviewed sec 3 (read-side rationale and
+      the Option C recommendation for the next suite bump), sec 5 (both
+      defects), and sec 7 (esp. #1 the un-gated published metric, #2 the
+      duplicated suite table, and #6 the missing denominator). Host gate
+      re-run on branch: ruff x2 clean, 309 passed. PR #26 squash-merged
+      @fd4c561 with 5 checks green. Accepted.

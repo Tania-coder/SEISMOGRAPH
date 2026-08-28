@@ -1,7 +1,10 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-08-11 (Session 046: S045 recovered from an uncommitted
+# Last updated: 2026-08-28 (Session 047: DASH-1 landed after a 17-day gap ->
+# 309 tests, Keystone signed; live board re-verified, Neon persistence now
+# 24 days; DASH-2 opened — the published rate has no denominator).
+# Prior: 2026-08-11 (Session 046: S045 recovered from an uncommitted
 # working tree; PRIV-011 merged -> 293 tests + Keystone signed; INFRA-3 cron
 # revert merged. Three defects opened: JSON denominator, google sample loss,
 # avg_output_length stream contamination).
@@ -14,6 +17,49 @@
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S047 — 2026-08-28 (17-day gap; DASH-1 landed, DASH-2 opened)
+- [x] Resume verified: branch seismograph/task-dash-1 @04d6034 was pushed
+      AND intact — the S046 low-battery stop happened after the push, not
+      during it. main unmoved at c771a73, so no rebase needed.
+- [x] Host gate re-run on branch: ruff check clean, ruff format clean
+      (61 files), pytest **309 passed**. Matches the S046 sandbox claim
+      exactly, 17 days later.
+- [x] Live board re-verified after the gap: 2 models STABLE, no alerts,
+      Neon persistence intact across **24 days** of free-tier autosuspend.
+      INFRA-1 now proven three separate ways.
+- [x] **The [0,1] clamp was observed FIRING on live data.** mistral raw
+      json rate 0.18317 exceeds the v2.0.0 ceiling of 9/50 = 0.18 by
+      0.22 sigma of DP noise. Without the clamp the board would have
+      published 101.8% validity. Recorded in Keystone sec 4.
+- [x] **DASH-1 MERGED** (PR #26, squash @fd4c561, 5 checks green).
+      main baseline 293 -> **309**. PR opened and merged by Claude driving
+      Tatiana's Chrome directly, with her approval.
+- [x] KEYSTONE_REPORT_DASH-1.md sec 9 SIGNED by Tatiana 2026-08-28, after
+      review of sec 3 (read-side rationale), sec 5 (both defects), sec 7
+      (un-gated metric, duplicated suite table, missing denominator).
+- [ ] **DASH-2 — published rate has no denominator. BLOCKS Weather
+      Report #1.** /v1/weather exposes neither sample_count nor window
+      age. Publishing a percentage without its base is the defect class
+      DASH-1 just fixed, one level up. Add sample_count +
+      window_start/window_end to ModelWeatherResponse. Read-side only.
+      NEXT ENGINE TASK — contract-first.
+- [ ] **avg_output_length contamination NOT confirmed cleared.**
+      Arithmetic says it aged out (~34 runs vs a 10-batch window) but
+      /v1/weather has no timestamps, so that is inference, not
+      measurement. The 132.23 vs 89.08 spread fits BOTH a real verbosity
+      difference and residual 8192-era rows. DASH-2 settles it. Do NOT
+      cite the metric until then.
+- [ ] **Dependabot PRs #15-#18 open and stale** — actions/checkout 4->7,
+      setup-python 5->7, upload-artifact 4->7, download-artifact 4->8.
+      Major-version jumps, may break CI. Also counts against the OpenSSF
+      questionnaire already on the carried list.
+- [ ] Carried unchanged from S046: google-leg sample loss; PRIV-012;
+      published metrics not quorum-gated; VALID_PAYLOAD impossible;
+      Weather Report #1; landing 193 -> 309; probe 1.2.0/1.3.0; formsubmit;
+      OPENAI + ANTHROPIC keys; OpenSSF anketa; NLnet recheck ~25.09;
+      optional Neon password reset.
+
 
 ## S046 — 2026-08-11 (recover S045; PRIV-011 + INFRA-3 landed)
 - [x] Live board verified: Neon persistence intact 7 days, 2 models STABLE.
