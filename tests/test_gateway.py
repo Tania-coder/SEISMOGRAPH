@@ -229,9 +229,20 @@ def test_weather_returns_stable_when_no_alerts() -> None:
 
     #SG-TRACE: REQ-GW-023
     """
+    # DASH-1: the shared VALID_PAYLOAD pairs suite_version "v1.0.0" with
+    # result_count 10, which no real run can produce -- v1.0.0 is a
+    # 3-prompt suite.  The published JSON rate is now rescaled onto the
+    # suite's scorable base and a batch whose size does not match its
+    # suite is excluded (a partial run has an unknown scorable count).
+    # This test needs a physically possible batch, so it overrides
+    # result_count locally rather than mutating the shared fixture that
+    # 37 other assertions depend on.
+    payload = copy.deepcopy(VALID_PAYLOAD)
+    payload["result_count"] = 3
+
     with patch("gateway.main.verify_signature", return_value=True):
         with TestClient(app) as c:
-            post_resp = c.post("/v1/signals", json=VALID_PAYLOAD)
+            post_resp = c.post("/v1/signals", json=payload)
             assert post_resp.status_code == 202, post_resp.text
             response = c.get("/v1/weather")
 
@@ -239,7 +250,7 @@ def test_weather_returns_stable_when_no_alerts() -> None:
     data = response.json()
     assert len(data) == 1
     entry = data[0]
-    assert entry["model_tuple"] == VALID_PAYLOAD["model_tuple"]
+    assert entry["model_tuple"] == payload["model_tuple"]
     assert entry["status"] == "STABLE"
     assert entry["last_alert_timestamp"] is None
     assert isinstance(entry["recent_avg_output_length"], float)
