@@ -763,13 +763,29 @@ def test_gateway_same_suite_three_orgs_reach_quorum() -> None:
     assert entry["status"] == "DRIFTING", (
         f"three orgs on one suite must promote, got {entry['status']!r}"
     )
-    # A6: the weather payload keys are unchanged for existing consumers.
+    # A6: the five legacy keys survive unchanged for existing consumers,
+    # which read the payload by key name; the five DASH-2 provenance keys
+    # are additive and deliberate.  This stays an EXACT set equality, not
+    # a subset check, so that an internal field can never leak into the
+    # public payload unnoticed -- a schema change must update this guard
+    # on purpose.
+    # #SG-TRACE: REQ-DASH-004
+    # #   | assumption: additive, defaulted response fields do not break
+    # #     existing consumers, but silent growth of a published payload
+    # #     is itself a defect, so the guard is tightened rather than
+    # #     relaxed when the schema grows
+    # #   | test: test_gateway_same_suite_three_orgs_reach_quorum
     assert set(entry) == {
         "model_tuple",
         "status",
         "last_alert_timestamp",
         "recent_avg_output_length",
         "recent_json_success_rate",
+        "sample_count",
+        "json_sample_count",
+        "length_sample_count",
+        "window_start",
+        "window_end",
     }
 
 

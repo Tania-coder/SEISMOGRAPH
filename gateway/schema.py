@@ -231,6 +231,37 @@ class ModelWeatherResponse(BaseModel):
         suite v2.0.0.  Batches whose suite_version cannot be
         interpreted are excluded.  None if no batch could be
         interpreted.
+    sample_count:
+        Number of signal batches in the read window (at most 10).
+        This is the size of the window, NOT the denominator of either
+        metric above -- see the two per-metric counts below.
+    json_sample_count:
+        How many of those batches actually contributed to
+        recent_json_success_rate.  Batches that are not a complete
+        suite run, or whose suite_version cannot be interpreted, are
+        excluded (DASH-1), so this can be lower than sample_count.
+    length_sample_count:
+        How many of those batches contributed to
+        recent_avg_output_length (rows carrying a non-null value).
+    window_start:
+        Oldest batch timestamp in the window, timezone-aware UTC.
+        None when the window is empty.
+    window_end:
+        Newest batch timestamp in the window, timezone-aware UTC.
+        None when the window is empty.  Together with window_start it
+        lets a reader see whether a leg is emitting at its expected
+        cadence, or whether the number rests on stale data.
+
+    #SG-TRACE: REQ-DASH-004
+    #   | assumption: a published rate is uninterpretable without its
+    #     denominator, and the two per-metric counts differ in general,
+    #     so a single sample_count would misstate at least one of them
+    #   | test: test_counts_diverge_when_a_row_is_uninterpretable
+    #SG-TRACE: REQ-DASH-004
+    #   | assumption: stored timestamps are naive UTC (SignalRow and
+    #     AlertRow invariants), so the boundary attaches tzinfo rather
+    #     than converting; internal comparisons stay naive
+    #   | test: test_window_bounds_are_timezone_aware_utc
 
     #SG-TRACE: REQ-DASH-002
     #   | assumption: status=DRIFTING requires quorum
@@ -246,6 +277,11 @@ class ModelWeatherResponse(BaseModel):
     last_alert_timestamp: datetime | None = None
     recent_avg_output_length: float | None = None
     recent_json_success_rate: float | None = None
+    sample_count: int = 0
+    json_sample_count: int = 0
+    length_sample_count: int = 0
+    window_start: datetime | None = None
+    window_end: datetime | None = None
 
     def model_post_init(self, __context: Any) -> None:
         if self.status not in ("STABLE", "DRIFTING"):

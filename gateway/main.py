@@ -502,6 +502,30 @@ def _scorable_json_rate(
     return max(0.0, min(1.0, raw_rate * total / scorable))
 
 
+def _as_published_utc(ts: datetime | None) -> datetime | None:
+    """Return a stored timestamp as timezone-aware UTC for publication.
+
+    Signal and alert rows are stored as naive UTC by construction
+    (``datetime.now(timezone.utc).replace(tzinfo=None)``), which is what
+    keeps the in-process comparisons in this module consistent.  A naive
+    value serialised into JSON, however, carries no offset, and ISO 8601
+    reads an offset-less timestamp as LOCAL time -- so a browser parsing
+    it renders the wrong instant.  This attaches the offset the stored
+    value already implies; it never shifts the instant.
+
+    #SG-TRACE: REQ-DASH-004
+    #   | assumption: naive stored values are UTC, per the SignalRow and
+    #     AlertRow invariants; an already-aware value is normalised to
+    #     UTC rather than assumed
+    #   | test: test_window_bounds_are_timezone_aware_utc
+    """
+    if ts is None:
+        return None
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)
+
+
 def _compute_model_weather(
     repo: BaseRepository,
     model_tuple: str,
@@ -538,6 +562,17 @@ def _compute_model_weather(
     avg_length = sum(lengths) / len(lengths) if lengths else None
     avg_rate = sum(rates) / len(rates) if rates else None
 
+    # Provenance for the published numbers (DASH-2).  The two metric
+    # lists are built by different filters, so their counts diverge in
+    # general and neither equals len(signals); publishing a single
+    # count would misstate at least one metric.
+    # #SG-TRACE: REQ-DASH-004
+    # #   | assumption: min/max over the fetched timestamps is more
+    # #     robust than positional [0]/[-1], which would rely on id
+    # #     order matching time order
+    # #   | test: test_window_bounds_do_not_assume_row_order
+    stamps = [s.timestamp for s in signals if getattr(s, "timestamp", None)]
+
     recent_alerts = repo.get_recent_alerts(model_tuple, hours_back=24)
     last_ts = recent_alerts[0].timestamp if recent_alerts else None
     status = "DRIFTING" if recent_alerts else "STABLE"
@@ -548,6 +583,11 @@ def _compute_model_weather(
         last_alert_timestamp=last_ts,
         recent_avg_output_length=avg_length,
         recent_json_success_rate=avg_rate,
+        sample_count=len(signals),
+        json_sample_count=len(rates),
+        length_sample_count=len(lengths),
+        window_start=_as_published_utc(min(stamps)) if stamps else None,
+        window_end=_as_published_utc(max(stamps)) if stamps else None,
     )
 
 
