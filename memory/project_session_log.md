@@ -3324,3 +3324,181 @@ automation was fully functional throughout and carried the PR end to end.
 7. Dependabot #15-#18; VALID_PAYLOAD impossible; landing 193 -> 309;
    probe 1.2.0/1.3.0; carried Tatiana clicks (formsubmit, OPENAI/ANTHROPIC
    keys, OpenSSF, NLnet ~25.09, Neon password reset).
+
+
+## Session 048 — 2026-09-02 (recover DASH-2 tail; land it; open the Guide loop)
+
+### Resume verification
+`git status` on session open showed `main` with `KEYSTONE_REPORT_DASH-2.md`
+modified and two untracked files (`tests/test_weather_provenance.py`, the
+same Keystone report). Nothing in the S047 log recorded this. File
+timestamps: the S047 close commit `b144e87` landed 2026-08-28 07:41 UTC;
+DASH-2's implementation files carry a mtime of 07:50 UTC — nine minutes
+later, same day, and left uncommitted on `main` for five days. This is
+the third occurrence of the same pattern: PRIV-011 sat uncommitted 5 days
+at S045; DASH-2 itself was discovered exactly this way at S047's own
+open. The working tree was trusted over the log (S046 hard rule) and was
+right again.
+
+### DASH-2 audit and landing
+The implementation matched its own Keystone's sec 1-4 exactly on
+inspection. The one discrepancy: sec 5 claimed "expect 309+16=325" from a
+container run that had been scoped to the 32 weather-path tests. The
+first full host gate run this session: **324 passed, 1 failed** —
+`tests/test_gateway.py::test_gateway_same_suite_three_orgs_reach_quorum`,
+an exact-set-equality guard (A6, from DASH-1) on the `/v1/weather` payload
+keys, which the scoped run never executed. Five additive DASH-2 fields
+broke exact equality by construction.
+
+Fixed by extending the guard's expected set to all ten keys, keeping
+exact equality — a subset check was considered and rejected because it
+would pass silently for every future field added to the payload. Keystone
+sec 5/8/9 were corrected to record the red-then-green gate honestly.
+
+Host gate, second run: ruff check clean, ruff format clean (62 files),
+**pytest 325 passed**. Branch `seismograph/task-dash-2`, PR #27 opened
+and squash-merged @09f1563 (5 checks green), Director-approved
+title/body/merge sequence, Claude driving her Chrome directly. Baseline
+309 -> **325**.
+
+### Post-deploy measurement (Render deploy #93)
+First live read of the new fields:
+
+    google  window 2026-08-24T05:58:25Z -> 2026-09-01T10:11:09Z
+            sample_count 10 / json_sample_count 10 / length_sample_count 10
+    mistral window 2026-08-28T17:27:23Z -> 2026-09-02T09:38:39Z
+            sample_count 10 / json_sample_count 10 / length_sample_count 10
+
+Two findings:
+
+**(1) The PRIV-011 contamination question is CLOSED by measurement.**
+PRIV-011's DP-constant change landed 2026-08-11. The google window opens
+13.25 days after that date, mistral 17.73 days after. No 8192-era row can
+physically be inside either window. The do-not-cite prohibition on
+`avg_output_length` is lifted.
+
+**(2) The google-leg sample loss is 45%, not the 31% on record — and the
+method matters more than the number.** Both legs report a clean 10-of-10
+on every count: the DASH-1 completeness filter is discarding nothing
+right now. The loss is therefore not partial rows but rows that never
+existed — `execute_canary_strict` discards an entire 50-prompt suite when
+any single prompt exhausts its retry budget, so a failed run writes zero
+rows. A loss class that removes rows entirely is invisible to any
+published count, however many are published; only the collection window
+(google: 10 samples spanning 8.18 days against a 5-day nominal; mean
+interval 21.80h against a 12h schedule) exposed it.
+
+### Landing page correction
+While auditing the launch surface for the same class of defect DASH-2
+had just fixed internally (a public number silently gone stale), the
+`drift-defense` landing page was found stating "193 tests" in three
+places — the repository was at 325, a 132-test gap on a page whose
+central claim is "Not a claim. A receipt." Corrected in all three
+occurrences, `drift-defense@759b870`.
+
+### The Guide project and the three-role protocol
+The Director raised, correctly, that the session's own working shape had
+become illegible: seven-plus engine tasks landed since the last public
+artefact, no register of open strategic questions, and no separation
+between "what is true" and "what should we do about it."
+
+A ten-document pack was authored and committed to `business/guide_pack/`
+(gitignored — private business material, not published): a charter
+naming what would falsify the project's premise; a roles/protocol
+document splitting Director (authority) / Executor (this project, the
+machine) / Guide (a separate Claude web project, no machine, holds
+strategy); a state-of-record and open-decisions register, both tagged
+[measured]/[derived]/[assumed]; a launch-status document; an evidence
+standard distilling this session's own two near-misses (the scoped-gate
+claim above, and a five-day arithmetic argument for cleared contamination
+that turned out correct but was still replaced by measurement) into
+named, reusable guards; session-loop handoff formats (closing packet /
+opening prompt / decision memo); and a four-part amendment patch for this
+project's own constitution (applied as a PATCH, not a rewrite, because
+the constitution as it reaches this session is truncated mid-table and a
+full rewrite risked silently dropping rules that could not be read).
+
+### The Guide's first decision memo — received and independently re-verified
+The Director pasted the Guide's first decision memo back into this
+session. Rather than act on it, it was re-verified against independent
+recomputation, per the evidence standard the memo itself argues for.
+
+Confirmed correct on recomputation: the window-excess arithmetic (google
++88.21h / mistral +4.19h over a 108h nominal for 10 samples), and the
+decomposition of google's excess into ~7 additional missed 12h slots once
+mistral's per-gap jitter rate is subtracted — both check out to within
+0.01h of the memo's stated figures. The memo's central analytical
+contribution — that surviving google samples are systematically biased,
+not merely sparse, because run discard correlates with 429s and 429s
+correlate with provider load, which is exactly the mechanism this project
+exists to detect — was independently judged sound and is adopted for
+Weather Report #1's limitations section verbatim.
+
+One error was caught: the memo's argument against a 300000ms backoff
+ceiling (G-03) computed a "30-second margin" by silently doubling this
+session's own draft assumption for provider latency (100s -> 200s)
+without flagging the change. At the original 100s assumption the margin
+is closer to 130s. The recommendation itself (180000ms + a 1200s job
+timeout) is unaffected — it holds comfortably under either assumption —
+but the specific number offered as justification was not trustworthy as
+stated. This is recorded as the loop's first live catch of the exact
+failure mode the evidence standard was written to prevent, running
+against the Guide's own output rather than the Executor's, which is what
+makes the loop worth having.
+
+### CAN-3 and the discriminating measurement — deliberately not done
+A contract for widening the google-leg retry budget was drafted in the
+prior message (this session), proposing `max_total_backoff_ms` be
+threaded per-leg through `scripts/live_emit.py` (currently stuck at its
+60000ms default for every leg, capping a run at ~4 fully-retried prompts
+before the entire suite is discarded). Implementation was declined this
+session: the diagnosis is [derived] from reading `probe/canary.py`, not
+[measured] from Actions run logs, and this project's own evidence
+standard treats a diagnosis that has not distinguished between competing
+mechanisms as insufficient grounds to write the fix.
+
+A falsifiable prediction is on record instead: approximately 17 scheduled
+runs occurred in google's 8.18-day window, approximately 10 produced a
+row, and 6-8 produced none — to be checked against actual GitHub Actions
+run history (`gh run list` / `gh run view`) for the `probe-weather-multi`
+workflow. Five candidate mechanisms were distinguished in advance (retry
+budget exhaustion, API quota, scheduler gap, job timeout, gateway
+ingestion failure), two of which would make the drafted CAN-3 fix useless
+or actively harmful rather than merely unnecessary. `device_bash` was
+unavailable this session ("Workspace unavailable"), so the measurement
+could not be run directly; exact `gh` commands were handed to the
+Director to run from PowerShell instead of guessing further.
+
+### Weather Report #1 — still not published
+Every technical blocker DASH-1 and DASH-2 existed to clear is now clear.
+This is the fifth consecutive working session (S044 through S048) with
+zero public output while the test baseline moved 291 -> 325. The report
+is scoped (lead with mistral's clean leg, disclose google's window span
+rather than a bare percentage, carry the selection-bias limitation from
+the Guide's memo verbatim) but not yet written to a file or shown to the
+Director for approval.
+
+### Process findings
+- **Uncommitted work at session boundary, third occurrence.** The S046
+  hard rule ("never end a session with uncommitted work") has now been
+  broken twice since it was written, both times by work that was
+  correct, verified in spirit, and simply never reached `git commit`.
+  The failure is not the work; it is the boundary discipline.
+- **A scoped test run is not a gate**, formalized as a new hard rule this
+  session after DASH-2's Keystone stated an unrun full-suite result as
+  fact.
+- **The Guide/Executor split survived its first real test**: the Guide
+  produced a materially useful, mostly correct memo, and the loop's
+  value showed up specifically in the one place it was wrong — an
+  unflagged assumption, caught by the same discipline the memo itself
+  was arguing for.
+
+### Session 048 status at the time of this entry
+NOT closed by the standing protocol until: this log entry, the backlog
+rewrite, and `CURRENT_STATE.md` are committed alongside the outstanding
+`KEYSTONE_REPORT_DASH-2.md` working-tree change, and `git status` shows
+clean. Keystone DASH-2 sec 9 remains unsigned while its code runs in
+production — flagged to the Director as a process gap, not resolved
+unilaterally. Open at close: CAN-3 (blocked on measurement), the
+discriminating measurement itself, Weather Report #1, the
+`observer_count` field, and the carried items in `CURRENT_STATE.md`.

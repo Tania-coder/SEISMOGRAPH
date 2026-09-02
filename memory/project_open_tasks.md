@@ -1,22 +1,143 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-08-28 (Session 047: DASH-1 landed after a 17-day gap ->
-# 309 tests, Keystone signed; live board re-verified, Neon persistence now
-# 24 days; DASH-2 opened — the published rate has no denominator).
+# Last updated: 2026-09-02 (Session 048: DASH-2 recovered from a 5-day
+# uncommitted tail of S047, gated to 325, merged PR #27 @09f1563;
+# post-deploy measurement CLOSED the avg_output_length contamination
+# question and RAISED the google-leg loss estimate 31% -> 45%; landing
+# page 193 -> 325 corrected; Guide project + protocol established
+# (Director / Executor / Guide, decision-memo loop); Guide's first
+# decision memo received and independently re-verified -- see S048 log.
+# Session left OPEN at the boundary of Task 0; this entry closes it.)
+# Prior: 2026-08-28 (Session 047: DASH-1 landed after a 17-day gap ->
+# 309 tests, Keystone signed; live board re-verified, Neon persistence
+# 24 days; DASH-2 authored but left uncommitted -- see S048 above).
 # Prior: 2026-08-11 (Session 046: S045 recovered from an uncommitted
-# working tree; PRIV-011 merged -> 293 tests + Keystone signed; INFRA-3 cron
-# revert merged. Three defects opened: JSON denominator, google sample loss,
-# avg_output_length stream contamination).
+# working tree; PRIV-011 merged -> 293 tests + Keystone signed; INFRA-3
+# cron revert merged).
 # Prior: 2026-08-04 (Session 044: INFRA-1 merged, 291 tests, Neon
-# persistence proven; keystones all signed). Prior: 2026-07-24 (Session 040, GTM sprint: CAN-1 merged -> 193
-# tests; multi-provider cron live, board 2 models; landing v3 + guide live;
-# CONTRIBUTING.md; README 193; GTM/targets/NLnet/OpenSSF packs in business/)
+# persistence proven). Prior: 2026-07-24 (Session 040, GTM sprint:
+# CAN-1 merged -> 193 tests; multi-provider cron live; landing v3;
+# GTM/targets/NLnet/OpenSSF packs in business/).
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S048 — 2026-09-02 (recover DASH-2 tail; land it; open the Guide loop)
+- [x] Resume verified: `main` had a modified `KEYSTONE_REPORT_DASH-2.md`
+      and two untracked files (`tests/test_weather_provenance.py`,
+      the same Keystone) NOT recorded anywhere in the S047 log. Read
+      timestamps directly: the S047 close commit `b144e87` landed at
+      2026-08-28 07:41 UTC; DASH-2's implementation files were written
+      at 07:50 UTC -- nine minutes later, same day, never committed.
+      Third occurrence of this exact pattern (precedent: PRIV-011 at
+      S045; DASH-2 itself, discovered at S047 open). The working tree
+      was trusted over the log, per the S046 hard rule; that call was
+      correct.
+- [x] DASH-2 audited against its own Keystone claim before touching
+      anything: implementation matched sec 1-4 exactly. The ONE
+      discrepancy was sec 5's gate claim -- "expect 309+16=325" was
+      arithmetic never confirmed by a full-suite run. First real host
+      gate: **324 passed, 1 failed** (`test_gateway_same_suite_
+      three_orgs_reach_quorum`, an exact-set-equality A6 guard from
+      DASH-1 that the authoring run, scoped to 32 weather-path tests,
+      never executed).
+- [x] Fixed by TIGHTENING the A6 guard to all ten keys (exact equality
+      kept), not by relaxing it to a subset check -- a subset check
+      would pass silently for every future field. Keystone sec 5/8/9
+      corrected to record the red-then-green gate honestly rather than
+      quietly overwriting the original claim.
+- [x] Host gate green: ruff x2 clean (62 files), **pytest 325 passed**.
+- [x] Branch `seismograph/task-dash-2`, PR #27, squash-merged @09f1563,
+      5 checks green (Director approved title/body/merge in Chrome,
+      driven by Claude). main baseline 309 -> **325**.
+- [x] Post-deploy live read, Render #93: both legs now publish
+      `sample_count` / `json_sample_count` / `length_sample_count` /
+      `window_start` / `window_end`.
+      **avg_output_length contamination question CLOSED by measurement**
+      -- google window opens 13.25 days after the PRIV-011 cutover,
+      mistral 17.73 days after; no 8192-era row can be inside either
+      window. The do-not-cite rule is LIFTED.
+      **google-leg loss re-measured at 45%, not 31%** -- 10 samples
+      span 8.18 days (mean interval 21.8h vs a 12h schedule) while
+      BOTH per-metric counts read a clean 10/10, because a discarded
+      50-prompt run (`execute_canary_strict` all-or-nothing) writes NO
+      row at all. A loss that removes rows entirely is invisible to any
+      count; only the window bounds exposed it.
+- [x] Landing page (`drift-defense` repo, `759b870`): stale "193 tests"
+      corrected to 325 in all three occurrences (stat card, trust
+      strip, security-posture line). Found while auditing the launch
+      surface for the same class of stale-claim defect DASH-2 had just
+      fixed in the engine.
+- [x] **Guide project established.** Ten-document pack authored and
+      committed to `business/guide_pack/` (gitignored, private): charter,
+      roles/protocol, state-of-record, open-decisions register, launch
+      status, evidence standard, session-loop formats, paste-ready Guide
+      instructions, and a four-part amendment patch for this project's
+      own constitution. Purpose: split strategy (Guide, no machine
+      access, holds the decision register) from execution (this
+      project, holds the machine) so a session cannot drift on strategy
+      mid-task the way distribution has drifted for 40 days against a
+      compounding engine baseline.
+- [x] Guide's first decision memo received and RE-VERIFIED independently
+      (never trust a handoff over a check -- 05_EVIDENCE_STANDARD, and
+      this is the loop's first real test). Verification result: the
+      memo's central claims check out on independent recomputation
+      (window-excess arithmetic: google +88.21h / mistral +4.19h against
+      a 108h nominal, decomposing to ~7 additional missed 12h slots on
+      google -- confirmed to the tenth of an hour). ONE unflagged input
+      change caught: the memo's G-03 margin figure ("30s margin at
+      300000ms") silently doubled the provider-latency assumption from
+      this session's own ~100s draft to ~200s without saying so; at the
+      original 100s assumption the margin is ~130s, not 30s. Does not
+      change the recommendation (180000ms + 1200s timeout still holds,
+      robustly, under either assumption) but the STATED number was
+      unsupported -- ironic given the memo's own thesis, and now on
+      record as the loop's first caught instance of the failure mode it
+      exists to catch.
+      The memo's genuine contribution, independently confirmed sound:
+      **surviving google samples are a biased sample, not just a sparse
+      one** -- discard correlates with 429, 429 correlates with provider
+      load, and provider load under stress is the exact mechanism this
+      project exists to detect. The -0.27sd google drift reading is
+      therefore computed over a sample that systematically excludes
+      high-load periods. This goes in Weather Report #1's limitations
+      section verbatim, not softened.
+- [ ] **CAN-3 contract drafted, NOT implemented.** `max_total_backoff_ms`
+      is not threaded through `scripts/live_emit.py` per matrix leg
+      (only `delay_ms` and `max_retries` are); it sits at the 60000ms
+      default for every leg, which caps a run at 4 fully-retried prompts
+      before PartialSuiteError discards all 50. Director-confirmed
+      numbers pending a discriminating measurement first (see below) --
+      this session declined to write the fix on a diagnosis that was
+      [derived] from reading the code, not [measured] from run logs, per
+      its own evidence standard.
+- [ ] **Discriminating measurement, NOT run this session** (device_bash
+      unavailable all session -- "Workspace unavailable" -- gh CLI
+      commands handed to Tatiana instead; see S048 log for the exact
+      commands). Falsifiable prediction on record: ~17 scheduled runs in
+      the google window, ~10 producing a row, 6-8 producing none --
+      distinguishing PartialSuiteError/429 (fixable by CAN-3) from a
+      scheduler gap or job timeout (CAN-3 would not help, or would make
+      it worse).
+- [ ] Weather Report #1 -- still NOT published. Every technical blocker
+      is now cleared (denominator, window, contamination question); the
+      google-leg finding is itself the strongest available lead. Fifth
+      consecutive session (S044-S048) with zero public output while the
+      test baseline moved 291 -> 325. The Guide's memo independently
+      flagged this in the same words used at S047 open.
+- [ ] LinkedIn draft for the above written and held pending Director
+      approval + channel decision (LinkedIn vs dev.to vs both).
+- [ ] `observer_count: 1` field on `/v1/weather` -- new from the Guide's
+      memo (G-04): presentational, not architectural (the quorum
+      invariant gates the DRIFTING *label*, not the raw numbers beside
+      it), but should land before Weather Report #1 cites the numbers it
+      would annotate.
+- [ ] Carried unchanged: naive `last_alert_timestamp` (found+not-fixed at
+      DASH-2); PRIV-012; Dependabot #15-18; third/fourth model legs;
+      probe 1.2.0/1.3.0 release.
 
 ## S047 — 2026-08-28 (17-day gap; DASH-1 landed, DASH-2 opened)
 - [x] Resume verified: branch seismograph/task-dash-1 @04d6034 was pushed

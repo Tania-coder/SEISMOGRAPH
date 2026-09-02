@@ -190,6 +190,49 @@ looks like from here -- now shows an old `window_end` instead of
 silently averaging stale rows
 (`test_stale_window_is_visible_rather_than_hidden`).
 
+### Post-deploy verification (2026-09-02, PR #27, squash @09f1563)
+
+Merged with 5 checks green; Render deployment #93 live. First read of
+the new fields:
+
+  google/gemini-3.5-flash-lite
+    window 2026-08-24T05:58:25Z -> 2026-09-01T10:11:09Z
+    sample_count 10 | json_sample_count 10 | length_sample_count 10
+  mistral/mistral-small-latest
+    window 2026-08-28T17:27:23Z -> 2026-09-02T09:38:39Z
+    sample_count 10 | json_sample_count 10 | length_sample_count 10
+
+**(1) The PRIV-011 contamination question is CLOSED by measurement.**
+PRIV-011 merged 2026-08-11. The google window opens 13.25 days after
+that date and the mistral window 17.73 days after it. No 8192-era row
+can be inside either window. The five-day corroboration in the section
+above was correct, but it is now redundant: the bounds are published.
+**The do-not-cite rule on `avg_output_length` is lifted.** The metric is
+fit to quote in Weather Report #1.
+
+**(2) The google-leg sample loss is worse than the 31% on record: it is
+45%.** Ten samples span 8.1755 days, a mean inter-sample interval of
+21.80 h against the scheduled 12 h (cron "17 5,17 * * *"). Ratio 1.8168,
+so the leg is emitting at 55% of its cadence -- an effective loss of
+44.96%. mistral for comparison: interval 12.47 h, ratio 1.0388, loss
+3.73%. At the time of the read, google's last sample was 29.6 h old
+(the 2026-09-01 17:17 and 2026-09-02 05:17 runs both missing), which is
+inside its own ragged cadence rather than evidence of an outage -- but
+that state was simply unobservable before this task.
+
+**(3) Why the counts alone could never have found (2).** Both legs
+publish `json_sample_count == sample_count == 10`: the DASH-1 filter is
+currently discarding nothing. The google losses are therefore not
+partial rows -- `execute_canary_strict` discards the whole 50-prompt
+suite on any single prompt's retry exhaustion, so a lost run writes no
+row at all. A class of loss that removes rows entirely is invisible to
+any count, however many counts are published; only the window bounds
+expose it. The counts answer "how many rows survived into the metric";
+the bounds answer "how long it took to collect them", and it was the
+second question that caught the defect. This is the strongest argument
+for the field granularity Tatiana chose, and it was not anticipated
+when the contract was agreed.
+
 ## 6. Provider ToS compliance
 
 Not applicable. No new canary probe design, prompt, or request pattern.
@@ -255,5 +298,6 @@ the honest state of the API until the follow-up task lands.
       undefended**), and sec 7 (the naive `last_alert_timestamp` defect
       found but deliberately not fixed), and sec 5 (**the first host
       gate was RED; the A6 guard was tightened, not relaxed**). If
-      accepted: host gate (ruff x2 + pytest 325 green), commit, push,
-      PR, squash-merge, sign here.
+      accepted: sign here. Gate, commit, push, PR #27 and squash-merge
+      @09f1563 are DONE (2026-09-02); the post-deploy verification in
+      sec 5 is the result.

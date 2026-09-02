@@ -1,13 +1,20 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-08-28 (Session 047: DASH-1 LANDED (PR #26, fd4c561) —
-# published JSON validity rate normalised onto the scorable-canary base,
-# baseline 293 -> 309, Keystone SIGNED. Live board re-verified after a
-# 17-day gap: Neon persistence now proven across 24 days, 2 models STABLE.
-# The [0,1] clamp was observed FIRING on live data. New task DASH-2 opened:
-# the published rate has no denominator. See "Open now".)
-# Prior (S046, 2026-08-11): PRIV-011 + INFRA-3 landed; three defects opened.
+# Last updated: 2026-09-02 (Session 048: recovered a 5-day uncommitted
+# DASH-2 tail from S047 (written 9 min after S047's own close commit),
+# audited it against its own Keystone claim, found the claimed gate
+# ("expect 325") was never run full-suite, ran it (324/1 fail), fixed by
+# TIGHTENING the A6 guard rather than relaxing it, merged PR #27 @09f1563.
+# 309 -> 325. Post-deploy measurement CLOSED the avg_output_length
+# contamination question and RAISED the google-leg loss estimate from
+# 31% to 45%. Landing page 193 -> 325. Guide project + three-role
+# protocol established; Guide's first decision memo received and
+# independently re-verified — one unflagged-assumption error caught in
+# it, conclusion unaffected. Session left OPEN pending CAN-3 and Weather
+# Report #1; this entry closes S048's own bookkeeping only.)
+# Prior (S047, 2026-08-28): DASH-1 landed (PR #26, fd4c561), 293 -> 309.
+# Prior (S046, 2026-08-11): PRIV-011 + INFRA-3 landed.
 # Prior (S045, 2026-08-06): PRIV-011 authored but left uncommitted 5 days.
 
 ## Identity
@@ -17,25 +24,43 @@
 - Repo: github.com/Tania-coder/SEISMOGRAPH | pip install seismograph-probe.
 - Branch convention: seismograph/task-{id}.
 
+## Three-role protocol (NEW, S048 — read business/guide_pack/01 in full)
+- DIRECTOR (Tatiana): decides, signs Keystones, runs git, publishes, spends.
+- EXECUTOR (this Cowork project): has the machine. Builds, measures,
+  verifies, lands. Never signs, never publishes, never runs the
+  Director's git.
+- GUIDE (separate Claude web project "SEISMOGRAPH Guide"): no machine, no
+  repo. Holds strategy and the open-decision register
+  (business/guide_pack/03_OPEN_DECISIONS.md, mirrored in that project).
+  Consulted BETWEEN sessions via a closing-packet / decision-memo loop
+  (business/guide_pack/06_SESSION_LOOP.md), never mid-session.
+- Evidence standard (binding on all three): tag every claim [measured] /
+  [derived] / [assumed]; a scoped test run is never a gate; arithmetic is
+  a prediction, not a measurement, until observed. Full doc:
+  business/guide_pack/05_EVIDENCE_STANDARD.md. This is not decoration —
+  S048 used it to catch its own gate-claim error AND to catch an
+  unflagged assumption change inside the Guide's first memo.
+
 ## Phase
 - Phase 0 thesis VALIDATED (38-day lead, synthetic-replay backtest).
-  Phases 1-2 core complete; Phase 3 partial. GTM PLAN V2 executing.
+  Phases 1-2 core complete; Phase 3 partial.
 - INFRA-1 (S044, PR #23 @e128235): Neon free Postgres persistence.
-  PROVEN THREE TIMES — the S044 manual restart test, 7 days of live
-  autosuspend verified 2026-08-11, and 24 days verified 2026-08-28.
-- PRIV-011 (S045 authored / S046 landed, PR #24 @261b63d): probe/privacy.py
-  MAX_OUTPUT_LENGTH 8192 -> 320. 291 -> 293. Keystone SIGNED 2026-08-11.
+  PROVEN THREE TIMES (S044 manual restart; 7 days at S046; 24 days at S047).
+- PRIV-011 (S045/S046, PR #24 @261b63d): MAX_OUTPUT_LENGTH 8192 -> 320.
+  291 -> 293. Keystone SIGNED 2026-08-11.
 - INFRA-3 (S046, PR #25): probe cron 5x/day -> "17 5,17 * * *".
-- DASH-1 (S046 authored / S047 landed, PR #26 @fd4c561): gateway-side
-  normalisation of recent_json_success_rate onto the scorable-canary base
-  (_JSON_BASE_BY_SUITE + _scorable_json_rate). Read-side only; the detector
-  still consumes the raw wire value on purpose. 293 -> **309**.
-  Keystone SIGNED 2026-08-28.
+- DASH-1 (S046/S047, PR #26 @fd4c561): recent_json_success_rate normalised
+  onto the scorable-canary base. 293 -> 309. Keystone SIGNED 2026-08-28.
+- DASH-2 (S047 authored / S048 landed, PR #27 @09f1563): /v1/weather now
+  publishes sample_count, json_sample_count, length_sample_count,
+  window_start, window_end. Read-side only; detector untouched. 309 ->
+  **325**. Keystone written; **sec 9 NOT YET SIGNED by the Director** —
+  code is live in production ahead of the signature (flagged, not hidden).
 
-## Baseline (re-verify at session start)
-- Tests: **309 on MAIN** (DASH-1 @fd4c561; was 293/291/286/257/193).
-  Host gate 2026-08-28: ruff check clean, ruff format clean (61 files),
-  pytest 309 passed. From repo root: py -3.10 -m pytest -q.
+## Baseline (re-verify at session start — do not trust this file)
+- Tests: **325 on MAIN** (DASH-2 @09f1563; was 309/293/291/286/257/193).
+  Host gate 2026-09-02: ruff check clean, ruff format clean (62 files),
+  pytest 325 passed. From repo root: py -3.10 -m pytest -q.
 - Sandbox full-suite install: opentelemetry-sdk fastapi uvicorn sqlalchemy
   cryptography httpx pytest (+ redis clickhouse-connect). Ruff pinned
   0.15.20, BOTH gates: ruff check . && ruff format --check .
@@ -47,17 +72,25 @@
   writes landed BEFORE committing.
 - HARD RULE (S046): NEVER end a session with uncommitted work in the
   working tree. Session-end protocol must run `git status` and show clean.
-- NOTE (S047): the desktop bridge's Linux workspace (device_bash) failed to
-  start for the whole session. Fallback that worked: device_stage_files to
-  read, edit in the container, device_commit_files to write back, then
-  git from PowerShell. Browser automation via Chrome was fully functional
-  and did the PR + merge end to end.
+  BROKEN TWICE SINCE IT WAS WRITTEN (PRIV-011 at S045; DASH-2, authored
+  9 minutes after S047's own close commit, discovered at S048 open).
+- HARD RULE (S048, new): a scoped/subset test run is NEVER reported as a
+  gate result. Only a full `pytest -q` from repo root is a gate. (DASH-2's
+  Keystone stated "expect 325" from a 32-test scoped run; the real first
+  gate was 324/1 fail.)
+- NOTE (S047, S048): the desktop bridge's Linux workspace (device_bash)
+  failed to start BOTH sessions — "Workspace unavailable". Fallback that
+  works: device_stage_files to read, edit in the container,
+  device_commit_files to write back, git from PowerShell, gh CLI commands
+  handed to Tatiana to run directly when Actions-log data is needed.
+  Browser automation via Chrome is fully functional and does PR + merge
+  end to end with explicit approval each time.
 
 ## HARD RULE — git ONLY from PowerShell (Tatiana)
 - NEVER run git from the sandbox (mount leaves index.lock; if lock:
   Remove-Item .git\index.lock -Force). Fresh GitHub clone in /tmp IS safe.
 - Web-UI PR merge via Tatiana's Chrome is OK with her explicit approval.
-  (S047: done by Claude driving Chrome directly, with approval.)
+  (S047, S048: done by Claude driving Chrome directly, with approval.)
 - Каждое новое окно PowerShell: FIRST cd D:\Dev\Projects\SEISMOGRAPH.
 - FORMATTING RULE (S046): put ONLY runnable commands in code fences.
   Tatiana pastes fenced blocks straight into PowerShell; evidence and tool
@@ -65,22 +98,31 @@
 
 ## Live assets
 - Board: https://seismograph-weather.onrender.com/dashboard — /v1/weather
-  on Neon free Postgres. Verified live 2026-08-28: 2 models STABLE
-  (google/gemini-3.5-flash-lite, mistral/mistral-small-latest), no alerts,
-  persistence intact across 24 days. Cron 2x/day (05:17, 17:17 UTC).
+  on Neon free Postgres. Verified live 2026-09-02 (Render deploy #93):
+  2 models STABLE, no alerts. Cron 2x/day scheduled (05:17, 17:17 UTC) —
+  google's ACTUAL mean interval measures 21.8h, not 12h (see below).
   OPENAI/ANTHROPIC legs skip until keys added.
-- Last raw read 2026-08-28 (PRE-DASH-1 deploy):
-  google  json 0.17675  avg_output_length 132.23
-  mistral json 0.18317  avg_output_length  89.08
-  Normalised: google 98.2%, mistral 100.0% (clamped from 101.8%).
+- Last raw read 2026-09-02 (POST-DASH-2 deploy):
+  google  json 0.96050 (norm)  length 131.06  window 8.18d  10/10/10
+  mistral json 0.97856 (norm)  length  89.42  window 4.67d  10/10/10
+  google mean interval 21.80h (55% of schedule, ~45% effective loss).
+  mistral mean interval 12.47h (~4% loss, on schedule).
+  avg_output_length CLEAR of the PRIV-011 cutover on both legs (windows
+  open 13-18 days after the 2026-08-11 constant change) — CITABLE.
 - Landing: https://driftdefense.dev (repo D:\Dev\Projects\drift-defense) —
-  v3 live; STALE: says 193 tests (now 309), missing the
-  baseline-restart-2026-08-04 line. Brand rule: SEISMOGRAPH = engine,
-  Drift Defense = service.
-- Guide: driftdefense.dev/guides/detect-silent-llm-change/ (canonical for
-  dev.to -1lia). Analytics: driftdefense.goatcounter.com (lower bound).
-- PyPI: seismograph-probe 1.1.0. 1.2.0/1.3.0 release warranted.
+  CORRECTED 2026-09-02 (759b870): 193 -> 325 in all three occurrences.
+  Brand rule: SEISMOGRAPH = engine, Drift Defense = service.
+- Guide pack (strategy/protocol docs): business/guide_pack/ (gitignored,
+  private) — also uploaded to the separate "SEISMOGRAPH Guide" Claude
+  web project. See "Three-role protocol" above.
+- PyPI: seismograph-probe 1.1.0 (18 Jul, 46 days stale). 1.2.0/1.3.0
+  release warranted, deferred behind CAN-3.
 - DOI: https://doi.org/10.5281/zenodo.21045517 (concept).
+- Social, measured 2026-09-02: LinkedIn 183 followers, last post ~1mo ago
+  (1 reaction). dev.to 4 posts + 1 draft, last 24 Jul (40 days), <500
+  total views across everything, 1 reaction, 2 comments. GitHub: 3 stars,
+  0 watchers, 0 forks. FIVE consecutive sessions (S044-S048) with zero
+  public output while the test baseline moved 291 -> 325.
 
 ## Facts canon (E1, fixed S029; wording upgraded S043 — use ONLY these)
 - Incident: Anthropic postmortem 2025-09-17, THREE infra bugs, NOT a model
@@ -93,50 +135,51 @@
   NEVER "caught ... early" (implies live catch).
 - Live board baseline: RE-ESTABLISHED 2026-08-04 (v2.0.0 on Neon) —
   landing must state this; never claim continuous history.
+- M = 1 observer. Quorum requires 3. **No public alert can fire, by
+  construction** — the engine is correct and the network is silent. This
+  is the project's central strategic fact (business/guide_pack/00).
 
-## Open now (full backlog: project_open_tasks.md)
-1. **DASH-2 — the published rate has no denominator. BLOCKS Weather
-   Report #1.** /v1/weather exposes neither sample_count nor the age of
-   the 10-batch window, so a reader cannot tell whether 98.2% rests on
-   10 samples or 2. Publishing a rate without its base is the same defect
-   class DASH-1 just fixed, one level up. Add sample_count +
-   window_start/window_end to ModelWeatherResponse. Read-side, detector
-   untouched. Also resolves item 2 by measurement.
-2. **avg_output_length — contamination NOT confirmed cleared.** Arithmetic
-   says it aged out (17 days x 2/day = ~34 runs vs a 10-batch window), but
-   /v1/weather exposes no timestamps, so this is inference, not
-   measurement. The google/mistral spread (132.23 vs 89.08, 48%) is
-   equally consistent with real verbosity difference OR residual 8192-era
-   rows (Laplace 81.9, sd ~116). Do NOT cite until DASH-2 shows the
-   window is 320-era only.
-3. **google-leg sample loss** — execute_canary_strict discards the whole
-   50-prompt suite when any prompt exhausts retries on the Gemini free
-   tier (correct DP reasoning: flushing at reduced n changes sensitivity
-   MAX/n). 31% of google samples lost; transient rate limiting, NOT drift.
-   Options: raise retry budget/pacing, or a documented reduced-n path
-   that recomputes DP sensitivity for the actual n. The 31% figure will
-   appear in Weather Report #1 unless fixed first.
-4. PRIV-012: avg_output_tokens has the identical defect class
-   (MAX_TOKEN_COUNT 8192 vs max_tokens 64 on the wire, ~128x).
-   avg_reasoning_tokens is NOT affected (reasoning budgets uncapped,
-   CAN-2 finding) — the constant likely splits in two. Needs a contract.
-   Note: landing it creates a NEW stream contamination, same as PRIV-011.
-5. **Published metrics are not quorum-gated** (DASH-1 Keystone sec 7.1).
-   Only DRIFTING status requires cross-observer agreement;
-   recent_json_success_rate and recent_avg_output_length are single-org
-   aggregates rendered directly. Pre-existing. Worth its own task before
-   the board carries more observers.
-6. Weather Report #1 — unblocked once (1) lands. mistral has ~69 clean
-   samples; state google's coverage honestly; omit avg_output_length
-   unless (2) is resolved.
-7. **Dependabot PRs #15-#18 open and stale** — actions/checkout 4->7,
-   setup-python 5->7, upload-artifact 4->7, download-artifact 4->8.
-   All major-version jumps; may break CI. Stale dependency PRs also count
-   against the OpenSSF questionnaire on the carried list.
-8. `VALID_PAYLOAD` in tests/test_gateway.py is physically impossible
+## Open now (full backlog: project_open_tasks.md; ranked: guide_pack/03)
+1. **CAN-3 — google-leg retry budget, contract drafted, NOT implemented.**
+   `max_total_backoff_ms` isn't threaded per-leg through live_emit.py
+   (only delay_ms/max_retries are); stuck at 60000ms default, which caps
+   a run at ~4 fully-retried prompts before the whole 50-prompt suite is
+   discarded. DO NOT implement before the discriminating measurement
+   below — the diagnosis is [derived] from code reading, not [measured].
+2. **Discriminating measurement, not yet run** (device_bash down; gh CLI
+   commands are with Tatiana). Falsifiable prediction: ~17 scheduled
+   google runs in the 8.18-day window, ~10 producing a row, 6-8 producing
+   none. Distinguishes retry-budget exhaustion (CAN-3 fixes it) from a
+   scheduler gap or job timeout (CAN-3 would not help, or would hurt).
+3. **Weather Report #1 — still not published.** Every technical blocker
+   is cleared. Lead with mistral (clean, 3.73% loss); disclose google's
+   45% as a window-span fact, not a headline percentage, until cause is
+   measured; limitations section must state the SELECTION BIAS finding
+   from the Guide's memo — surviving google samples systematically
+   exclude high-load periods (discard correlates with 429, 429 correlates
+   with load, load is the mechanism this project exists to detect) — so
+   the -0.27sd google drift reading is computed over a censored sample.
+4. `observer_count: 1` field on /v1/weather — presentational (the quorum
+   invariant gates the DRIFTING label, not the raw numbers), should land
+   before Weather Report #1 cites those numbers.
+5. Naive `last_alert_timestamp` (found+not-fixed at DASH-2) — renders
+   shifted by the viewer's UTC offset; invisible today only because no
+   alert has fired.
+6. PRIV-012: avg_output_tokens has the identical defect class as PRIV-011
+   (MAX_TOKEN_COUNT 8192 vs 64 on the wire, ~128x). Landing it creates a
+   new stream contamination — but DASH-2 now makes that MEASURABLE
+   instead of inferred, so the cutover can be verified for the first time.
+7. Published metrics are not quorum-gated (DASH-1 Keystone sec 7.1) —
+   pre-existing, worth its own task before the board carries more
+   observers.
+8. Dependabot PRs #15-#18 open and stale (actions/checkout, setup-python,
+   upload-artifact, download-artifact — all major bumps). Counts against
+   the OpenSSF questionnaire already on the list.
+9. `VALID_PAYLOAD` in tests/test_gateway.py is physically impossible
    (v1.0.0 with result_count 10). 38 references; needs its own task.
-9. Landing (drift-defense repo): 193 -> 309 + baseline-restart line.
-10. probe 1.2.0/1.3.0 release (suite v2 + strict runner + CAN-1).
-11. Carried Tatiana clicks: formsubmit activation; OPENAI + ANTHROPIC keys
-    -> 4 models; OpenSSF anketa; NLnet recheck ~25.09; optional Neon
-    password reset (pasted in-session S044).
+10. probe 1.2.0/1.3.0 release — deferred behind CAN-3.
+11. Third/fourth model legs (OPENAI/ANTHROPIC keys) — deferred behind
+    CAN-3 so a new leg doesn't inherit a known collection defect.
+12. Carried Tatiana clicks: Keystone DASH-2 sec 9 signature; LinkedIn
+    draft approval + channel decision; formsubmit activation; OpenSSF
+    anketa; NLnet recheck ~25.09; optional Neon password reset.
