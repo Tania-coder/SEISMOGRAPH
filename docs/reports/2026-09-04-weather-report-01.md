@@ -24,8 +24,8 @@ publication URLs are appended below as they happen.
 
 **Published:**
 
-- dev.to — _URL pending_
-- LinkedIn — _URL pending_
+- dev.to — https://dev.to/taniacoder/i-gave-my-drift-monitor-a-denominator-the-first-thing-it-exposed-was-a-hole-in-my-own-data-5508 (published 2026-09-04)
+- LinkedIn — https://www.linkedin.com/feed/update/urn:li:activity:7501709720328753152/ (published 2026-09-04)
 
 ---
 
