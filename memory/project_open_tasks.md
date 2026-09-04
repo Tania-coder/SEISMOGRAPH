@@ -1,29 +1,146 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-02 (Session 048: DASH-2 recovered from a 5-day
+# Last updated: 2026-09-04 (Session 049: FIRST PUBLIC ARTEFACT IN 42 DAYS.
+# Weather Report #1 published to dev.to + LinkedIn, archival copy committed
+# to docs/reports/ BEFORE publication. Keystone DASH-2 sec 9 SIGNED with
+# both dates recorded honestly. CAN-3's diagnosis REFUTED by measurement
+# (49/50 and 40/50 prompts completed, never ~4). The collection defect
+# MOVED from the google leg to the mistral leg, which is now dark. A = 16
+# scheduled runs measured, so the scheduler and timeout hypotheses are
+# dead. Protocol 01 gained a signature gate. No engine code changed.)
+# Prior: 2026-09-02 (Session 048: DASH-2 recovered from a 5-day
 # uncommitted tail of S047, gated to 325, merged PR #27 @09f1563;
 # post-deploy measurement CLOSED the avg_output_length contamination
 # question and RAISED the google-leg loss estimate 31% -> 45%; landing
-# page 193 -> 325 corrected; Guide project + protocol established
-# (Director / Executor / Guide, decision-memo loop); Guide's first
-# decision memo received and independently re-verified -- see S048 log.
-# Session left OPEN at the boundary of Task 0; this entry closes it.)
-# Prior: 2026-08-28 (Session 047: DASH-1 landed after a 17-day gap ->
-# 309 tests, Keystone signed; live board re-verified, Neon persistence
-# 24 days; DASH-2 authored but left uncommitted -- see S048 above).
-# Prior: 2026-08-11 (Session 046: S045 recovered from an uncommitted
-# working tree; PRIV-011 merged -> 293 tests + Keystone signed; INFRA-3
-# cron revert merged).
+# page 193 -> 325; Guide project + three-role protocol established.)
+# Prior: 2026-08-28 (Session 047: DASH-1 landed -> 309 tests, Keystone
+# signed; Neon persistence 24 days; DASH-2 authored but left uncommitted.)
+# Prior: 2026-08-11 (Session 046: S045 recovered; PRIV-011 merged -> 293
+# tests + Keystone signed; INFRA-3 cron revert merged.)
 # Prior: 2026-08-04 (Session 044: INFRA-1 merged, 291 tests, Neon
-# persistence proven). Prior: 2026-07-24 (Session 040, GTM sprint:
-# CAN-1 merged -> 193 tests; multi-provider cron live; landing v3;
-# GTM/targets/NLnet/OpenSSF packs in business/).
+# persistence proven). Prior: 2026-07-24 (Session 040, GTM sprint).
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S049 — 2026-09-04 (publish first, then measure; CAN-3 refuted)
+
+### Verification
+- [x] `device_bash` failed on the first action — "Workspace unavailable",
+      **third consecutive session**. The deferred trigger for investigating
+      the bridge has fired. Session ran in the fallback mode throughout.
+- [x] Machine verified: `af8dde9` on main; `git status` clean; **`git show
+      --stat af8dde9` = exactly 4 files, +482/-96** as predicted, closing
+      the Guide's new G-12 content check green on first use. Host gate:
+      ruff x2 clean (62 files), **pytest 325 passed** in 4.31 s.
+- [x] **FINDING: gate runs on `Python 3.10.11`, but `pyproject.toml:8` and
+      `pyproject_probe.toml:49` both declare `requires-python = ">=3.11"`.**
+      The 325 baseline is proven only on a version the package disclaims;
+      the declared version has never been gated. New task, not this session.
+- [x] **Method finding: the Director's terminal is not needed for Actions
+      data.** The GitHub REST API read from the page context of her own
+      Chrome returns exactly what `gh run list` returns, including per-job
+      conclusions and step timings. This replaces the paste-the-output loop
+      the Guide's memo assumed.
+
+### Measurement — this is what changed the plan
+- [x] Fresh `/v1/weather` read 2026-09-04. **The Guide's G-10 fork resolved
+      in neither direction, because it was watching the wrong leg.**
+      google did not hold at 8 days and did not collapse to 5-6: it
+      **partially recovered** to 176.2 h (7.34 d), mean interval 19.58 h,
+      effective loss 44.96% -> 38.71%. Meanwhile **mistral froze**:
+      window bounds and both metrics byte-identical to the 2026-09-02 read,
+      no row since 2026-09-02T09:38:39Z, 56 h and four scheduled slots.
+      Both legs published 10/10/10 throughout. [measured]
+- [x] **Scheduler reconciliation, window 2026-08-24T05:58Z ->
+      2026-09-01T10:11Z: A = 16 runs fired, B = 9 success / 7 failure /
+      0 cancelled at run level, C = 10 google rows, 6 runs produced no
+      row.** The Guide's falsifiable prediction (A = 17 +/- 1, C = 10,
+      6-8 losses) HOLDS. [measured]
+- [x] **H3 (scheduler gap) and H4 (job timeout) REFUTED** — the runs fired,
+      nothing was cancelled, the longest ran 11 m 52 s against a 15 m limit.
+- [x] **H1 (total backoff budget) REFUTED, and with it CAN-3 as specified.**
+      Run #122 google: `49/50 prompts completed`, one failed id
+      (`v2.0.0-reason-01`). Run #118 google: `40/50`, ten failed ids
+      interspersed mid-suite with later prompts succeeding after them.
+      Never ~4/50. The probe prints its own policy: `pacing: 4500 ms
+      between prompts, <= 2 retries on 429/503`. The binding constraint is
+      per-prompt retry exhaustion plus `execute_canary_strict`'s
+      all-or-nothing discard — **one prompt in fifty destroys the sample.**
+      Raising `SEISMOGRAPH_PROBE_MAX_TOTAL_BACKOFF_MS` to 180000 would not
+      have saved run #122. **G-02 (do not write CAN-3 before the
+      discriminating measurement) paid for itself in full.**
+- [x] Per-job conclusions: #121, #122 google failed / mistral succeeded;
+      #123, #124, #125, #126 **mistral failed / google succeeded**.
+      Run #126 mistral: `0/50 prompts completed`, all fifty ids, dead in
+      75 s, "Note missing secret" step SKIPPED so the key is present.
+      A different failure class from google's transient 429 bursts.
+- [x] Run-level status is a poor proxy for per-leg collection: a run is
+      marked failed if ANY leg fails, and a failed run can still carry a
+      successful leg — hence 10 rows from 9 run-level successes.
+- [x] Scheduled runs fire **2.5-4.5 h after** their cron slot. Any
+      arithmetic treating gaps as exact multiples of 12 h is unsound.
+
+### Landed
+- [x] **KEYSTONE_REPORT_DASH-2.md sec 9 SIGNED** (@9a8aaa0). Sybil
+      exposure accepted OPEN and UNDEFENDED, with the recorded consequence
+      that quorum-gating the published metrics is a **prerequisite for a
+      second observer, not a follow-up to one**. Deploy 2026-09-02,
+      signature 2026-09-04; both dates in the report, not backdated.
+- [x] **Protocol 01 amended: SIGNATURE GATE.** Signature precedes merge;
+      an unsigned deploy is a STOP CONDITION at step 0 of the next session,
+      not a backlog item; both dates always recorded. Removing the step
+      stays a legitimate Director decision, but only as an explicit entry
+      in 03, never by attrition. (Considered and rejected: removing the
+      step — it had just done real work by forcing the Sybil acceptance.)
+- [x] **WEATHER REPORT #1 WRITTEN AND PUBLISHED.** Ends six consecutive
+      sessions (S044-S049) and 42 days with no public output.
+      dev.to: /taniacoder/i-gave-my-drift-monitor-a-denominator-...-5508
+      LinkedIn: /feed/update/urn:li:activity:7501709720328753152/
+      Archival copy `docs/reports/2026-09-04-weather-report-01.md`
+      committed @e8b0e5b **before** publication, so the repository holds
+      the earliest timestamp; both URLs recorded @87d5527.
+      Written in first person singular after the Director caught an
+      unearned editorial "we" — the project has one author and one
+      observer, and the text now says so (@e47d182).
+- [x] Voice/accuracy pass: added the explanation of 10 rows against 9
+      run-level successes before a reader could read it as an
+      inconsistency (@2a963c9).
+
+### New hard rule
+- [x] **VERIFY THE PUBLIC SURFACE, NOT THE PUBLISH ACTION.** The first
+      published version of Weather Report #1 carried a STALE BODY: the
+      correct file was on disk, an older copy was in the paste buffer.
+      Title was current, body was two revisions behind, and the added
+      paragraph was missing. Detected only by reading the live page back
+      and diffing it against the archival copy; fixed within minutes, zero
+      comments, same URL. Contributing cause, owned by the Executor: three
+      different revisions were delivered under one filename.
+      **Change the filename on every revision.**
+
+### Open after this session
+- [ ] **mistral leg dark** — highest value. `0/50` in 75 s with the key
+      present. DO NOT re-run the workflow casually: a successful run slides
+      the window and erases the evidence a reader of Weather Report #1 can
+      currently verify on the live endpoint.
+- [ ] **Observability blocker** — the run log names only failed prompt ids.
+      No HTTP status, no body, no retry spend. Ship this BEFORE any
+      collection fix or the next failure is equally blind.
+- [ ] **CAN-3' replacement contract** — per-prompt retries and/or a
+      documented reduced-n path recomputing DP sensitivity for the actual
+      n. The old CAN-3 numbers (180000 ms, 1200 s timeout) are void.
+- [ ] `requires-python >= 3.11` vs a gate on 3.10.11.
+- [ ] `observer_count: 1`; naive `last_alert_timestamp`; PRIV-012;
+      quorum-gating of published metrics; Dependabot #15-#18;
+      VALID_PAYLOAD; probe 1.2.0/1.3.0; third/fourth legs.
+- [ ] `business/` and `social/` exist only on Tatiana's disk — private is
+      not backed up. A private GitHub repo would close it.
+- [ ] Carried Tatiana clicks: SSH signing key for verified commits; Zenodo
+      release to archive `docs/reports/`; formsubmit; OpenSSF anketa;
+      NLnet recheck ~25.09; optional Neon password reset.
 
 ## S048 — 2026-09-02 (recover DASH-2 tail; land it; open the Guide loop)
 - [x] Resume verified: `main` had a modified `KEYSTONE_REPORT_DASH-2.md`

@@ -3502,3 +3502,211 @@ production — flagged to the Director as a process gap, not resolved
 unilaterally. Open at close: CAN-3 (blocked on measurement), the
 discriminating measurement itself, Weather Report #1, the
 `observer_count` field, and the carried items in `CURRENT_STATE.md`.
+
+
+================================================================================
+## SESSION 049 — 2026-09-04
+## "Publish first, then measure." First public artefact in 42 days.
+================================================================================
+
+CONTEXT AT OPEN
+The Guide's decision memo for S049 (prepared 2026-09-03, G-01..G-12) set the
+agenda: verify the machine including commit CONTENT, take a fresh /v1/weather
+read before anything else, publish Weather Report #1 regardless of tool
+failures, run the discriminating measurement on the google leg, and only then
+consider CAN-3. The memo arrived a day before the session actually ran, so
+every "today" in it was already one day stale — flagged at open.
+
+STEP 0 — TOOL STATE
+device_bash returned "Workspace unavailable" on the first call. THIRD
+consecutive session (S047, S048, S049). Per the Guide's G-08 this is the
+session's form rather than its failure, and per G-09 the fallback is the
+Director's terminal. In practice a better fallback was found and is now the
+standing mode: reading the GitHub REST API from the page context of the
+Director's own Chrome returns exactly what `gh run list` returns, including
+per-job conclusions and per-step timings. The Director's terminal was needed
+only for git and the host gate.
+
+VERIFICATION [measured]
+  git log --oneline -3      af8dde9 on main, as expected
+  git status --short        clean
+  git show --stat af8dde9   4 files, +482/-96 — KEYSTONE_REPORT_DASH-2.md,
+                            memory/CURRENT_STATE.md, project_open_tasks.md,
+                            project_session_log.md
+  gate                      ruff check clean; ruff format clean (62 files);
+                            pytest 325 passed in 4.31 s
+  interpreter               Python 3.10.11
+G-12 (verify content, not only arrival) closed GREEN on its first use.
+
+FINDING — INTERPRETER MISMATCH [measured]
+pyproject.toml:8 and pyproject_probe.toml:49 both declare
+requires-python = ">=3.11". The gate runs 3.10.11. The entire 325 baseline is
+proven only on a version the package says it does not support, and the
+declared version has never been gated. Logged, not fixed.
+
+TASK 1 — FRESH BOARD READ [measured 2026-09-04]
+  google   json 0.9696111  length 130.39765  10/10/10
+           window 2026-08-28T01:34:25.794194Z -> 2026-09-04T09:46:39.375366Z
+           span 176.20 h (7.34 d); mean interval 19.58 h; loss 38.71%
+  mistral  json 0.9785555  length  89.42253  10/10/10
+           window 2026-08-28T17:27:23.020914Z -> 2026-09-02T09:38:39.371095Z
+           span 112.21 h; BYTE-IDENTICAL to the 2026-09-02 read
+
+The Guide's G-10 fork ("google window holds at ~8 d => structural; collapses
+to ~5-6 d => episode") resolved in NEITHER direction, because it was watching
+the wrong leg. google partially recovered (196.2 h -> 176.2 h, loss 44.96% ->
+38.71%) and is writing rows. mistral, the leg Weather Report #1 was to lead
+with as "clean, 3.73% loss", has written NO row since 2026-09-02T09:38:39Z —
+56 hours and four scheduled slots as of the 18:00 UTC read. Endpoint caching
+is excluded: google's values moved in the same response.
+
+TASK 3 — DISCRIMINATING MEASUREMENT [measured]
+Reconciliation over the Guide's window 2026-08-24T05:58Z -> 2026-09-01T10:11Z,
+workflow probe_weather.yml:
+  A = 16 scheduled runs fired (#105-#120)
+  B = 9 success / 7 failure / 0 cancelled, at RUN level
+  C = 10 google rows on the board
+  => 6 runs produced no google row
+The Guide's falsifiable prediction (A = 17 +/- 1, C = 10, 6-8 losses) HOLDS.
+
+Verdict on the five hypotheses:
+  H1 total backoff budget   REFUTED
+  H2 key quota (google)     not supported
+  H3 scheduler gap          REFUTED — 16 runs fired
+  H4 job timeout            REFUTED — 0 cancelled; longest 11 m 52 s of 15 m
+  H5 green run without row  inverted — a FAILED run can still write a row
+
+H1 is the important one, because CAN-3 rests on it. The claim on record was
+that max_total_backoff_ms = 60000 "caps a run at ~4 fully-retried prompts
+before the whole 50-prompt suite is discarded" — [derived] from reading
+scripts/live_emit.py, never measured. The logs:
+  run #122 (google): "49/50 prompts completed; failed ids=['v2.0.0-reason-01']"
+  run #118 (google): "40/50 prompts completed", ten ids interspersed mid-suite
+                     (logic-04..07, format-02..04, 07, 08, refusal-01), with
+                     later prompts succeeding after them
+Never ~4/50, and the failures are interspersed rather than monotone from an
+exhaustion point. The probe prints its own policy in the log:
+  "pacing: 4500 ms between prompts, <= 2 retries on 429/503,
+   worst-case added wall-clock 280s"
+So the binding constraint is PER-PROMPT retry exhaustion on transient 429s,
+combined with execute_canary_strict's all-or-nothing discard. One prompt in
+fifty losing three attempts destroys the whole sample. Raising
+SEISMOGRAPH_PROBE_MAX_TOTAL_BACKOFF_MS to 180000 would not have saved run
+#122. CAN-3 as specified fixes a constraint that was not binding. The Guide's
+G-02 — do not write CAN-3 before the discriminating measurement — paid for
+itself in full.
+
+THE LEG FLIP [measured]
+Per-job conclusions from /actions/runs/{id}/jobs:
+  #121 google=failure  mistral=success
+  #122 google=failure  mistral=success
+  #123 google=success  mistral=failure
+  #124 google=success  mistral=failure
+  #125 google=success  mistral=failure
+  #126 google=success  mistral=failure
+Run #126, emit (mistral), step 8 "Live emission":
+  "Partial suite run discarded: ... 0/50 prompts completed; failed ids=[all
+   fifty]" — job dead in 1 m 15 s. Step 3 "Note missing secret (leg skips
+gracefully)" is SKIPPED, so MISTRAL_API_KEY is present. Zero completions in
+75 seconds is a hard endpoint/credential/quota condition, categorically
+different from google's 5-12 minute partial runs.
+
+OBSERVABILITY BLOCKER [measured]
+The run log records only the failed prompt ids. No HTTP status code, no
+response body, no retry or backoff spend. Root cause is not diagnosable from
+the logs on EITHER leg. Any collection fix must ship this instrumentation in
+the same commit, or the next failure is equally blind. Promoted from "nice to
+have inside CAN-3" to a prerequisite.
+
+SCHEDULER JITTER [measured]
+Scheduled runs fire 2.5-4.5 h after their cron slots ("17 5,17 * * *"): #126
+was created 09:39 UTC against an 05:17 slot. Any arithmetic treating missing
+samples as exact multiples of 12 h is unsound — this invalidates the
+window-excess decomposition used at S048 and in the Guide's memo, though not
+its conclusion.
+
+DIRECTOR DECISIONS THIS SESSION
+1. Keystone DASH-2 sec 9: SIGN today with both dates recorded honestly
+   (options offered: sign, or remove the signing step from protocol 01).
+2. Publication channel: dev.to canonical + LinkedIn teaser.
+3. Protocol 01: KEEP the signing step and bind it to time, rather than
+   remove it. The Executor recommended against removal and the Director
+   agreed: the control had just done real work by forcing an explicit
+   acceptance of the Sybil exposure. Removing it immediately after it first
+   functioned would have been the wrong lesson from the right failure.
+
+LANDED
+  9a8aaa0  Keystone DASH-2 sec 9 SIGNED 2026-09-04. Sybil exposure accepted
+           OPEN and UNDEFENDED, with the recorded consequence that
+           quorum-gating the published metrics is a PREREQUISITE for a second
+           observer, not a follow-up to one. Deploy 2026-09-02, signature
+           2026-09-04, gap stated in the report and not backdated.
+  e8b0e5b  docs/reports/2026-09-04-weather-report-01.md — archival copy of
+           record, committed BEFORE any external publication so the
+           repository history holds the earliest timestamp.
+  e47d182  First person singular throughout. The Director challenged an
+           unearned editorial "we": the project has one author and one
+           observer, and a corporate plural in a text whose entire currency
+           is precision would have undermined every number above it.
+  2a963c9  Explain 10 rows against 9 run-level successes — a run is marked
+           failed if ANY leg fails, so a failed run can carry a successful
+           leg. Pre-empts a reader reading it as an arithmetic error, and
+           makes the point that run-level status is a poor proxy.
+  87d5527  Record both publication URLs in the archival copy.
+  (also)   business/guide_pack/01_ROLES_AND_PROTOCOL.md — SIGNATURE GATE
+           section added. Private, gitignored, not committed anywhere.
+No engine code changed this session. Baseline unchanged at 325.
+
+PUBLISHED — the point of the session
+  dev.to   https://dev.to/taniacoder/i-gave-my-drift-monitor-a-denominator-the-first-thing-it-exposed-was-a-hole-in-my-own-data-5508
+  LinkedIn https://www.linkedin.com/feed/update/urn:li:activity:7501709720328753152/
+Ends six consecutive sessions (S044-S049) and 42 days with zero public output
+while the test baseline moved 291 -> 325. The article leads with the
+instrument reporting a defect in its own collection that no sample counter
+could see, then shows that defect moving between legs while both counters
+still read 10/10/10; discloses the selection bias (discard correlates with
+429, 429 correlates with provider load, provider load is the mechanism the
+project exists to detect, so the surviving samples are censored by a variable
+correlated with the measurand); states observer_count = 1 in plain prose; and
+uses the locked backtest phrasing verbatim.
+
+NEW HARD RULE — VERIFY THE PUBLIC SURFACE, NOT THE PUBLISH ACTION
+The first published version carried a STALE BODY. The correct file was on
+disk; an older copy was in the paste buffer. Title was current, body was two
+revisions behind, and the newly added paragraph was missing. Nothing in the
+publishing flow reported an error — dev.to happily published the wrong text.
+Detected only by reading the live page back programmatically and diffing it
+against the archival copy; corrected within minutes, same URL, zero comments.
+Contributing cause, owned by the Executor: three different revisions were
+delivered under one filename over the course of an hour. Countermeasure:
+change the filename on every revision. This is the same failure class as
+af8dde9's content check — "it arrived" and "the right thing arrived" are
+different claims, and today the rule caught it twice: once in git, once on a
+public web page.
+
+AUTHORSHIP AND PRIORITY
+The Director raised protection of her work. The concrete mechanisms applied,
+in order of strength: (1) the archival copy was committed and pushed BEFORE
+publication, so a third-party server timestamp predates every external
+platform; (2) the copy carries an explicit authorship and copyright header
+plus the Apache-2.0 reference; (3) a Zenodo release will archive
+docs/reports/ under the concept DOI, which is the instrument that protects
+priority of the IDEA, since copyright does not; (4) SSH-signed commits for
+cryptographic authorship, deferred to the next session. Stated plainly at the
+time: delay is not protection — unpublished work has no priority record at
+all, so 42 days of silence had been the actual risk.
+
+WORKING TREE AT CLOSE
+An untracked directory "Claude outputs/" appeared in the repository root:
+the desktop app writes delivered files (a screenshot) there. Added to
+.gitignore rather than deleted, since the app will keep using it.
+
+CLOSING NOTE
+This is the first session in the project's history whose entire output is
+distribution rather than engine work, and it is also the session in which
+measurement killed the engine task that had been queued for three sessions.
+Those two facts are related: CAN-3 would have been written, gated, merged and
+signed on a diagnosis that a single HTTP read and twenty minutes of Actions
+history refuted. The Guide's evidence standard held, and the ranked priority
+that put publication above engineering turned out to be right for a reason
+nobody anticipated — the engineering task did not exist.

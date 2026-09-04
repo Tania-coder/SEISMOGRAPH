@@ -39,6 +39,9 @@ job_search/
 # Social post drafts (working copies)
 social/
 
+# Cowork/Claude delivered working files (screenshots, scratch copies) -- local only
+Claude outputs/
+
 # Personal session notes & marketing assets (local only, never publish)
 HANDOFF_*.md
 NEXT_SESSION_PROMPT.md
