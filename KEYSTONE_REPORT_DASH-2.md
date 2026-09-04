@@ -293,11 +293,36 @@ the honest state of the API until the follow-up task lands.
 
 ## 9. Sign-off
 
-- [ ] Tatiana: review sec 3 (two counts, not one), sec 4 (timestamps
+- [x] Tatiana: reviewed sec 3 (two counts, not one), sec 4 (timestamps
       gained an offset), sec 5(a) (**the Sybil exposure is widened and
-      undefended**), and sec 7 (the naive `last_alert_timestamp` defect
+      undefended**), sec 7 (the naive `last_alert_timestamp` defect
       found but deliberately not fixed), and sec 5 (**the first host
-      gate was RED; the A6 guard was tightened, not relaxed**). If
-      accepted: sign here. Gate, commit, push, PR #27 and squash-merge
-      @09f1563 are DONE (2026-09-02); the post-deploy verification in
-      sec 5 is the result.
+      gate was RED; the A6 guard was tightened, not relaxed**). Gate,
+      commit, push, PR #27 and squash-merge @09f1563 are DONE
+      (2026-09-02); the post-deploy verification in sec 5 is the result.
+
+**SIGNED -- Tatiana Radchenko, 2026-09-04.**
+
+Accepted with the sec 5(a) Sybil exposure explicitly **OPEN and
+UNDEFENDED**. Forged volume now buys apparent support for the published
+average, and at M=1 there is no per-organisation accounting on this
+path. Recorded consequence of accepting it: quorum-gating of the
+published metrics (DASH-1 Keystone sec 7.1) is a **prerequisite for a
+second observer, not a follow-up to one.** The exposure is inert only
+while the network has exactly one member, and Weather Report #1 is a
+deliberate step toward ending that condition.
+
+Also accepted as read: the naive `last_alert_timestamp` renders two
+hours off in Europe/Berlin (sec 7), and `/v1/weather` consequently
+publishes two timezone-aware timestamps next to one naive one. Both
+stay in the backlog with their own task and their own gate.
+
+**Signature timing, recorded honestly rather than backdated.** The code
+was gated (325), merged as PR #27 @09f1563 and live in production on
+**2026-09-02**. This signature is dated **2026-09-04** -- two days and
+two sessions later. The deployment preceded the signature. The failure
+mode is on record and belongs to the protocol, not to this task: at
+Session 049 the signing step had survived two sessions as an intention,
+which is exactly the state in which a control degrades into a ritual.
+Third occurrence of "later" would have removed the step from the
+protocol instead. See the S049 session log.
