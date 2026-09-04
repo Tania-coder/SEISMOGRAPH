@@ -124,6 +124,11 @@ I reconciled the board against the scheduler for the window
 - **10** rows reached the board from the google leg.
 - So **6** runs produced no google row.
 
+Ten rows from nine run-level successes is not a typo. A run is marked
+failed if **any** provider leg fails, and a failed run can still carry a
+successful google leg -- which is the first hint that run-level status is
+a poor proxy for per-leg collection.
+
 That kills the comfortable explanations. The scheduler ran. Nothing hit
 a job timeout. The rows were lost *inside* runs that happened.
 
