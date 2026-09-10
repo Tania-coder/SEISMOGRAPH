@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (UNSIGNED) -- REQ-DASH-005
+# KEYSTONE REPORT (SIGNED 2026-09-10) -- REQ-DASH-005
 # DASH-3: a leg that has stopped reporting must not publish STABLE
 # Authored and gated Session 050, 2026-09-09.
 # Base: main @4f7f078 (baseline 325). Branch: seismograph/task-dash-3.
@@ -236,16 +236,36 @@ CAN-3's diagnosis was wrong **for the failure of 2026-09-04**, which is
 all the measurement showed -- at 0/50 in 72 s the run-wide backoff cap
 is binding again. The failure mode moved; neither verdict was permanent.
 
-### Live verification (pending)
+### Live verification (DONE, 2026-09-10)
 
-Deploy is on Render from `main`. Post-merge verification is a READ of
-`/v1/weather` and of `/dashboard` after the deploy, expecting
-`mistral/mistral-small-latest` to carry `status: "STALE"` with
-`window_age_hours` above 190, and the google leg to stay `STABLE`. This
-verification is a public-surface read, not a deploy log. It is NOT
-performed by triggering the probe: a `workflow_dispatch` would slide the
-window, erase the evidence a reader of Weather Report #1 can check, and
-destroy the natural experiment now running on the two legs.
+Read from the deployed `/v1/weather` through a SECOND client (a browser
+page context), deliberately not through the session's own fetch tool,
+which caches for fifteen minutes and had been serving the pre-deploy
+payload. "On main" and "visible on the public surface" are different
+claims and were verified separately.
+
+    google/gemini-3.5-flash-lite   STABLE  window_age_hours   5.72
+    mistral/mistral-small-latest   STALE   window_age_hours 197.90
+
+Both branches are therefore verified in production, not just in tests:
+the dead leg publishes STALE, and a leg with a fresh window is NOT
+false-alarmed. `window_age_hours` is present on the public contract.
+No `workflow_dispatch` was used; the probe ran on its own schedule.
+
+**The same read refuted a claim made in this session.** The Executor had
+argued from five hand-timed calls (0.58 s to 53.9 s) that at ~20% of
+calls exceeding the probe's 30 s timeout the google leg "statistically
+cannot complete" a 50-prompt suite -- 0.8^50, about 1 in 70 000. Google
+completed a full suite that same morning: `window_end`
+2026-09-10T09:49:06Z, a fresh row on the board. Five points do not carry
+a rate, a 0.58 s response and a 53.9 s response are not obviously the
+same population, and the conclusion was published before the interval
+was. It is recorded here rather than deleted, because the failure mode
+it illustrates -- an unmeasured number stated as a verdict -- is the
+same one that killed CAN-3 and the same one this project exists to warn
+other people about. The measurement that would settle it (30 calls with
+status, latency, finish_reason and token counts) is queued and is a
+prerequisite for touching `n`, the atomicity rule, or CAN-3'.
 
 ## 6. Provider ToS compliance
 
@@ -291,14 +311,38 @@ content.
 
 ## 9. Sign-off
 
-- [ ] Tatiana: reviewed sec 3 (a third state rather than a flag, and
-      the cost of widening a public contract), sec 4 (30 h is set by the
-      measured 21.65 h live leg -- 24 h would have false-alarmed), sec
-      5(a) (**freshness is spoofable by anyone who can emit; OPEN and
-      UNDEFENDED**), and sec 7 (five defects found and deliberately not
-      fixed, including the still-undiagnosed mistral leg).
+- [x] Tatiana: reviewed sec 3 (a third state rather than a flag, and the
+      cost of widening a public contract), sec 4 (30 h encodes TOLERANCE
+      for a late scheduled run, not a claim that the 21.65 h leg was
+      healthy -- it was not), sec 5(a) (**freshness is spoofable by
+      anyone who can emit; OPEN and UNDEFENDED**), and sec 7 (defects
+      found and deliberately not fixed, including the still-undiagnosed
+      google leg and the account-level 429 on mistral).
 
-**UNSIGNED.** Gate is green (342). Merge does not happen before this
-signature. Sec 4 and sec 5 were amended on 2026-09-10, before signing
-and after the claim they rested on was re-measured -- the correction is
-recorded in place rather than quietly edited out.
+**SIGNED -- Tatiana Radchenko, 2026-09-10.**
+
+**The merge preceded this signature.** DASH-3 was merged and pushed to
+`main` before sec 9 was signed. Recorded, not backdated. This is the
+SECOND consecutive occurrence: the DASH-2 Keystone records the same
+inversion (deployed 2026-09-02, signed 2026-09-04) and states that a
+third occurrence should remove the step from protocol 01 rather than
+ask for more diligence, because a control that reliably happens after
+the event it is meant to gate is a ritual.
+
+Rather than spend the third occurrence, the control was given a
+mechanism in this same session: `tests/test_keystone_signed.py` fails
+the standard gate (`py -3.10 -m pytest -q`) if any report under
+`docs/keystone/` still carries the unsigned marker in upper case, or
+lacks a signature line. Signing is no longer
+a promise; from now on an unsigned Keystone cannot pass the gate that
+every merge already runs, and no separate CI wiring is needed. If that
+test is ever deleted or skipped rather than satisfied, the honest move
+is to strike the signing step from protocol 01, not to restore the
+promise.
+
+Accepted with sec 5(a) explicitly OPEN and UNDEFENDED: DASH-3 measures
+the PRESENCE of data, not its validity, so anyone able to emit can hold
+a leg green with noise. Inert only while the network has exactly one
+member and that member is the operator -- the same standing condition
+recorded for the DASH-2 exposure, and the same reason a second observer
+requires quorum-gated published metrics first.
