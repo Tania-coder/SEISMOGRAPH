@@ -3710,3 +3710,191 @@ signed on a diagnosis that a single HTTP read and twenty minutes of Actions
 history refuted. The Guide's evidence standard held, and the ranked priority
 that put publication above engineering turned out to be right for a reason
 nobody anticipated — the engineering task did not exist.
+
+## SESSION 050 — 2026-09-10
+## "Stop calling a corpse stable." DASH-3 shipped and verified on the
+## public surface; two of the Executor's own numbers were retired by
+## measurement within hours of being stated.
+
+RESUME VERIFICATION [measured]
+HEAD was main @4b564c1, tree clean, memory/ mtimes still 2026-09-04.
+Nothing had landed since S049. Live /v1/weather read at the start:
+mistral window_end 2026-09-02T09:38:39Z (dark), google window_end
+2026-09-08T19:59:15Z. Both published "STABLE".
+
+THE DEFECT, RESTATED AS A COMMERCIAL RISK
+D-11 was carried from S049 as a technical nicety. It is not. The status
+line read, in full:
+    status = "DRIFTING" if recent_alerts else "STABLE"
+It never looked at the data, only at the alert table. At one observer
+required_quorum(1)==3 makes a public alert unreachable by construction,
+so recent_alerts is permanently empty and the expression can evaluate to
+exactly one thing. The green light was produced by the system's own
+inability to raise an alarm, on the public board of a project whose
+claim is that it catches failures other monitoring cannot see. Weather
+Report #1 drives readers to that board.
+
+LANDED
+  4f7f078  docs/evidence/weather-2026-09-09T173824Z.json — the raw
+           endpoint bytes, SHA-256 24FA6DF7...F414, committed BEFORE any
+           code that interprets them. Twenty minutes later it set the
+           DASH-3 threshold; see below.
+  452e476  DASH-3 on seismograph/task-dash-3: status becomes
+           STABLE/DRIFTING/STALE, precedence DRIFTING > STALE > STABLE,
+           STALE_AFTER_HOURS = 30.0, new published field
+           window_age_hours, empty window is STALE not STABLE,
+           dashboard coloured from an explicit state map, README truth
+           pass (4 models -> 2 with keys, 291 -> 325 tests, and the
+           plain statement that at one observer a public alert cannot
+           fire at all).
+  abaa571  sec 4/5 amendment, made BEFORE signing — see below.
+  09aca53  DASH-3 close: sec 9 SIGNED, live verification recorded,
+           tests/test_keystone_signed.py added.
+  44bd8e7  0.58 s archaeology + the 30-point measurement skeleton.
+           PUSHED WITH A RED GATE — see PROCESS below.
+  a8dc6cf  the E501 fix. GATE GREEN, 345 passed, tree clean.
+Baseline 325 -> 342 (DASH-3, 17 new tests) -> 345 (the signature gate).
+Every count reconciles exactly; no test was deleted, skipped or renamed.
+
+THE THRESHOLD WAS SET BY MEASUREMENT, THEN CORRECTED BY MEASUREMENT
+The archived snapshot showed google at 21.65 h and mistral at 176.0 h,
+both reading STABLE. The obvious threshold — 24 h, one missed slot —
+would have flagged the 21.65 h leg, so 30 h was chosen to tolerate a
+late scheduled run (Actions fires 2.5-4.5 h behind its 12 h cron).
+The next day that same leg stood at 34.56 h with no new row: at 21.65 h
+it had already missed a slot and never emitted again. The Keystone's
+sec 4 claim that 24 h "would have false-alarmed on a live leg" was
+therefore wrong in substance. It was corrected IN PLACE before signing,
+not quietly edited out, and the test and constant whose names carried
+the refuted claim were renamed. The threshold stayed at 30 h on the
+defensible argument: at 21.65 h "merely late" and "already stopped" are
+indistinguishable from the window alone, so the constant encodes
+tolerance and pays for it with up to ~18 h of delay.
+
+THE TWO LEGS FAIL DIFFERENTLY [measured]
+Read from GitHub Actions through the Chrome page context, because
+api.github.com answers 403 to the session's own fetch tool.
+  #135  Sep 8 19:54 UTC   4m53s   last google row (window_end 19:59:15Z)
+  #136  Sep 9 09:45 UTC   6m29s   both legs exit 1 — first google loss
+  #137  Sep 9 19:45 UTC  15m14s   mistral exit 1; google CANCELLED at
+                                  the 15m0s job ceiling
+The workflow fires reliably twice a day. Not a scheduler fault.
+  mistral = REFUSAL. #137 emission step 1m12s, 0/50 prompts completed.
+    Confirmed by direct call from Tatiana's own machine and IP:
+    GET /v1/models -> 200; POST /v1/chat/completions -> 429 "Rate limit
+    exceeded", code 1300. Credential valid, ACCOUNT rate-limited. No
+    retry or backoff engineering fixes this.
+  google = LATENCY. Same-day direct calls with a fresh key in the same
+    project: models list 200 in 0.4 s; a "ping" with max_tokens 8
+    returned 200 in 7.5 s, and a five-call sample ran 53.90, 27.34,
+    16.02, 0.58, 13.19 s. A 53.90 s call exceeds the probe's own 30 s
+    per-call timeout, which produces status_code=None, is not classified
+    transient, is not retried, and discards the whole suite.
+A single shared cause for both legs is refuted.
+
+METHOD NOTE — A HALLUCINATED READ
+An early WebFetch summary of the Actions page reported "14 runs, all
+successful, 20-45 seconds each". The real page carries 137 runs with
+durations in minutes. It was flagged at the time as not evidence-grade
+and the caution paid for itself within a day. Standing rule: summaries
+of JS-rendered pages by a small model are not evidence in this project;
+the Chrome page context is.
+
+WHAT DIED TODAY — BOTH CLAIMS WERE THE EXECUTOR'S OWN
+1. "The google leg statistically cannot complete a 50-prompt suite"
+   (0.8^50, about 1 in 70 000), argued from p=0.2 out of five calls.
+   Google completed a full suite at 2026-09-10T09:49:06Z. The sample
+   contained one unclassifiable point — the 0.58 s call, whose body was
+   never captured — so it yields no rate at all. Wilson on 1/5 is
+   0.036-0.624. Recorded in docs/evidence/google-call-058s.md as NOT
+   RECOVERED rather than reconstructed, with proof of why it cannot be
+   recovered: the one-liner printed only status and elapsed time, $r was
+   overwritten each iteration, nothing was written to disk.
+2. "Google is self-healing" (from the 09-07 interval trend 38.7% ->
+   23.6% -> 17% derived loss). It was sliding toward the ceiling, one
+   day behind mistral.
+What survives is a direction, not a magnitude: the latency tail reaches
+past our own 30 s timeout. How often is unknown, and that is what the
+30-point measurement is for.
+
+PROCESS — THE SIGNATURE BECAME A GATE
+DASH-3 reached main before sec 9 was signed. Second consecutive
+occurrence; the DASH-2 Keystone records the same inversion and states
+that a third should retire the step rather than ask for more diligence.
+Rather than spend the third occurrence, the control was given a
+mechanism in the same session: tests/test_keystone_signed.py fails the
+standard gate if any report under docs/keystone/ carries the unsigned
+marker or lacks a signature line. Verified against a planted unsigned
+report — both tests caught it and named the file. The Director's ruling:
+sign now with the inversion recorded honestly, install the gate in the
+same session, and strike the step only if the gate cannot be built.
+DASH-3's Keystone is also the first filed under docs/keystone/ rather
+than the repository root, starting that convention.
+
+PROCESS — MAIN WAS PUSHED WITH A RED GATE
+44bd8e7 went to main while ruff reported E501 and "Would reformat".
+Both lines were printed ABOVE the 345 passing tests, so the run read as
+green to an eye scanning the bottom. Root cause on the Executor's side:
+line width was checked at 88 all session while this repo sets
+line-length = 79. Countermeasure adopted: the gate is now run with an
+explicit verdict printed LAST, and anything other than GATE GREEN is a
+stop. Same failure class as the signature — the control ran, produced
+the right answer, and the answer was not read.
+
+DIRECTOR DECISIONS THIS SESSION
+1. Chapter one of the product is the single-org fleet detector
+   (fleet_id != None); federated quorum is chapter two. At M=1 no public
+   alert can fire, and the README now says so in plain words.
+2. Investor frame: pre-seed, "engine assembled, market not yet tested
+   with money". Readiness against the six-item gate is about 0.5/6.
+3. Order of work: stop lying first, then sell.
+4. Signature: sign with the inversion recorded, AND install the gate in
+   the same session — not "try harder", not "strike the step".
+5. Do not publish 20% or 1-in-70 000. Do not cut n. Do not add legs. Do
+   not promise Slack or "product ready". Do not mix site and pricing
+   into an engine commit.
+6. Every future Keystone carries three lines: is this our constant or
+   their API; is this a collection failure or a change in model
+   behaviour; what sample does this claim need.
+
+LIVE VERIFICATION [measured, three clients]
+Browser page context, then curl with Cache-Control: no-cache from the
+Director's machine — deliberately not the session's caching fetch tool,
+which had been serving the pre-deploy payload. "On main" and "visible on
+the public surface" were verified as separate claims.
+  google/gemini-3.5-flash-lite  STABLE  window_age_hours   5.72 -> 8.23
+  mistral/mistral-small-latest  STALE   window_age_hours 197.90 -> 200.40
+Two reads 2.5 h apart differ by exactly the elapsed time, which also
+proves window_age_hours is computed per request rather than baked into a
+cached payload. Both branches are proven in production: the dead leg is
+flagged, the fresh leg is not false-alarmed. No workflow_dispatch was
+used at any point.
+
+OPEN AT CLOSE
+- 30-point google measurement: script written, NOT RUN. Prerequisite for
+  touching n, the atomicity rule, the production timeout, or CAN-3'.
+- Per-call timeout 30 -> 90: not done, and to be its own tiny commit
+  through a new env var so no other leg changes silently.
+- OBS-1 proper: progressive telemetry plus a probe-side wall-clock bound
+  so a leg killed at the job ceiling still prints. Requirement recorded
+  in the DASH-3 Keystone sec 7; not built.
+- mistral: measured account-level 429. Not a code defect; nothing in
+  this repository fixes it.
+- The three-line frame as a Keystone template section with its own gate
+  test — not built. Pair it with moving the ~20 legacy
+  KEYSTONE_REPORT_*.md out of the repository root.
+- observer_count deferred to DASH-4; naive last_alert_timestamp;
+  PRIV-012; requires-python 3.11 against a gate on 3.10.11; the DASH-2
+  Sybil exposure, still accepted open.
+- Site, pricing, domain email, ten slides: untouched by decision.
+
+CLOSING NOTE
+The instrument stopped asserting stability in the one situation where it
+holds no evidence at all. That is the whole of what shipped; no product
+appeared, and the outage it made visible is still an outage. The session
+is more notable for what it retracted: two numbers stated by the
+Executor as verdicts were killed by measurement within hours, one of
+them by a read taken twenty minutes earlier for an unrelated reason. The
+pattern is now stated as a rule for this project — a derived number
+survives only until someone measures it, so measuring first is cheaper.
+Third occurrence in four sessions, after CAN-3.
