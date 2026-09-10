@@ -279,7 +279,10 @@ def main() -> int:
             print(f"  {name}={count}")
     if lat:
         mid = lat[len(lat) // 2]
-        print(f"success latency: min={lat[0]:.2f}s median={mid:.2f}s max={lat[-1]:.2f}s")
+        print(
+            f"success latency: min={lat[0]:.2f}s "
+            f"median={mid:.2f}s max={lat[-1]:.2f}s"
+        )
     print(
         f"successes over the probe's 30s timeout: {over_30}/{successes} "
         f"(95% Wilson interval {lo:.2f}-{hi:.2f})"
