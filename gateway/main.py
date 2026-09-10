@@ -42,6 +42,8 @@ Also mounts:
   GET /v1/weather -- drift-weather status for all known model_tuples.
     Reads PublicDriftAlert only; single-org local alerts and private
     fleet alerts do NOT affect the weather status.
+    A leg whose newest sample is older than STALE_AFTER_HOURS, or which
+    has no samples at all, publishes STALE rather than STABLE (DASH-3).
   GET /           -- serves the landing page (dashboard/static/landing.html).
   GET /dashboard  -- serves the Model Weather dashboard (index.html).
   /static/*       -- static assets (JS, CSS).
@@ -118,7 +120,9 @@ POST /v1/webhooks
 GET /v1/weather
   No auth required. Returns list[ModelWeatherResponse].
   Status DRIFTING iff a PublicDriftAlert (quorum-verified) exists in
-  the last 24h.  Private fleet alerts produce STABLE.
+  the last 24h.  Otherwise STALE if the read window is empty or older
+  than STALE_AFTER_HOURS, else STABLE.  Private fleet alerts never
+  produce DRIFTING.
 
 #SG-TRACE: REQ-GW-018
 #   | assumption: single-node, in-memory CUSUMDetector + pluggable
@@ -526,6 +530,45 @@ def _as_published_utc(ts: datetime | None) -> datetime | None:
     return ts.astimezone(timezone.utc)
 
 
+# DASH-3.  A leg is STALE when its newest sample is older than this.
+# The probe is scheduled every 12 h ("17 5,17 * * *"), but GitHub
+# Actions fires it 2.5-4.5 h late, and a read on 2026-09-09T17:38Z
+# measured a HEALTHY leg (google) at 21.65 h of age while the dead leg
+# (mistral) stood at 176.0 h.  A 24 h threshold would therefore have
+# published a false STALE on a live leg that same day.  30 h is one
+# scheduled interval plus the measured jitter with room to spare, and
+# still flags a two-slot outage on the first read after it.
+# #SG-TRACE: REQ-DASH-005
+# #   | assumption: staleness is a property of the newest sample's age,
+# #     not of the run schedule, so a late-but-present run is never
+# #     STALE while an absent one always is
+# #   | test: test_healthy_leg_at_measured_age_is_not_stale
+STALE_AFTER_HOURS: float = 30.0
+
+
+def _window_age_hours(
+    window_end: datetime | None,
+    now: datetime | None = None,
+) -> float | None:
+    """Hours between *window_end* and *now*, or None on an empty window.
+
+    #SG-TRACE: REQ-DASH-005
+    #   | assumption: stored timestamps are naive UTC (SignalRow
+    #     invariant), so a naive window_end is STAMPED UTC rather than
+    #     interpreted in the host zone -- Render does not guarantee a
+    #     UTC host clock, and interpreting it locally would shift every
+    #     age by the host offset and silently move the threshold
+    #   | test: test_naive_window_end_is_not_shifted_by_host_zone
+    """
+    if window_end is None:
+        return None
+    end = _as_published_utc(window_end)
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return (current - end).total_seconds() / 3600.0
+
+
 def _compute_model_weather(
     repo: BaseRepository,
     model_tuple: str,
@@ -535,6 +578,8 @@ def _compute_model_weather(
     Status is DRIFTING if any PublicDriftAlert (quorum-verified) was
     recorded in the last 24h.  A single-org local alert or a private
     fleet alert does NOT change the status to DRIFTING.
+    Failing that, the window's age decides: an empty window, or one
+    whose newest sample is older than STALE_AFTER_HOURS, is STALE.
     Recent averages are computed over the last 10 signal batches.
 
     #SG-TRACE: REQ-GW-023
@@ -575,7 +620,30 @@ def _compute_model_weather(
 
     recent_alerts = repo.get_recent_alerts(model_tuple, hours_back=24)
     last_ts = recent_alerts[0].timestamp if recent_alerts else None
-    status = "DRIFTING" if recent_alerts else "STABLE"
+
+    # DASH-3, defect D-11.  Until this, status read ONLY the alert
+    # table, so a leg that had stopped emitting published STABLE -- and
+    # at a single observer it could publish nothing else, because
+    # required_quorum(1) == 3 makes a public alert unreachable by
+    # construction.  The green light was therefore produced by the
+    # system's own inability to raise an alarm, on the dashboard of a
+    # project whose claim is that it catches silent failures.
+    # Precedence is DRIFTING > STALE > STABLE: a quorum-verified alert
+    # is a positive finding and outranks the age of the data.
+    # #SG-TRACE: REQ-DASH-005
+    # #   | assumption: a reader takes the status field as the whole
+    # #     verdict, so a hedge placed beside it (a flag, a count, a
+    # #     window bound) is not read; the correction has to land in
+    # #     the field that drives the coloured light
+    # #   | test: test_stale_window_is_not_published_as_stable
+    window_end = _as_published_utc(max(stamps)) if stamps else None
+    age_hours = _window_age_hours(window_end)
+    if recent_alerts:
+        status = "DRIFTING"
+    elif age_hours is None or age_hours > STALE_AFTER_HOURS:
+        status = "STALE"
+    else:
+        status = "STABLE"
 
     return ModelWeatherResponse(
         model_tuple=model_tuple,
@@ -587,7 +655,8 @@ def _compute_model_weather(
         json_sample_count=len(rates),
         length_sample_count=len(lengths),
         window_start=_as_published_utc(min(stamps)) if stamps else None,
-        window_end=_as_published_utc(max(stamps)) if stamps else None,
+        window_end=window_end,
+        window_age_hours=age_hours,
     )
 
 

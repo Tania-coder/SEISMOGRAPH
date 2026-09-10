@@ -216,7 +216,12 @@ class ModelWeatherResponse(BaseModel):
     model_tuple:
         Model identifier string.
     status:
-        "STABLE" or "DRIFTING".
+        "STABLE", "DRIFTING" or "STALE".  STALE means the read window
+        is empty, or its newest sample is older than
+        gateway.main.STALE_AFTER_HOURS: the leg has stopped reporting,
+        so the gateway holds no evidence either way and must not
+        publish a green light.  Absence of evidence is not evidence of
+        stability.
     last_alert_timestamp:
         UTC timestamp of the most recent PublicDriftAlert, or None.
     recent_avg_output_length:
@@ -251,6 +256,11 @@ class ModelWeatherResponse(BaseModel):
         None when the window is empty.  Together with window_start it
         lets a reader see whether a leg is emitting at its expected
         cadence, or whether the number rests on stale data.
+    window_age_hours:
+        Hours between window_end and the moment the response was
+        computed; None when the window is empty.  Published so a
+        reader sees the staleness that drove the status without
+        re-deriving it from window_end against their own clock.
 
     #SG-TRACE: REQ-DASH-004
     #   | assumption: a published rate is uninterpretable without its
@@ -282,11 +292,13 @@ class ModelWeatherResponse(BaseModel):
     length_sample_count: int = 0
     window_start: datetime | None = None
     window_end: datetime | None = None
+    window_age_hours: float | None = None
 
     def model_post_init(self, __context: Any) -> None:
-        if self.status not in ("STABLE", "DRIFTING"):
+        if self.status not in ("STABLE", "DRIFTING", "STALE"):
             raise ValueError(
-                f"status must be STABLE or DRIFTING; got {self.status!r}"
+                "status must be STABLE, DRIFTING or STALE; "
+                f"got {self.status!r}"
             )
 
 

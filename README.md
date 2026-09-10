@@ -3,7 +3,7 @@
 [![CI](https://github.com/Tania-coder/SEISMOGRAPH/actions/workflows/ci.yml/badge.svg)](https://github.com/Tania-coder/SEISMOGRAPH/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/seismograph-probe.svg)](https://pypi.org/project/seismograph-probe/)
 [![Python](https://img.shields.io/pypi/pyversions/seismograph-probe.svg)](https://pypi.org/project/seismograph-probe/)
-[![Tests](https://img.shields.io/badge/tests-291%20passing-brightgreen.svg)](#test-suite)
+[![Tests](https://img.shields.io/badge/tests-325%20passing-brightgreen.svg)](#test-suite)
 [![Lint](https://img.shields.io/badge/ruff-0%20violations-brightgreen.svg)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](#license)
 [![Live Demo](https://img.shields.io/badge/live%20demo-Model%20Weather-8A2BE2.svg)](https://seismograph-weather.onrender.com/dashboard)
@@ -15,7 +15,7 @@
 pip install seismograph-probe   # the probe SDK — Python 3.11+
 ```
 
-**▶ Live dashboard:** **[seismograph-weather.onrender.com/dashboard](https://seismograph-weather.onrender.com/dashboard)** — real drift-weather for 4 production models, refreshed live. _(Free host; first load may take ~30s if the instance is asleep.)_
+**▶ Live dashboard:** **[seismograph-weather.onrender.com/dashboard](https://seismograph-weather.onrender.com/dashboard)** — live drift-weather for the two production models this observer currently holds keys for (google, mistral); a leg that stops reporting is published as STALE, never as STABLE. _(Free host; first load may take ~30s if the instance is asleep.)_
 
 **Your LLM didn't get worse. It changed — and nobody told you.**
 
@@ -33,13 +33,13 @@ Teams build on LLM APIs they don't control. Providers update models silently —
 
 **Documentation:** [Whitepaper (PDF)](docs/SEISMOGRAPH_Whitepaper_v1.pdf) · [Roadmap](ROADMAP.md) · [Security & threat model](SECURITY.md) · [Architecture](SEISMOGRAPH_Architecture.md) · [dev.to: Your LLM didn't get worse](https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl) · [DOI 10.5281/zenodo.21045517](https://doi.org/10.5281/zenodo.21045517)
 
-**Want this watched for you?** I run [Drift Defense](https://driftdefense.dev/?utm_source=github&utm_medium=readme) on top of this engine — a free Drift Exposure Scan maps where a silent model change would hit your stack first.
+**Want this watched for you?** SEISMOGRAPH is the open engine; [Drift Defense](https://driftdefense.dev/?utm_source=github&utm_medium=readme) is the service I run on top of it — a private drift detector for one team's own stack, starting with a free Drift Exposure Scan that maps where a silent model change would hit you first.
 
 ---
 
 ## Technical overview
 
-SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL, 291 tests). Apache-2.0. In a synthetic backtest, the detector would have flagged a major provider's drift **38 days before the public postmortem** -- on data seeded from the incident's public timeline.
+SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL, 325 tests). Apache-2.0. In a synthetic backtest, the detector would have flagged a major provider's drift **38 days before the public postmortem** -- on data seeded from the incident's public timeline.
 
 ---
 
@@ -157,6 +157,15 @@ if org_count is not None:          # >= QUORUM_MIN orgs agree
 The `GET /v1/weather` endpoint queries **only** `PublicDriftAlert`. Local
 single-org alerts are private fleet data, never surfaced publicly.
 
+> **What this means today, stated plainly.** The public network currently has
+> **one** observer. `required_quorum(1)` is 3, so a public drift alert cannot
+> fire on the public board at all — by construction, not by accident. The
+> quorum layer is what the network becomes with many observers; the thing that
+> is usable by a single team right now is the **private fleet detector**
+> (`fleet_id != None`), which raises local alerts for that team without any
+> quorum. Federated correlation is chapter two, and it is honest to read this
+> repository that way.
+
 ### Storage schema
 
 ```
@@ -177,7 +186,7 @@ pip install seismograph-probe   # Python 3.11+
 
 **Run the full stack from source** (gateway + dashboard + tests):
 
-**Requirements:** Python 3.10+, pip
+**Requirements:** Python 3.11+, pip
 
 ```bash
 git clone https://github.com/Tania-coder/SEISMOGRAPH.git
@@ -222,7 +231,7 @@ the same degradation, quorum is reached, and the dashboard flips to DRIFTING.
 ```
 probe/
   sdk.py          -- ProbeSDK: span lifecycle, DP-noised flush, OTel attrs
-  canary.py       -- CANARY_SUITE_V1 (3 prompts, content-addressed)
+  canary.py       -- CANARY_SUITE_V2 (50 prompts, content-addressed)
   privacy.py      -- Aggregator + Laplace DP noise + metric key whitelist
 
 engine/
@@ -256,7 +265,7 @@ tests/
 ## Test suite
 
 ```
-291 passed, 0 failed
+325 passed, 0 failed
 ruff: 0 violations across all Python files
 CodeQL (security-extended): 0 open alerts
 ```

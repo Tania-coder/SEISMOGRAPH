@@ -765,10 +765,12 @@ def test_gateway_same_suite_three_orgs_reach_quorum() -> None:
     )
     # A6: the five legacy keys survive unchanged for existing consumers,
     # which read the payload by key name; the five DASH-2 provenance keys
-    # are additive and deliberate.  This stays an EXACT set equality, not
-    # a subset check, so that an internal field can never leak into the
-    # public payload unnoticed -- a schema change must update this guard
-    # on purpose.
+    # and the DASH-3 staleness field are additive and deliberate.  This
+    # stays an EXACT set equality, not a subset check, so that an internal
+    # field can never leak into the public payload unnoticed -- a schema
+    # change must update this guard on purpose.  window_age_hours was
+    # added 2026-09-09 with DASH-3, and this guard is precisely what
+    # forced that addition to be a decision rather than a side effect.
     # #SG-TRACE: REQ-DASH-004
     # #   | assumption: additive, defaulted response fields do not break
     # #     existing consumers, but silent growth of a published payload
@@ -786,6 +788,7 @@ def test_gateway_same_suite_three_orgs_reach_quorum() -> None:
         "length_sample_count",
         "window_start",
         "window_end",
+        "window_age_hours",
     }
 
 
