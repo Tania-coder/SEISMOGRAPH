@@ -13,6 +13,7 @@
       --muted:    #64748b;
       --green:    #22c55e;
       --red:      #ef4444;
+      --amber:    #f59e0b;
       --accent:   #818cf8;
       --font:     -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       --mono:     "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
@@ -121,6 +122,8 @@
     .card:hover { border-color: #2a2a3e; }
     .card-drifting { border-color: rgba(239,68,68,.32); }
     .card-drifting:hover { border-color: rgba(239,68,68,.52); }
+    .card-stale { border-color: rgba(245,158,11,.32); }
+    .card-stale:hover { border-color: rgba(245,158,11,.52); }
 
     .card-top {
       display: flex;
@@ -135,6 +138,7 @@
       flex-shrink: 0;
     }
     .dot-stable  { background: var(--green); }
+    .dot-stale   { background: var(--amber); }
     .dot-drifting {
       background: var(--red);
       animation: pulse 1.4s ease-in-out infinite;
@@ -166,6 +170,15 @@
     }
     .badge-stable   { background: rgba(34,197,94,.13);  color: #4ade80; }
     .badge-drifting { background: rgba(239,68,68,.14);  color: #f87171; }
+    .badge-stale    { background: rgba(245,158,11,.14);  color: #fbbf24; }
+    .card-note {
+      margin: .85rem 0 0;
+      padding-top: .7rem;
+      border-top: 1px solid var(--border);
+      font-size: .78rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
 
     .metrics { display: grid; gap: 0.4rem; }
 
