@@ -1,0 +1,1 @@
+ts_utc,call_index,latency_s,http_status,finish_reason,completion_tokens,prompt_tokens,body_bytes,body_preview,error_class,outcome,where_measured,gap_ms,timeout_s,model,endpoint
