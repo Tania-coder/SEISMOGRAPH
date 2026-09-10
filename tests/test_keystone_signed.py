@@ -13,10 +13,24 @@ already executes (`py -3.10 -m pytest -q`), so an unsigned report is now
 a red gate rather than an intention. No CI wiring is required, and the
 check works locally and offline.
 
-Scope is deliberately narrow: only `docs/keystone/`. The ~20 legacy
-reports still in the repository root are not covered, because moving
-them is a separate task with its own commit; when they move here they
-come under this rule automatically, which is the intended outcome.
+Scope is deliberately narrow: only `docs/keystone/`, which holds the
+reports of tasks still being decided. The 25 legacy reports live in
+`docs/keystone-archive/` and are deliberately NOT covered.
+
+Measured 2026-09-10: 24 of those 25 carry no signature line at all;
+only DASH-2 does. That is not neglect — protocol 01 gained its
+signature step at Session 049, long after they were written. Extending
+this gate over the archive would therefore either fail permanently or
+invite signing them retroactively, which would fabricate a control that
+never ran. The archive is history and stays unsigned; the gate applies
+to what is still open.
+
+Worth recording next to the gate: across the project's whole history
+the signature step has produced exactly two signatures, DASH-2 and
+DASH-3, and BOTH were given after their merge rather than before it.
+This gate is the first mechanism that can make the order hold, and it
+has not yet been tested by a real task -- its first real test is the
+next one, not this one.
 
 If this file is ever deleted or its tests skipped instead of satisfied,
 the honest response is to strike the signing step from protocol 01 --
