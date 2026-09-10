@@ -542,7 +542,7 @@ def _as_published_utc(ts: datetime | None) -> datetime | None:
 # #   | assumption: staleness is a property of the newest sample's age,
 # #     not of the run schedule, so a late-but-present run is never
 # #     STALE while an absent one always is
-# #   | test: test_healthy_leg_at_measured_age_is_not_stale
+# #   | test: test_leg_at_measured_late_age_is_not_stale
 STALE_AFTER_HOURS: float = 30.0
 
 

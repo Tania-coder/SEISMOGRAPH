@@ -105,22 +105,39 @@ the archived snapshot committed at 4f7f078
 (`docs/evidence/weather-2026-09-09T173824Z.json`, SHA-256
 `24FA6DF7951411CFDE71668AE325CB21A30C774259E3374F90352C31A576F414`):
 
-    google/gemini-3.5-flash-lite   age  21.65 h   ALIVE   status STABLE
-    mistral/mistral-small-latest   age 176.00 h   DEAD    status STABLE
+    google/gemini-3.5-flash-lite   age  21.65 h   status STABLE
+    mistral/mistral-small-latest   age 176.00 h   status STABLE
 
-The obvious threshold -- 24 h, one missed slot -- **would have published
-a false STALE on a live leg the same day it shipped.** The healthy leg
-was simply late. 30 h clears the measured lateness with room and still
-flags a two-slot outage on the first read after it.
+**Correction, made before signature (2026-09-10).** The first draft of
+this section argued that 24 h "would have published a false STALE on a
+live leg". Re-measured the next day, that leg stood at **34.56 h with no
+new row**: at 21.65 h it had already missed a slot and never emitted
+again. A 24 h threshold would have alarmed correctly -- by luck, not by
+evidence, since nothing in the window distinguished the two cases at the
+time. The claim was wrong; the threshold is not, and it is left at 30 h
+deliberately.
+
+The defensible argument is about tolerance, not health. At 21.65 h
+"merely late" and "already stopped" are indistinguishable from the
+window alone. The threshold must sit above the late case, or an Actions
+run that fires 4.5 h behind its slot raises a false alarm on a working
+system. The price is explicit: up to ~18 h of delay before a real
+outage is flagged. Buying a faster alarm means measuring the real
+cadence distribution first, which is a separate task and needs the
+telemetry OBS-1 will produce.
 
 `test_threshold_leaves_room_above_a_late_scheduled_run` asserts the
-constant against both measured ages, so a future tightening to 24 h
-fails the gate rather than the dashboard.
+constant against both measured ages, so a future tightening fails the
+gate rather than the dashboard. Its docstring states in words that the
+21.65 h leg was NOT healthy, so the pin cannot be misread later as a
+claim about that leg.
 
-This is the second time in three sessions that a cheap measurement
-overturned a plausible derived number (the first killed CAN-3). The
-snapshot was archived twenty minutes before it was needed, for an
-unrelated reason.
+This is the third time in four sessions that a cheap measurement
+overturned a plausible number (the first killed CAN-3; the second was
+this one, overturned by a read taken for an unrelated reason twenty
+minutes earlier). The pattern is now strong enough to state as a rule:
+in this project a derived number survives only until someone measures
+it, so it is cheaper to measure first.
 
 ## 5. Evidence
 
@@ -183,6 +200,42 @@ early-warning system, publishing a confident negative while blind is a
 strictly worse failure than publishing an honest gap, and the mistral leg
 had been in exactly that state for seven days.
 
+### The outage this fix makes visible (measured 2026-09-10)
+
+Read from GitHub Actions through the Chrome page context, since
+`api.github.com` answers 403 to this session's own fetch tool. An
+earlier WebFetch summary of the same page was a hallucination ("14 runs,
+all successful, 20-45 s each"); the real page carries 137 runs with
+durations in minutes. Summaries of JS-rendered pages are not evidence.
+
+    #135  Sep 8 19:54 UTC   4m53s   last google row (window_end 19:59:15Z)
+    #136  Sep 9 09:45 UTC   6m29s   both legs exit 1 -- first google loss
+    #137  Sep 9 19:45 UTC  15m14s   mistral exit 1; google CANCELLED at
+                                    the 15m0s job ceiling
+
+The workflow fires reliably twice a day. This is not a scheduler fault.
+
+`emit (mistral)` #137, emission step 1m12s: `0/50 prompts completed`,
+all fifty ids listed. Confirmed **by direct measurement from a second
+network and IP** the same day: `GET /v1/models` -> **200**, a single
+`POST /v1/chat/completions` -> **429 "Rate limit exceeded", code 1300**.
+The credential is valid; the ACCOUNT is rate-limited. No retry or
+backoff engineering fixes that.
+
+`emit (google)` #137 was killed by the job ceiling, so `live_emit.py`
+never reached its own error print: **a cancelled job publishes no
+discard line and no failed ids at all.** The leg that failed hardest is
+the one that reported nothing. This adds a requirement to OBS-1 that was
+not in its contract: telemetry must be written progressively, not as a
+summary at the end, and the probe should bound its own wall clock so it
+fails before the job ceiling rather than being cancelled at it.
+
+Two conclusions from S049 are amended by this: H4 ("job timeout --
+REFUTED, 0 cancelled") was true on 2026-09-04 and is false now; and
+CAN-3's diagnosis was wrong **for the failure of 2026-09-04**, which is
+all the measurement showed -- at 0/50 in 72 s the run-wide backoff cap
+is binding again. The failure mode moved; neither verdict was permanent.
+
 ### Live verification (pending)
 
 Deploy is on Render from `main`. Post-merge verification is a READ of
@@ -202,15 +255,15 @@ content.
 
 ## 7. Defects found and NOT fixed (out of scope)
 
-1. **The mistral leg is still dark and still undiagnosed.** `0/50`
-   prompts in 75 s with the key present. DASH-3 makes the outage
-   legible; it says nothing about its cause. OBS-1 (structured failure
-   telemetry -- status histogram, retry and backoff spend, no provider
-   text across the privacy perimeter) remains the next engine task and
-   is the only thing that can separate "my fix worked" from "the
-   provider stopped 429-ing" -- a live confound, since the google leg
-   has self-healed from ~38.7% to ~17% derived loss with zero code
-   change.
+1. **Both legs are dark, and only mistral's cause is known.** mistral is
+   a measured account-level 429 (sec 5) -- a quota condition, not a code
+   defect, and not fixable in this repository. google is undiagnosed and
+   currently unobservable, because its job is cancelled before it can
+   print. OBS-1 (structured failure telemetry -- status histogram, retry
+   and backoff spend, written progressively, with no provider text
+   across the privacy perimeter) is what makes google diagnosable, and
+   it is also the only thing that can later separate "my fix worked"
+   from "the provider stopped 429-ing".
 2. **`observer_count: 1` deferred to DASH-4.** It needs a distinct
    observer count at the repository layer -- a different query and a
    different test surface. Weather Report #1 already states the single
@@ -246,4 +299,6 @@ content.
       fixed, including the still-undiagnosed mistral leg).
 
 **UNSIGNED.** Gate is green (342). Merge does not happen before this
-signature.
+signature. Sec 4 and sec 5 were amended on 2026-09-10, before signing
+and after the claim they rested on was re-measured -- the correction is
+recorded in place rather than quietly edited out.

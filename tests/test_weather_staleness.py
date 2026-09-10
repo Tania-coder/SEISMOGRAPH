@@ -39,10 +39,14 @@ _MT = "mistral/mistral-small-latest"
 
 # The live board's own numbers on 2026-09-09T17:38:24Z, archived at
 # docs/evidence/weather-2026-09-09T173824Z.json.  Both are regression
-# pins: the healthy leg was LATE (the probe fires 2.5-4.5 h behind its
-# 12 h slot), so a threshold tight enough to fail it would have shipped
-# a false STALE the same day it landed.
-_MEASURED_HEALTHY_AGE_H = 21.65
+# pins for the TOLERANCE the threshold encodes, not for the health of
+# either leg: measured again on 2026-09-10, the 21.65 h leg had not
+# emitted since and stood at 34.56 h.  At 21.65 h "merely late" (the
+# probe fires 2.5-4.5 h behind its 12 h slot) and "already stopped" are
+# indistinguishable from the window alone, and the threshold has to sit
+# above the late case or a late run raises a false alarm.  The price of
+# that tolerance is up to ~18 h of delay in flagging a real outage.
+_MEASURED_LATE_AGE_H = 21.65
 _MEASURED_DEAD_AGE_H = 176.0
 
 
@@ -129,12 +133,13 @@ def test_empty_window_is_stale_not_stable() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_healthy_leg_at_measured_age_is_not_stale() -> None:
-    """21.65 h was a LIVE leg on 2026-09-09; it must stay STABLE.
+def test_leg_at_measured_late_age_is_not_stale() -> None:
+    """A leg 21.65 h old is within tolerance and must stay STABLE.
 
-    This is the test that forbids tightening the threshold to 24 h.
+    This is the test that forbids tightening the threshold to a value
+    that would alarm on a merely-late scheduled run.
     """
-    rows = [_row(_MEASURED_HEALTHY_AGE_H), _row(36.1)]
+    rows = [_row(_MEASURED_LATE_AGE_H), _row(36.1)]
     w = _compute_model_weather(_FakeRepo(rows), _MT)
     assert w.status == "STABLE"
 
@@ -150,10 +155,13 @@ def test_threshold_leaves_room_above_a_late_scheduled_run() -> None:
     """The constant itself must clear the measured jitter.
 
     12 h slot + 4.5 h worst measured lateness = 16.5 h, and a real read
-    saw 21.65 h.  A threshold at or below that is a false-alarm
-    generator, so the guard is on the constant, not only on behaviour.
+    saw a leg at 21.65 h whose lateness could not yet be distinguished
+    from death.  A threshold at or below that alarms on runs that are
+    merely late, so the guard is on the constant, not only on
+    behaviour.  It deliberately does NOT assert that the 21.65 h leg
+    was healthy -- it was not; it had already stopped.
     """
-    assert STALE_AFTER_HOURS > _MEASURED_HEALTHY_AGE_H
+    assert STALE_AFTER_HOURS > _MEASURED_LATE_AGE_H
     assert STALE_AFTER_HOURS < _MEASURED_DEAD_AGE_H
 
 
