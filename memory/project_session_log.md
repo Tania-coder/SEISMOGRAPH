@@ -3898,3 +3898,125 @@ them by a read taken twenty minutes earlier for an unrelated reason. The
 pattern is now stated as a rule for this project — a derived number
 survives only until someone measures it, so measuring first is cheaper.
 Third occurrence in four sessions, after CAN-3.
+
+## SESSION 050b — 2026-09-10, after the close at 502770c
+## The day did not end where the log said it did. A second block ran:
+## the 30-point measurement came in, the legacy Keystone reports left
+## the repository root, and the README stopped quoting a number.
+
+WHY THIS ENTRY EXISTS
+The S050 entry was written and committed at 502770c with the 30-point
+measurement listed as "NOT RUN". It was run the same evening. Rather
+than edit a closed entry, the work is recorded here in order, which is
+what an append-only journal is for.
+
+LANDED AFTER 502770c
+  (Director)  docs/keystone-archive/ — all 25 legacy KEYSTONE_REPORT_*.md
+              moved out of the repository root. Sizes and mtimes
+              unchanged: a move, not a rewrite. Root is now clean of
+              them; docs/keystone/ holds DASH-3 alone.
+  (Director)  docs/evidence/google-latency-2026-09-10T183302Z.csv —
+              30 rows from scripts/measure_google_latency.py.
+  c04c630     the written analysis beside that CSV, plus the corrected
+              scope paragraph in tests/test_keystone_signed.py.
+  2cea396     README truth pass.
+Gate GREEN at every commit, 345 passed, verdict printed last.
+
+THE 30-POINT MEASUREMENT [measured 2026-09-10T18:33Z]
+n=30, gap 4500 ms (mirrors the probe's google pacing), max_tokens 8,
+client timeout 120 s, from the Director's home machine. Wall clock
+18:33:02Z -> 18:36:48Z.
+  success 30/30, http 200 x30, real bodies 458-465 B, tokens 3-4
+  latency min 0.59  p50 2.08  p90 6.95  p95 9.60  max 15.09  mean 3.17
+  over the probe's 30 s timeout: 0/30, 95% Wilson 0.0000-0.1135
+Every call carried real content, so none was a fast empty response
+posing as a success — the distinction the classifier exists for.
+
+WHAT IT ESTABLISHES, AND WHAT IT DOES NOT
+Establishes: at that moment, on that network, the leg is healthy. At
+mean 3.17 s a 50-prompt suite costs ~6.3 min against a 15 min ceiling,
+consistent with run #135's 4m53s. The "~20% of calls over 30 s" claim is
+refuted a second time, now with a sample that can carry a bound.
+Does NOT establish:
+  1. It does not explain run #137, which burned 15m14s and was cancelled
+     at the ceiling. At this latency the run costs six minutes. THE
+     CAUSE OF #137 REMAINS UNKNOWN and is recorded as unknown.
+  2. The earlier five-call sample (mean 22.2 s) was not wrong, it was a
+     different window, hours apart the same day. Latency here is
+     EPISODIC; no single batch characterises the leg.
+  3. It does not measure what the probe does. All 30 rows show
+     finish_reason=length — truncated at 8 tokens — while the live
+     canary averages ~131 output tokens. Output length drives latency
+     roughly linearly, so the measurement UNDERSTATES the probe's
+     per-call cost, plausibly by a large factor. Flaw in the design of
+     the Executor's own script, not in the data.
+  4. where_measured=local-machine on every row. The probe runs from a
+     GitHub runner: different network, different source address.
+
+THE ARCHIVE, AND WHAT COUNTING IT REVEALED [measured]
+Of the 25 legacy reports, 24 carry NO signature line. Only DASH-2 does.
+That is not neglect: protocol 01 gained its signature step at Session
+049, after they were written.
+Decision: the archive stays OUT of the signature gate and is never
+signed retroactively. Signing 24 reports today would fabricate a control
+that never ran. docs/keystone/ is what is still being decided and is
+gated; docs/keystone-archive/ is history and is not.
+The count also exposed the real record of that control: across the
+project's whole history the signing step has produced exactly TWO
+signatures, DASH-2 and DASH-3, and BOTH were given after their merge.
+It has never once run in the order the protocol specifies. The gate
+added earlier today is the first mechanism that can make the order hold,
+and it has not yet been tested by a real task. Its first honest test is
+the next one. This is recorded in the test's own docstring so the next
+session reads the fact rather than the intention.
+
+README — THE NUMBER WAS REMOVED, NOT UPDATED
+The badge and the Test suite block said 325 while pytest gave 345. The
+count was deleted rather than corrected: it went stale twice in two days
+(291 -> 325 -> 345) and each stale value was a false claim on the front
+page. A hardcoded count is a standing promise to edit the README on
+every commit that adds a test, and that promise has failed twice. The CI
+badge already carries live pass/fail; the section now shows the three
+gate commands and tells the reader to run them.
+Also fixed: image alt text ("four production LLMs" -> the two legs that
+hold keys) and the quickstart, which described only STABLE / DRIFTING.
+Phase 3 was deliberately left alone — it already read "SOC 2, in-VPC
+probe, SLAs planned", which is honest.
+
+PROCESS — A FOURTH WRONG INFERENCE BY THE EXECUTOR
+Told that `git ls-files "KEYSTONE_*.md"` was empty, the Executor
+reasoned from earlier clean `git status` output that the archive move
+must be "staged and uncommitted", and published that conclusion. It was
+already committed; the tree was clean. The chain was plausible and the
+measurement was one command away.
+Fourth instance in two days, after 0.8^50, "google is self-healing", and
+"latency explains #137". The pattern is now named rather than apologised
+for: the Executor publishes conclusions where a check would take under a
+minute. Standing rule adopted for this project — if verification costs
+less than a minute, verify first and say nothing until it returns.
+
+OPEN AT CLOSE
+- `--max-tokens 128` flag on measure_google_latency.py: one line in the
+  argument parser, does not exist yet. Until it does, no latency number
+  from that script may be used to reason about suite duration.
+- The same measurement FROM A GITHUB RUNNER, as a standalone workflow
+  uploading the CSV as an artifact. It does not import the probe, does
+  not emit to the gateway and does not slide the weather window, so it
+  is safe to dispatch on demand. This is the only measurement that
+  answers the first line of the frame: our constant or their API.
+- Per-call timeout 30 -> 90: only after both of the above.
+- Cause of run #137: unknown.
+- mistral: measured account-level 429; not a code defect.
+- OBS-1 proper (progressive telemetry, probe-side wall-clock bound):
+  not built. Requirement recorded in the DASH-3 Keystone sec 7.
+- The three-line frame as a gated Keystone template section: not built.
+- Site, pricing, domain email, ten slides, third leg, Slack: untouched
+  by decision.
+
+CLOSING NOTE
+Three things were asked for and three were delivered: the README matches
+the board, the root is clean, and the CSV exists and is analysed. What
+the CSV did not do is confirm the diagnosis it was meant to test — the
+leg measured healthy, and the failure that started this remains
+unexplained. That is a better outcome than a confirmation would have
+been, because the confirmation on offer was the Executor's own guess.
