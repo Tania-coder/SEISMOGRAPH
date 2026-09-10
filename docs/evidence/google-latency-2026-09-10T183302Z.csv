@@ -1,0 +1,31 @@
+ts_utc,call_index,latency_s,http_status,finish_reason,completion_tokens,prompt_tokens,body_bytes,body_preview,error_class,outcome,where_measured,gap_ms,timeout_s,model,endpoint
+2026-09-10T18:33:02.981305+00:00,1,0.75,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:08.510927+00:00,2,1.032,200,length,3,2,458,pong! ,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:16.978048+00:00,3,3.938,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:22.271852+00:00,4,0.766,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:27.672863+00:00,5,0.891,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:32.899440+00:00,6,0.704,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:40.106989+00:00,7,2.703,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:45.227451+00:00,8,0.61,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:33:52.158354+00:00,9,2.422,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:34:00.602129+00:00,10,3.922,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:34:11.424935+00:00,11,6.313,200,length,3,2,458,pong! ,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:34:22.297355+00:00,12,6.375,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:34:31.065323+00:00,13,4.265,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:34:42.411700+00:00,14,6.828,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:34:50.210212+00:00,15,3.297,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:34:58.905843+00:00,16,4.187,200,length,4,2,465,Pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:35:04.251914+00:00,17,0.844,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:35:19.625981+00:00,18,10.859,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:35:24.789465+00:00,19,0.64,200,length,3,2,458,pong! ,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:35:29.893962+00:00,20,0.594,200,length,4,2,464,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:35:36.771290+00:00,21,2.36,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:35:43.549569+00:00,22,2.266,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:35:56.107818+00:00,23,8.062,200,length,3,2,458,pong! ,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:36:02.503072+00:00,24,1.891,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:36:07.692039+00:00,25,0.687,200,length,3,2,458,pong! ,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:36:12.907981+00:00,26,0.703,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:36:32.503697+00:00,27,15.094,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:36:37.630765+00:00,28,0.609,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:36:42.803468+00:00,29,0.656,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+2026-09-10T18:36:48.094589+00:00,30,0.782,200,length,4,2,465,pong! How can,,success,local-machine,4500,120.0,gemini-3.5-flash-lite,https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
