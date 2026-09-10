@@ -3,7 +3,7 @@
 [![CI](https://github.com/Tania-coder/SEISMOGRAPH/actions/workflows/ci.yml/badge.svg)](https://github.com/Tania-coder/SEISMOGRAPH/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/seismograph-probe.svg)](https://pypi.org/project/seismograph-probe/)
 [![Python](https://img.shields.io/pypi/pyversions/seismograph-probe.svg)](https://pypi.org/project/seismograph-probe/)
-[![Tests](https://img.shields.io/badge/tests-325%20passing-brightgreen.svg)](#test-suite)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#test-suite)
 [![Lint](https://img.shields.io/badge/ruff-0%20violations-brightgreen.svg)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](#license)
 [![Live Demo](https://img.shields.io/badge/live%20demo-Model%20Weather-8A2BE2.svg)](https://seismograph-weather.onrender.com/dashboard)
@@ -27,7 +27,7 @@ Teams build on LLM APIs they don't control. Providers update models silently —
 > The alert fires during the modeled 0.8% misrouting window, before any
 > user-visible symptoms appeared.
 
-![SEISMOGRAPH Model Weather dashboard — live drift status for four production LLMs](docs/dashboard.png)
+![SEISMOGRAPH Model Weather dashboard — live drift status for the two production LLMs this observer holds keys for](docs/dashboard.png)
 
 <p align="center"><em>Live "model weather" — <a href="https://seismograph-weather.onrender.com/dashboard">open the public dashboard</a> (no login).</em></p>
 
@@ -39,7 +39,7 @@ Teams build on LLM APIs they don't control. Providers update models silently —
 
 ## Technical overview
 
-SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL, 325 tests). Apache-2.0. In a synthetic backtest, the detector would have flagged a major provider's drift **38 days before the public postmortem** -- on data seeded from the incident's public timeline.
+SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL). Apache-2.0. In a synthetic backtest, the detector would have flagged a major provider's drift **38 days before the public postmortem** -- on data seeded from the incident's public timeline.
 
 ---
 
@@ -204,8 +204,11 @@ uvicorn gateway.main:app --host 0.0.0.0 --port 8000 --reload
 http://localhost:8000/dashboard
 ```
 
-Polls `GET /v1/weather` every 60 seconds. Shows STABLE / DRIFTING per model
-tuple with last alert timestamp and recent JSON success rate.
+Polls `GET /v1/weather` every 60 seconds. Shows STABLE / DRIFTING / STALE
+per model tuple, with the age of the newest sample, the last alert
+timestamp and the recent JSON success rate. STALE means the leg has
+stopped reporting: the gateway holds no evidence either way and does not
+publish a green light.
 
 **Terminal 2 -- run the federated quorum demo:**
 ```bash
@@ -264,11 +267,19 @@ tests/
 
 ## Test suite
 
+The gate is the same three commands on every change, and all three must
+pass before anything merges:
+
+```bash
+ruff check .
+ruff format --check .
+python -m pytest -q
 ```
-325 passed, 0 failed
-ruff: 0 violations across all Python files
-CodeQL (security-extended): 0 open alerts
-```
+
+No test count is quoted here on purpose. It went stale twice in two days
+and each stale value was a false claim on the front page; the number a
+reader can trust is the one their own `pytest` prints. CodeQL
+(security-extended) runs in CI with no open alerts.
 
 Key adversarial tests:
 - `test_single_org_noise_blocked` (T10): one org fires CUSUM -- weather stays STABLE
