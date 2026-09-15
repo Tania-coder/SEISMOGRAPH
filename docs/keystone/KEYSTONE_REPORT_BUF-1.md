@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (UNSIGNED) -- REQ-BUF-001..010
+# KEYSTONE REPORT (SIGNED 2026-09-15) -- REQ-BUF-001..010
 # BUF-1: a signed batch that cannot be delivered is kept, not lost
 # Authored Session 052, 2026-09-15.
 # Base: origin/main @66ecd6b (sandbox baseline 345).
@@ -96,7 +96,7 @@ Host numbers are pending.
   - ruff check: clean.
   - ruff format --check: 67 files already formatted.
   - NUL bytes: 0. CRLF: 0.
-- With this UNSIGNED report on disk: **376 passed, 2 failed** on both
+- With this report on disk before signature: **376 passed, 2 failed** on both
   interpreters. The two failures are `tests/test_keystone_signed.py`,
   and they are RED by design until sec 8 is signed.
 - Adversarial cases, each against the real FastAPI app with real Ed25519
@@ -159,6 +159,12 @@ Host numbers are pending.
    because the indentation did not match, so the first reading
    ("survived") was wrong. The mutation was re-applied correctly and
    killed.
+5. **This report tripped its own gate after signing.** Sec 3 quoted the
+   upper-case marker in prose, so the host gate after signature read
+   377 passed, 1 failed. The Executor had not grepped the report against
+   the test's markers before delivery, which is exactly the check the
+   FLOOR-1 report records. The prose was reworded; the signature and
+   sec 8 were not touched.
 
 ## 5. Known limitations -- stated plainly
 
@@ -216,13 +222,11 @@ existing corpus".
 
 Items to accept or reject:
 
-- [ ] sec 5.1 -- the public legs stay unbuffered, and slide 9 must say
+- [x] sec 5.1 -- the public legs stay unbuffered, and slide 9 must say
       so precisely
-- [ ] sec 5.3 -- a late batch reads as fresh; decision on storing the
+- [x] sec 5.3 -- a late batch reads as fresh; decision on storing the
       signed `window_end` is deferred to a follow-up task
-- [ ] sec 5.4 -- no UNIQUE constraint yet
-- [ ] merge before the 2026-09-17 talk, as decided by the Director
+- [x] sec 5.4 -- no UNIQUE constraint yet
+- [x] merge before the 2026-09-17 talk, as decided by the Director
 
-Signature pending. This report is UNSIGNED, so
-`tests/test_keystone_signed.py` keeps the gate RED until the Director
-signs it. That is the intended control, not a regression.
+**SIGNED -- Tatiana Radchenko, 2026-09-15.**
