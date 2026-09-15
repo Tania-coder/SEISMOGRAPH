@@ -1,4 +1,4 @@
-# KEYSTONE REPORT (UNSIGNED) -- REQ-FLOOR-001..006
+# KEYSTONE REPORT (SIGNED 2026-09-15) -- REQ-FLOOR-001..006
 # FLOOR-1: measure the determinism floor before claiming any drift
 # Authored and gated Session 051, 2026-09-14/15.
 # Base: main (baseline 345 on host). Branch: seismograph/task-floor-1
@@ -282,7 +282,7 @@ and no model output is stored in this repository by this task.
 
 ## 9. Sign-off
 
-- [ ] Tatiana: reviewed sec 3 (evidence a stranger cannot check is not
+- [x] Tatiana: reviewed sec 3 (evidence a stranger cannot check is not
       evidence), sec 4 (this runner deliberately disagrees with the
       production all-or-nothing rule), sec 5 "a conclusion this data
       killed" (**the category finding was wrong and is withdrawn**),
@@ -292,18 +292,7 @@ and no model output is stored in this repository by this task.
       deliberately not fixed, above all the nonce still contaminating
       production tool canaries).
 
-**This report is UNSIGNED. The gate is RED until the line below is
-completed, by design -- see sec 0.**
-
-To sign: tick the box above, delete the upper-case marker in the
-paragraph above, and add the bold signature line in exactly the form
-used by `docs/keystone/KEYSTONE_REPORT_DASH-3.md` sec 9, with your name
-and today's date. The literal form is deliberately NOT reproduced here:
-writing it in an unsigned report would satisfy the positive test in
-`tests/test_keystone_signed.py` and let an unsigned document pass the
-gate. That was a real defect in this report's first draft, caught by
-grepping the file against the test's own markers before it was
-committed.
+**SIGNED -- Tatiana Radchenko, 2026-09-15.**
 
 **The merge has not happened.** For the first time in this project's
 history the signature is being asked for BEFORE the merge rather than
