@@ -1,0 +1,19 @@
+{
+  "run_id": "c2-1789427740",
+  "label": "c2",
+  "model_tuple": "google/gemini-3.1-flash-lite",
+  "suite_version": "v2.0.0",
+  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "max_tokens": 128,
+  "pacing_ms": 4500,
+  "started_utc": "2026-09-14T23:15:40.414533+00:00",
+  "finished_utc": "2026-09-14T23:20:35.117000+00:00",
+  "n_prompts": 50,
+  "n_ok": 50,
+  "n_failed": 0,
+  "mean_output_length": 165.02,
+  "median_output_length": 45.5,
+  "json_valid_numerator": 9,
+  "json_valid_denominator": 9,
+  "csv": "run_c2.csv"
+}
