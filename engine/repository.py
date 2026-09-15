@@ -187,6 +187,16 @@ class BaseRepository(ABC):
         """Persist one accepted InboundSignalBatch."""
 
     @abstractmethod
+    def has_batch(self, batch_id: str) -> bool:
+        """Return True if a batch with *batch_id* is already persisted.
+
+        Abstract on purpose (BUF-1): a backend that cannot answer this
+        must not be silently permissive, because the probe spool
+        re-sends batches whose first delivery outcome was unknown and
+        the gateway relies on this check to ingest each batch once.
+        """
+
+    @abstractmethod
     def save_local_alert(
         self,
         alert: DetectorDriftAlert,
@@ -697,6 +707,26 @@ class SignalRepository(BaseRepository):
             metric_name,
             contributing_org_count,
         )
+
+    def has_batch(self, batch_id: str) -> bool:
+        """Return True if *batch_id* already exists in telemetry_signals.
+
+        Uses the existing ``batch_id`` index (REQ-STORE-003), so the
+        check is an index lookup, not a scan.
+
+        #SG-TRACE: REQ-BUF-001
+        #   | assumption: a batch_id is a probe-generated uuid4 inside the
+        #     signed payload, so equal ids mean the same signed batch (a
+        #     re-send or a replay), never two distinct observations
+        #   | test: test_duplicate_batch_id_returns_409_and_skips_cusum
+        """
+        stmt = (
+            select(TelemetrySignal.id)
+            .where(TelemetrySignal.batch_id == batch_id)
+            .limit(1)
+        )
+        with self._db.session() as sess:
+            return sess.scalars(stmt).first() is not None
 
     def get_recent_signals(
         self,

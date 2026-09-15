@@ -92,6 +92,7 @@ from probe.privacy import (
     PrivacyBudgetExceededError,
     recommended_flush_interval_seconds,
 )
+from probe.spool import Spool
 
 __all__ = [
     "FLUSH_EPSILON",
@@ -174,6 +175,13 @@ class ProbeConfig:
         path (AgreementScorer -> PublicDriftAlert).  A non-None
         value routes through an isolated per-fleet CUSUMDetector
         and produces only private LocalDriftAlerts.
+    spool_dir:
+        Directory for the local delivery buffer (BUF-1).  None
+        (default) keeps the pre-BUF-1 behaviour: a failed POST raises
+        and the batch is lost.  When set, a batch whose POST fails with
+        a transport error or a 5xx is written there (signed bytes only)
+        and re-sent at the start of the next flush().  Use
+        '.seismograph_spool' in production; never commit it.
 
     #SG-TRACE: REQ-SDK-003
     #   | assumption: gateway_endpoint is the full URL including
@@ -201,6 +209,7 @@ class ProbeConfig:
     dp_storage_path: str | None = None
     min_flush_interval_seconds: float = 0.0
     fleet_id: str | None = None
+    spool_dir: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -317,6 +326,9 @@ class ProbeSDK:
                 daily_budget=config.daily_epsilon_budget,
                 storage_path=config.dp_storage_path,
             )
+        )
+        self._spool: Spool | None = (
+            Spool(config.spool_dir) if config.spool_dir else None
         )
         # Monotonic timestamp of the last flush that actually transmitted
         # (spent epsilon). None until the first transmission. Used to pace
@@ -517,6 +529,10 @@ class ProbeSDK:
             min_flush_interval_seconds (results retained, no epsilon spent).
         Returns {"status": "budget_exceeded"} if budget exhausted.
         Returns {"status": "ok", "batches": [...]} on success.
+        Returns {"status": "spooled", "batches": [...]} if at least one
+            batch was kept in the local spool (config.spool_dir) instead
+            of being delivered.  A "spool" key carries the drain summary
+            whenever a spool is configured.
 
         #SG-TRACE: REQ-SDK-009
         #   | assumption: gateway_endpoint is the complete URL
@@ -533,9 +549,36 @@ class ProbeSDK:
         #     -> SignalBatch before signing
         #   | test: test_fleet_id_in_signed_payload
         """
+        _client: httpx.Client | None = self._http_client
+        spool_summary: str | None = None
+
+        # BUF-1: deliver the backlog first, oldest batch first.  Costs no
+        # epsilon: these are the same already-noised, already-signed
+        # bytes (DP post-processing).
+        # #SG-TRACE: REQ-BUF-009
+        # #   | assumption: dry_run never touches the network, so it never
+        # #     drains either
+        # #   | test: test_flush_drains_spool_before_new_batches
+        if self._spool is not None and not self.config.dry_run:
+            if _client is None:
+                _client = httpx.Client()
+            drain_client = _client
+
+            def _send(body: bytes, headers: dict[str, str]) -> int:
+                return drain_client.post(
+                    self.config.gateway_endpoint,
+                    content=body,
+                    headers=headers,
+                ).status_code
+
+            spool_summary = self._spool.drain(_send).summary()
+            logger.info("flush() %s", spool_summary)
+
         pending = self._aggregator.model_tuples_pending()
         if not pending:
             logger.info("flush() called with no pending results -- noop")
+            if spool_summary is not None:
+                return {"status": "noop", "spool": spool_summary}
             return {"status": "noop"}
 
         # Transmission pacing gate (decouples collection from transmission).
@@ -581,7 +624,7 @@ class ProbeSDK:
         self._last_flush_monotonic = time.monotonic()
 
         batches: list[dict[str, Any]] = []
-        _client: httpx.Client | None = self._http_client
+        spooled_any = False
 
         for model_tuple in pending:
             # Pass fleet_id so it is embedded in SignalBatch before sign.
@@ -617,15 +660,59 @@ class ProbeSDK:
 
             if _client is None:
                 _client = httpx.Client()
-            response = _client.post(
-                self.config.gateway_endpoint,
-                content=canonical_bytes,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-signature": signature_hex,
-                    "x-public-key": public_key_hex,
-                },
-            )
+            post_headers = {
+                "Content-Type": "application/json",
+                "x-signature": signature_hex,
+                "x-public-key": public_key_hex,
+            }
+            # #SG-TRACE: REQ-BUF-010
+            # #   | assumption: without a spool the pre-BUF-1 contract
+            # #     holds exactly (transport errors propagate, non-202
+            # #     raises); with a spool only transient failures are
+            # #     kept -- a 4xx still raises because resending the same
+            # #     bytes cannot succeed
+            # #   | test: test_flush_spools_on_503_and_continues
+            try:
+                response = _client.post(
+                    self.config.gateway_endpoint,
+                    content=canonical_bytes,
+                    headers=post_headers,
+                )
+            except httpx.TransportError as exc:
+                if self._spool is None:
+                    raise
+                self._spool.put(canonical_bytes, post_headers)
+                spooled_any = True
+                batches.append(
+                    {
+                        "status": "spooled",
+                        "batch_id": signal_batch.batch_id,
+                        "reason": type(exc).__name__,
+                    }
+                )
+                continue
+
+            if response.status_code == 409:
+                logger.info(
+                    "flush() duplicate | batch_id=%s already ingested",
+                    signal_batch.batch_id,
+                )
+                batches.append(
+                    {"status": "duplicate", "batch_id": signal_batch.batch_id}
+                )
+                continue
+
+            if response.status_code >= 500 and self._spool is not None:
+                self._spool.put(canonical_bytes, post_headers)
+                spooled_any = True
+                batches.append(
+                    {
+                        "status": "spooled",
+                        "batch_id": signal_batch.batch_id,
+                        "reason": f"HTTP {response.status_code}",
+                    }
+                )
+                continue
 
             if response.status_code != 202:
                 raise RuntimeError(
@@ -644,7 +731,13 @@ class ProbeSDK:
             )
             batches.append(response.json())
 
-        return {"status": "ok", "batches": batches}
+        result: dict[str, Any] = {
+            "status": "spooled" if spooled_any else "ok",
+            "batches": batches,
+        }
+        if spool_summary is not None:
+            result["spool"] = spool_summary
+        return result
 
     # ------------------------------------------------------------------
     # Reserved: run_suite (Phase 1 -- real provider calls)

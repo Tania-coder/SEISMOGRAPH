@@ -6,6 +6,24 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Local delivery buffer** (`probe/spool.py`, BUF-1): a signed batch
+  whose POST fails with a transport error or 5xx is kept on disk
+  (`.seismograph_spool/`, 30 h lifetime, capped) and re-sent first on
+  the next run. Wired into `scripts/live_emit.py`
+  (`SEISMOGRAPH_SPOOL_DIR`, `off` disables) and `ProbeSDK`
+  (`ProbeConfig.spool_dir`, off by default). Does not persist on
+  ephemeral CI runners.
+
+### Security
+- **Gateway rejects a repeated `batch_id` with 409** (REQ-BUF-001),
+  before persistence and before CUSUM. Closes replay of a captured
+  signed batch and makes re-sending safe.
+
+---
+
 ## [1.1.0] - 2026-07-18
 
 ### Added

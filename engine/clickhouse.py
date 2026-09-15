@@ -265,6 +265,22 @@ class ClickHouseRepository(BaseRepository):
             batch.suite_version,
         )
 
+    def has_batch(self, batch_id: str) -> bool:
+        """Return True if *batch_id* already exists in telemetry_signals.
+
+        #SG-TRACE: REQ-BUF-001
+        #   | assumption: batch_id is not in the MergeTree sort key, so this
+        #     is a filtered scan; acceptable at Phase 2 ingest volume
+        #   | test: test_ch_has_batch_queries_by_batch_id
+        """
+        result = self._client.query(
+            "SELECT count() FROM telemetry_signals"
+            " WHERE batch_id = {bid:String}",
+            parameters={"bid": batch_id},
+        )
+        rows = result.result_rows
+        return bool(rows) and int(rows[0][0]) > 0
+
     def save_local_alert(
         self,
         alert: DetectorDriftAlert,

@@ -645,7 +645,11 @@ def _warm_and_drift(
             "/v1/signals",
             json={
                 **VALID_PAYLOAD,
-                "batch_id": f"{prefix}{i:02d}0000-0000-0000-0000-000000000000",
+                # "ff" marks warm-up ids.  The drift loop below uses
+                # "{n:02d}{i:02d}00"; the old warm-up form "{i:02d}0000"
+                # collided with drift n=0, i=0 and re-sent one batch_id
+                # (caught by the BUF-1 duplicate guard).
+                "batch_id": f"{prefix}ff{i:02d}00-0000-0000-0000-000000000000",
                 "client_id": warm_client,
                 "suite_version": suite,
                 "metrics": {"json_success_rate": 0.95},
