@@ -33,6 +33,15 @@ Configuration (environment variables):
   SEISMOGRAPH_PROBE_MAX_RETRIES  default 2    (transient 429/503 only)
   SEISMOGRAPH_GATEWAY_ENDPOINT   default http://localhost:8000/v1/signals
   SEISMOGRAPH_PROBE_KEY_PATH     default .seismograph_id
+  SEISMOGRAPH_SPOOL_DIR          default .seismograph_spool
+                                 ("off" disables the spool, BUF-1)
+
+Spool (BUF-1): a signed batch whose POST fails with a transport error or
+a 5xx is written to SEISMOGRAPH_SPOOL_DIR and re-sent first on the next
+run (before the new suite is probed).  The run still exits 1, so a
+failed delivery stays visible.  A 409 from the gateway means it already
+holds that batch_id and counts as delivered.  NOTE: on an ephemeral CI
+runner the spool directory does not survive the job.
 
 Pacing (CAN-2a): a rate-limited free tier cannot serve 50 sequential
 calls -- google/gemini-3.5-flash-lite completed 18 of 50 on 2026-07-31
@@ -83,6 +92,11 @@ from probe.providers import (  # noqa: E402
     OpenAICompatibleProvider,
     ProviderError,
 )
+from probe.spool import DEFAULT_SPOOL_DIR, Spool  # noqa: E402
+
+
+class GatewayTransportError(RuntimeError):
+    """The gateway could not be reached (no HTTP status at all)."""
 
 
 def build_signed_request(
@@ -129,21 +143,81 @@ def build_signed_request(
     return body, headers, payload
 
 
-def _post(endpoint: str, body: bytes, headers: dict, timeout: float) -> dict:
-    """POST signed body to the gateway; return the decoded JSON response."""
+def _post_status(
+    endpoint: str, body: bytes, headers: dict, timeout: float
+) -> tuple[int, dict | None]:
+    """POST *body*; return (HTTP status, decoded JSON or None).
+
+    Any HTTP status, success or error, is returned.  Only a failure to
+    get a status at all raises GatewayTransportError.
+
+    #SG-TRACE: REQ-BUF-006
+    #   | assumption: urllib raises HTTPError for every non-2xx status,
+    #     and URLError / OSError / TimeoutError when no status exists
+    #   | test: test_post_status_returns_http_error_code
+    """
     req = urllib.request.Request(
         endpoint, data=body, headers=headers, method="POST"
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            raw = resp.read().decode("utf-8", "replace")
+            status = resp.status
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", "replace")[:300]
-        raise RuntimeError(f"gateway HTTP {exc.code}: {detail}") from None
-    except urllib.error.URLError as exc:
-        raise RuntimeError(
-            f"gateway unreachable: {exc.reason} -- is uvicorn running?"
-        ) from None
+        try:
+            return exc.code, json.loads(detail)
+        except json.JSONDecodeError:
+            return exc.code, {"detail": detail}
+    except (urllib.error.URLError, OSError) as exc:
+        reason = getattr(exc, "reason", exc)
+        raise GatewayTransportError(f"gateway unreachable: {reason}") from None
+    try:
+        return status, json.loads(raw)
+    except json.JSONDecodeError:
+        return status, None
+
+
+def open_spool(value: str | None) -> Spool | None:
+    """Return the configured Spool, or None when disabled with "off"."""
+    if value is None or value == "":
+        value = DEFAULT_SPOOL_DIR
+    if value.strip().lower() == "off":
+        return None
+    return Spool(value)
+
+
+def deliver(
+    endpoint: str,
+    body: bytes,
+    headers: dict,
+    spool: Spool | None,
+    timeout: float = 30.0,
+) -> tuple[str, dict | None]:
+    """Send one new signed batch; spool it if the failure is transient.
+
+    Returns (outcome, response) where outcome is one of
+    "accepted", "duplicate", "rejected", "spooled", "lost".
+
+    #SG-TRACE: REQ-BUF-007
+    #   | assumption: only a missing status or a 5xx is worth retrying;
+    #     a 4xx (other than 409) will fail identically next time
+    #   | test: test_deliver_spools_on_transport_error
+    """
+    try:
+        status, resp = _post_status(endpoint, body, headers, timeout)
+    except GatewayTransportError as exc:
+        status, resp = None, {"detail": str(exc)}
+    if status == 202:
+        return "accepted", resp
+    if status == 409:
+        return "duplicate", resp
+    if status is not None and 400 <= status < 500:
+        return "rejected", {"status": status, **(resp or {})}
+    if spool is None:
+        return "lost", {"status": status, **(resp or {})}
+    path = spool.put(body, headers)
+    return "spooled", {"status": status, "path": str(path), **(resp or {})}
 
 
 def _weather_for(base: str, model_tuple: str, timeout: float) -> dict | None:
@@ -188,6 +262,22 @@ def main() -> int:
     )
     key_path = os.environ.get("SEISMOGRAPH_PROBE_KEY_PATH", ".seismograph_id")
     gateway_base = gateway.split("/v1/signals")[0]
+    spool = open_spool(os.environ.get("SEISMOGRAPH_SPOOL_DIR"))
+
+    # BUF-1: re-send anything a previous run could not deliver, BEFORE
+    # probing, so an older batch reaches the gateway before a newer one
+    # and a provider failure in this run does not block the backlog.
+    # #SG-TRACE: REQ-BUF-008
+    # #   | assumption: the drain runs whatever happens to the provider
+    # #   | test: test_main_drains_spool_before_probing
+    if spool is not None:
+
+        def _send(body: bytes, headers: dict) -> int:
+            status, _ = _post_status(gateway, body, headers, timeout=30.0)
+            return status
+
+        report = spool.drain(_send)
+        print(report.summary())
 
     print(f"Probing {model_tuple} via {base_url} ...")
     if delay_ms > 0:
@@ -243,12 +333,19 @@ def main() -> int:
     )
 
     print(f"POST {gateway} ...")
-    try:
-        resp = _post(gateway, body, headers, timeout=30.0)
-    except RuntimeError as exc:
-        print(f"Emission failed: {exc}", file=sys.stderr)
+    outcome, resp = deliver(gateway, body, headers, spool, timeout=30.0)
+    resp = resp or {}
+    if outcome == "spooled":
+        print(
+            f"Emission failed ({resp.get('status') or 'no status'}); "
+            f"signed batch kept for the next run: {resp.get('path')}",
+            file=sys.stderr,
+        )
         return 1
-    print(f"  -> {resp.get('status')} batch_id={resp.get('batch_id')}")
+    if outcome in ("rejected", "lost"):
+        print(f"Emission failed: {outcome} {resp}", file=sys.stderr)
+        return 1
+    print(f"  -> {outcome} batch_id={resp.get('batch_id')}")
 
     row = _weather_for(gateway_base, model_tuple, timeout=10.0)
     if row is not None:

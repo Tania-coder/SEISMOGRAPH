@@ -775,6 +775,7 @@ async def ingest_signals(
       1. Raw body read.
       2. Signature verification.
       3. Pydantic parsing.
+      3b. Duplicate batch_id -> 409, nothing ingested (BUF-1).
       4. Persistence (save_batch).
       5. CUSUM ingestion via global detector.
       6. Local alert persistence (fleet_id=None).
@@ -827,8 +828,38 @@ async def ingest_signals(
             },
         ) from exc
 
-    # Step 4: Persist batch to storage backend.
+    # Step 3b: Reject a batch_id that is already persisted (BUF-1).
+    # The probe spool re-sends a signed batch whose first delivery outcome
+    # was unknown (timeout after the gateway had already written it).
+    # Without this check that batch would enter CUSUM twice and the
+    # network would manufacture its own drift signal.  The same check
+    # blocks a captured signed batch from being replayed by a third
+    # party: batch_id is inside the signed bytes, so it cannot be changed
+    # without a new signature.  Runs BEFORE save_batch and BEFORE any
+    # detector state is touched.
+    # #SG-TRACE: REQ-BUF-001
+    # #   | assumption: single-process gateway; check-then-insert has no
+    # #     await between the two calls, so there is no interleaving
+    # #     inside one event loop (multi-worker deployments need a UNIQUE
+    # #     constraint -- documented limitation)
+    # #   | test: test_duplicate_batch_id_returns_409_and_skips_cusum
     repo: BaseRepository = request.app.state.repo
+    if repo.has_batch(str(batch.batch_id)):
+        logger.warning(
+            "409 Conflict | duplicate batch_id=%s model=%s",
+            batch.batch_id,
+            batch.model_tuple,
+        )
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "duplicate_batch",
+                "detail": "This batch_id has already been ingested.",
+                "batch_id": str(batch.batch_id),
+            },
+        )
+
+    # Step 4: Persist batch to storage backend.
     repo.save_batch(batch)
 
     alerts: list[dict[str, Any]] = []
