@@ -1,7 +1,10 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-04 (Session 049: FIRST PUBLIC ARTEFACT IN 42 DAYS.
+# Last updated: 2026-09-16 (Sessions 051-053: FLOOR-1 measured and
+# signed BEFORE merge; SKILL-1 and BUF-1 landed; baseline 378; second-date
+# run a4 merged 48dfda0; README reopened on the measurement.)
+# Prior: 2026-09-04 (Session 049: FIRST PUBLIC ARTEFACT IN 42 DAYS.
 # Weather Report #1 published to dev.to + LinkedIn, archival copy committed
 # to docs/reports/ BEFORE publication. Keystone DASH-2 sec 9 SIGNED with
 # both dates recorded honestly. CAN-3's diagnosis REFUTED by measurement
@@ -25,6 +28,40 @@
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S051-S053 — 2026-09-14 .. 2026-09-16 (measure, sign first, land)
+Detail: project_session_log.md, entry "SESSIONS 051-053".
+
+### Landed
+- [x] FLOOR-1 — determinism floor measured; Keystone signed BEFORE merge
+      (e40fcf0), merged c614492. Gate 345.
+- [x] SKILL-1 — skills/measure-first; "no attribution needed" removed.
+      Merged a6766a7.
+- [x] BUF-1 — disk spool (SDK + live_emit), gateway 409 on duplicate
+      batch_id. Keystone signed 04e9be4 before merge; merged f150025.
+      **Baseline 378.**
+- [x] FLOOR-1b — run a4 on a second date: 59.5-63.4% again; length band
+      -4.4..+1.8%. Merged 48dfda0, gate GREEN 378.
+- [x] README-1 — opening rewritten around the measurement (branch
+      seismograph/task-readme-1).
+- [x] Talk v10 / deck v17 checked: spool slide and attribution line
+      already correct.
+
+### Open
+- [ ] **probe-weather-multi failed 28 runs in a row (#121-#148)**; #149-#151
+      green. Cause unknown. keep-demo-warm #542/#543 failed at ~15 min.
+- [ ] Confirm the 409 change is live on Render (deploy log or deliberate
+      test batch — Director call). Deployed commit not visible from
+      /v1/weather.
+- [ ] BUF-2 — store signed window_end clamped to now (arrival-time stamp
+      makes a late spooled batch look fresh). Decision open.
+- [ ] UNIQUE constraint on batch_id; runner spool via actions/cache.
+- [ ] Check live_emit spool default (CHANGELOG vs ProbeConfig disagree).
+- [ ] Nonce fix in probe/canary.py (AFTER the talk; versioned baseline).
+- [ ] pytest for measure_drift_floor.py, then `seismograph compare`.
+- [ ] Re-run alias and 3.1 groups on a second date.
+- [ ] Update memory/CURRENT_STATE.md "Open now" list in full (only the
+      header and baseline were refreshed on 2026-09-16).
 
 ## S049 — 2026-09-04 (publish first, then measure; CAN-3 refuted)
 

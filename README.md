@@ -11,168 +11,104 @@
 
 **Created by [Tatiana Radchenko](https://github.com/Tania-coder)**
 
+SEISMOGRAPH is an open-source tool that notices when an LLM API starts
+answering differently, even when the model name, the endpoint, the speed
+and the uptime all stay the same.
+
+---
+
+## What I measured: how repeatable are LLM answers at temperature 0?
+
+On the evening of 2026-09-14 (UTC), I sent the same fixed set of 50
+questions (`CANARY_SUITE_V2`) to Google's OpenAI-compatible endpoint
+seven times: three runs of `gemini-3.5-flash-lite`, two of the
+`gemini-flash-lite-latest` alias, and two of `gemini-3.1-flash-lite`.
+Temperature 0, `max_tokens` 128, 350 calls in total. For each answer I
+kept only a SHA-256 hash and the length in characters.
+
+The 8 `tool_calling` questions are left out of every rate below, because
+their answers contain a random id and can never match. That leaves 42
+comparable questions per pair (41 when a pair includes the one call that
+failed).
+
+**The older model (`gemini-3.1-flash-lite`) reproduced itself exactly
+(42/42). The newer one (`gemini-3.5-flash-lite`) did so about 60% of the
+time (59.5–63.4%, three pairs: 25/42, 25/41, 26/41).**
+
+The 42/42 result is the positive control: it shows the harness can
+measure perfect agreement. So the ~60% comes from the model, not from the
+measurement.
+
+| Comparison | Identical answers (hash) | Change in mean answer length |
+|---|---|---|
+| `gemini-3.1-flash-lite` vs itself (1 pair) | 42/42 = 100% | 0.0% |
+| `gemini-3.5-flash-lite` vs itself (3 pairs) | 25/42, 25/41, 26/41 = 59.5–63.4% | −2.6% to +1.8% |
+| `gemini-3.5-flash-lite` vs itself, 41 hours later (3 pairs, run a4 on 2026-09-16) | 25/42, 26/41, 25/42 = 59.5–63.4% | −4.4% to −1.8% |
+| `gemini-3.5-flash-lite` vs `-latest` alias (6 pairs, 41–42 questions each) | 57.1–64.3% | −1.5% to +2.9% |
+| `gemini-3.5-flash-lite` → `gemini-3.1-flash-lite` (41–42 questions per pair) | 41.5–45.2% | −25.3% to −23.2% |
+
+What this shows:
+
+- **Answer length separated the two model generations. Hash matching did
+  not.** Within one model, mean length moved only −4.4% to +1.8% (across
+  two dates). Going from 3.5 to 3.1, it moved −23.2% to −25.3%. The ranges do not overlap.
+  Hash agreement for the generation change (41.5–45.2%) sat close to the
+  within-model range (50–100%, i.e. 21/42 to 42/42), and the `-latest`
+  alias landed in the same 50–64% band as within-model noise. This is why
+  the detector works on distributional features such as output length,
+  not on exact-match hashes.
+- **The `-latest` alias could not be told apart from pinned 3.5 on that
+  date** (57.1–64.3% hash agreement, −1.5% to +2.9% length). That can
+  change at any time, and nobody is notified when it does.
+- **Reproducibility can be lost silently by upgrading.** Snapshot tests,
+  caches keyed on response hash, and exact-match evals that work on the
+  older model become unreliable on the newer one.
+
+**Limits.** One provider, one model family. The seven runs came from one
+evening (about a 90-minute window, 22:32Z to 00:00Z); only pinned 3.5
+was repeated on a second date (run a4, 41 hours later).
+`max_tokens=128` cuts long answers short, which can only increase agreement, so these numbers are an upper
+bound on reproducibility. One call failed with a provider 503 and is
+excluded (that is why some pairs have 41 questions). The alias has only
+one pair against itself, so its own rate is not quoted here. This is a
+measurement of the noise floor. It is not a detected real-world change.
+
+**Check it yourself.** The raw data is in
+[`docs/evidence/driftfloor/run_*.csv`](docs/evidence/driftfloor/) and the
+full writeup is in
+[`docs/evidence/2026-09-15-drift-floor.md`](docs/evidence/2026-09-15-drift-floor.md).
+The compare step needs only standard Python, no install:
+
+```bash
+python scripts/measure_drift_floor.py compare --a docs/evidence/driftfloor/run_a1.csv --b docs/evidence/driftfloor/run_c1.csv
+```
+
+---
+
+## What the tool does
+
+- Asks a model the same fixed 50 questions at temperature 0, on a schedule.
+- Keeps only numbers: a hash of each answer, answer length, and whether
+  JSON answers are valid. **Your prompts and outputs never leave your
+  machine.**
+- Runs change-point detection on those numbers and raises an alert when
+  they move away from the model's normal baseline.
+- Shows the result on a dashboard. If a model stops reporting, it is shown
+  as STALE, never as STABLE.
+
 ```bash
 pip install seismograph-probe   # the probe SDK — Python 3.11+
 ```
 
 **▶ Live dashboard:** **[seismograph-weather.onrender.com/dashboard](https://seismograph-weather.onrender.com/dashboard)** — live drift-weather for the two production models this observer currently holds keys for (google, mistral); a leg that stops reporting is published as STALE, never as STABLE. _(Free host; first load may take ~30s if the instance is asleep.)_
 
-**Your LLM didn't get worse. It changed — and nobody told you.**
-
-Teams build on LLM APIs they don't control. Providers update models silently — same name, same endpoint, different behavior — and prompts that worked yesterday break today, with no announcement and no alert. SEISMOGRAPH is the smoke detector for that risk: a privacy-preserving early-warning network that continuously probes models and tells you the moment one drifts from its baseline — before it costs you a customer.
-
-> In a reproducible **synthetic** backtest, the detector would have flagged the Anthropic Claude Sonnet 4 silent
-> degradation on 2025-08-10 -- **38 days before the official Sep 17
-> postmortem** and 19 days before the escalation became visible to users.
-> The alert fires during the modeled 0.8% misrouting window, before any
-> user-visible symptoms appeared.
-
 ![SEISMOGRAPH Model Weather dashboard — live drift status for the two production LLMs this observer holds keys for](docs/dashboard.png)
 
 <p align="center"><em>Live "model weather" — <a href="https://seismograph-weather.onrender.com/dashboard">open the public dashboard</a> (no login).</em></p>
 
-**Documentation:** [Whitepaper (PDF)](docs/SEISMOGRAPH_Whitepaper_v1.pdf) · [Roadmap](ROADMAP.md) · [Security & threat model](SECURITY.md) · [Architecture](SEISMOGRAPH_Architecture.md) · [dev.to: Your LLM didn't get worse](https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl) · [DOI 10.5281/zenodo.21045517](https://doi.org/10.5281/zenodo.21045517)
+**Documentation:** [Drift-floor measurement](docs/evidence/2026-09-15-drift-floor.md) · [Whitepaper (PDF)](docs/SEISMOGRAPH_Whitepaper_v1.pdf) · [Roadmap](ROADMAP.md) · [Security & threat model](SECURITY.md) · [Architecture](SEISMOGRAPH_Architecture.md) · [dev.to: Your LLM didn't get worse](https://dev.to/taniacoder/your-llm-didnt-get-worse-it-changed-and-nobody-told-you-4ecl) · [DOI 10.5281/zenodo.21045517](https://doi.org/10.5281/zenodo.21045517)
 
 **Want this watched for you?** SEISMOGRAPH is the open engine; [Drift Defense](https://driftdefense.dev/?utm_source=github&utm_medium=readme) is the service I run on top of it — a private drift detector for one team's own stack, starting with a free Drift Exposure Scan that maps where a silent model change would hit you first.
-
----
-
-## Technical overview
-
-SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral change that emits no latency or uptime signal, so conventional monitoring misses it. A fixed, content-addressed canary suite runs against any OpenAI-compatible endpoint at temperature 0. Each response is reduced to privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised aggregates; **raw prompts and outputs never leave the probe perimeter**. Every batch is Ed25519-signed, and alerts are gated behind **cross-observer quorum**, so no single noisy probe can raise a false alarm. Built with a Python probe SDK, a FastAPI ingestion gateway, change-point detection (CUSUM + Bayesian online change-point), and full CI (ruff + pytest + CodeQL). Apache-2.0. In a synthetic backtest, the detector would have flagged a major provider's drift **38 days before the public postmortem** -- on data seeded from the incident's public timeline.
-
----
-
-## The problem
-
-Every AI team eventually hits this at 2am:
-
-```
-json_parse_errors up 12%.  latency: normal.  uptime: 100%.
-My prompt didn't change.  My code didn't change.
-Is it me, or did the model silently change underneath me?
-```
-
-Provider APIs do not broadcast behavioral changes. Endpoints that return 200
-can still produce subtly different outputs -- degraded JSON fidelity, shifted
-response length distributions, changed reasoning patterns. Standard monitoring
-(latency, error rate, uptime) is **blind to semantic drift**.
-
-SEISMOGRAPH answers the question. Not by trusting a single observer, but by
-correlating canary probe signals across independent organisations so that no
-single bad actor -- or noisy probe -- can trigger a false alarm.
-
----
-
-## Phase 0 backtest (synthetic replay)
-
-Anthropic published a postmortem on 2025-09-17 describing three
-infrastructure bugs that silently degraded output quality (no intentional
-model change). The first and longest-lived: a context-window routing error
-introduced 2025-08-05 that misrouted a fraction of **Claude Sonnet 4**
-requests. It began as 0.8% misrouting (Phase 1) and escalated to ~16% on
-2025-08-29 (Phase 2). This backtest models that first bug.
-
-**SEISMOGRAPH (simulated, SEED=42, reproducible) would have alerted on 2025-08-10:**
-
-```
-CUSUM S- trace -- json_success_rate (anthropic/claude-sonnet-4@global)
-  Baseline: mu0=0.9903, sigma0=0.00437, h=5.0, k=0.5
-
-  Date        Phase          rate    S-      note
-  -------------------------------------------------------
-  2025-08-05  Phase1(0.8%)   0.9855  0.598   [bug introduced]
-  2025-08-06  Phase1(0.8%)   0.9857  1.142
-  2025-08-07  Phase1(0.8%)   0.9786  3.309
-  2025-08-08  Phase1(0.8%)   0.9877  3.396
-  2025-08-09  Phase1(0.8%)   0.9816  4.889
-  2025-08-10  Phase1(0.8%)   0.9777  7.278   <<< FIRST ALERT
-  ...
-  2025-08-29  Phase2(16%)    --      --      [escalation visible to users]
-  2025-09-17  --             --      --      [official postmortem published]
-
-  Lead over escalation:  19 days
-  Lead over postmortem:  38 days
-```
-
-Reproduce: `python scripts/anthropic_backtest.py`
-Full report: `notebooks/anthropic_backtest_report.md`
-
----
-
-## How it works
-
-### Privacy-first probe SDK
-
-The probe runs inside your infrastructure. It executes a frozen canary suite
-(<=200 prompts, temperature 0) against your LLM API endpoint. **Raw prompts
-and model outputs never leave your perimeter.**
-
-What gets transmitted:
-- SHA-256 hash of each response (not the response itself)
-- DP-noised distributional features: `avg_output_length` (Laplace, scale=4096),
-  `json_success_rate` (Laplace, scale=0.5), `result_count`
-- Canary suite version hash (content-addressed, immutable baselines)
-- Probe public key (Ed25519, pseudonymous -- no org identity disclosed)
-
-Epsilon budget: 2.0 per flush via the Laplace mechanism. Sequential
-composition tracking is a Phase 2 design item (REQ-PRIV-010).
-
-### Page-CUSUM change-point detection
-
-The gateway ingests probe batches and feeds each DP-noised metric into a
-Page-CUSUM detector per `(model_tuple, metric_name)` tuple:
-
-```
-S+(n) = max(0, S+(n-1) + z(n) - k)    # upward shifts
-S-(n) = max(0, S-(n-1) - z(n) - k)    # downward shifts
-Alert when S+ or S- > h
-```
-
-Parameters: `h=5.0, k=0.5, baseline_samples=30`. The baseline window
-estimates mu0 and sigma0 from the first 30 observations before drift
-detection activates. Sigma is clamped at 1e-9 to prevent division by zero
-on constant-value streams.
-
-CUSUM state is **shared per (model_tuple, metric_name)** across all client
-IDs -- contributing organisations build a shared baseline, which is what
-makes cross-org comparison possible.
-
-### Quorum Agreement Scorer
-
-A single-organisation CUSUM alert is **never promoted to a public drift
-alert.** This filters probe bugs, network hiccups, and Sybil attacks.
-
-```python
-QUORUM_MIN = 2  # minimum distinct org_ids required for a public alert
-
-# Engine logic (engine/correlation.py):
-scorer.ingest(ChangePointResult(change_detected=True, contributing_orgs=[client_id]))
-org_count = scorer.promote_to_public_alert(model_tuple)
-if org_count is not None:          # >= QUORUM_MIN orgs agree
-    repo.save_public_alert(...)    # written to public_drift_alerts table
-    scorer.clear(model_tuple)
-```
-
-The `GET /v1/weather` endpoint queries **only** `PublicDriftAlert`. Local
-single-org alerts are private fleet data, never surfaced publicly.
-
-> **What this means today, stated plainly.** The public network currently has
-> **one** observer. `required_quorum(1)` is 3, so a public drift alert cannot
-> fire on the public board at all — by construction, not by accident. The
-> quorum layer is what the network becomes with many observers; the thing that
-> is usable by a single team right now is the **private fleet detector**
-> (`fleet_id != None`), which raises local alerts for that team without any
-> quorum. Federated correlation is chapter two, and it is honest to read this
-> repository that way.
-
-### Storage schema
-
-```
-local_drift_alerts   -- private per-org CUSUM events (client_id, cusum_score)
-public_drift_alerts  -- quorum-verified events (contributing_org_count)
-telemetry_signals    -- raw ingested batches (DP-noised metrics only)
-```
 
 ---
 
@@ -227,6 +163,191 @@ the same degradation, quorum is reached, and the dashboard flips to DRIFTING.
   [storm] -> DRIFTING | json_rate=0.312 | last_alert=2026-06-12T...
 ```
 
+**Repeat the drift-floor measurement against your own endpoint** (needs a
+clone, the probe dependencies, and your key in `SEISMOGRAPH_PROBE_API_KEY`):
+
+```bash
+python scripts/measure_drift_floor.py run --model-tuple google/<model> \
+    --base-url https://generativelanguage.googleapis.com/v1beta/openai \
+    --label <label> --out docs/evidence/driftfloor
+
+python scripts/measure_drift_floor.py compare \
+    --a docs/evidence/driftfloor/run_<label1>.csv \
+    --b docs/evidence/driftfloor/run_<label2>.csv
+```
+
+`run` refuses to overwrite an existing label unless you pass `--force`.
+Other options: `--max-tokens` (default 128), `--pacing-ms` (default 4500),
+`--timeout` (default 90).
+
+---
+
+## The problem
+
+**Your LLM didn't get worse. It changed — and nobody told you.**
+
+A typical 2am scenario (an illustration, not a recorded event):
+
+```
+json_parse_errors up 12%.  latency: normal.  uptime: 100%.
+My prompt didn't change.  My code didn't change.
+Is it me, or did the model silently change underneath me?
+```
+
+Teams build on LLM APIs they don't control. Provider APIs do not broadcast
+behavioral changes. Endpoints that return 200 can still produce subtly
+different outputs -- degraded JSON fidelity, shifted response length
+distributions, changed reasoning patterns. Standard monitoring (latency,
+error rate, uptime) is **blind to semantic drift**.
+
+---
+
+## How it works
+
+SEISMOGRAPH detects **semantic drift** in third-party LLM APIs — behavioral
+change that emits no latency or uptime signal, so conventional monitoring
+misses it. A fixed, content-addressed canary suite runs against any
+OpenAI-compatible endpoint at temperature 0. Each response is reduced to
+privacy-preserving features — SHA-256 hashes plus ε=2.0 Laplace-DP-noised
+aggregates; **raw prompts and outputs never leave the probe perimeter**.
+Every batch is Ed25519-signed. Built with a Python probe SDK, a FastAPI
+ingestion gateway, change-point detection (CUSUM + Bayesian online
+change-point), and full CI (ruff + pytest + CodeQL). Apache-2.0.
+
+### Privacy-first probe SDK
+
+The probe runs inside your infrastructure. It executes a frozen canary suite
+(<=200 prompts, temperature 0) against your LLM API endpoint. **Raw prompts
+and model outputs never leave your perimeter.**
+
+What gets transmitted:
+- SHA-256 hash of each response (not the response itself)
+- DP-noised distributional features: `avg_output_length` (Laplace, scale=4096),
+  `json_success_rate` (Laplace, scale=0.5), `result_count`
+- Canary suite version hash (content-addressed, immutable baselines)
+- Probe public key (Ed25519, pseudonymous -- no org identity disclosed)
+
+Epsilon budget: 2.0 per flush via the Laplace mechanism. Sequential
+composition tracking is a Phase 2 design item (REQ-PRIV-010).
+
+Known open defect (from the drift-floor measurement): `probe/canary.py`
+hashes `tool_calls_json`, which contains a per-call random id, so the
+response hash of a `tool_calling` canary can never match itself.
+
+### Page-CUSUM change-point detection
+
+The gateway ingests probe batches and feeds each DP-noised metric into a
+Page-CUSUM detector per `(model_tuple, metric_name)` tuple. The detector
+runs on distributional metrics (`avg_output_length`, `json_success_rate`),
+not on hashes; the drift-floor measurement above is the first evidence from
+this project that this choice is right.
+
+```
+S+(n) = max(0, S+(n-1) + z(n) - k)    # upward shifts
+S-(n) = max(0, S-(n-1) - z(n) - k)    # downward shifts
+Alert when S+ or S- > h
+```
+
+Parameters: `h=5.0, k=0.5, baseline_samples=30`. The baseline window
+estimates mu0 and sigma0 from the first 30 observations before drift
+detection activates. Sigma is clamped at 1e-9 to prevent division by zero
+on constant-value streams.
+
+CUSUM state is **shared per (model_tuple, metric_name)** across all client
+IDs -- contributing organisations build a shared baseline, which is what
+makes cross-org comparison possible.
+
+### Storage schema
+
+```
+local_drift_alerts   -- private per-org CUSUM events (client_id, cusum_score)
+public_drift_alerts  -- quorum-verified events (contributing_org_count)
+telemetry_signals    -- raw ingested batches (DP-noised metrics only)
+```
+
+---
+
+## The bigger plan: a federated early-warning network
+
+SEISMOGRAPH is designed to grow into a privacy-preserving early-warning
+network: many independent teams run the probe, and a drift alert becomes
+public only when several of them see the same change. It answers "is it
+me, or did the model change?" not by trusting a single observer, but by
+correlating canary probe signals across independent organisations so that
+no single bad actor -- or noisy probe -- can trigger a false alarm.
+
+### Quorum Agreement Scorer
+
+A single-organisation CUSUM alert is **never promoted to a public drift
+alert.** This filters probe bugs, network hiccups, and Sybil attacks.
+
+```python
+QUORUM_MIN = 2  # minimum distinct org_ids required for a public alert
+
+# Engine logic (engine/correlation.py):
+scorer.ingest(ChangePointResult(change_detected=True, contributing_orgs=[client_id]))
+org_count = scorer.promote_to_public_alert(model_tuple)
+if org_count is not None:          # >= QUORUM_MIN orgs agree
+    repo.save_public_alert(...)    # written to public_drift_alerts table
+    scorer.clear(model_tuple)
+```
+
+The `GET /v1/weather` endpoint queries **only** `PublicDriftAlert`. Local
+single-org alerts are private fleet data, never surfaced publicly.
+
+> **What this means today, stated plainly.** The public network currently has
+> **one** observer. `required_quorum(1)` is 3, so a public drift alert cannot
+> fire on the public board at all — by construction, not by accident. The
+> quorum layer is what the network becomes with many observers; the thing that
+> is usable by a single team right now is the **private fleet detector**
+> (`fleet_id != None`), which raises local alerts for that team without any
+> quorum. Federated correlation is chapter two, and it is honest to read this
+> repository that way.
+
+### Phase 0 backtest (seeded synthetic replay, not a real detection)
+
+This is a simulation on synthetic data, seeded from the public timeline of
+one incident. It tests the detector's logic. It is **not** a real-world
+catch, and SEISMOGRAPH did not observe that incident.
+
+Anthropic published a postmortem on 2025-09-17 describing three
+infrastructure bugs that silently degraded output quality (no intentional
+model change). The first and longest-lived: a context-window routing error
+introduced 2025-08-05 that misrouted a fraction of **Claude Sonnet 4**
+requests. It began as 0.8% misrouting (Phase 1) and escalated to ~16% on
+2025-08-29 (Phase 2). This backtest models that first bug.
+
+In this reproducible **synthetic** backtest, the detector would have
+flagged the modeled degradation on 2025-08-10 -- 38 days before the
+official Sep 17 postmortem and 19 days before the escalation became
+visible to users. The alert fires during the modeled 0.8% misrouting
+window, before any user-visible symptoms appeared.
+
+**SEISMOGRAPH (simulated, SEED=42, reproducible) would have alerted on 2025-08-10:**
+
+```
+CUSUM S- trace -- json_success_rate (anthropic/claude-sonnet-4@global)
+  Baseline: mu0=0.9903, sigma0=0.00437, h=5.0, k=0.5
+
+  Date        Phase          rate    S-      note
+  -------------------------------------------------------
+  2025-08-05  Phase1(0.8%)   0.9855  0.598   [bug introduced]
+  2025-08-06  Phase1(0.8%)   0.9857  1.142
+  2025-08-07  Phase1(0.8%)   0.9786  3.309
+  2025-08-08  Phase1(0.8%)   0.9877  3.396
+  2025-08-09  Phase1(0.8%)   0.9816  4.889
+  2025-08-10  Phase1(0.8%)   0.9777  7.278   <<< FIRST ALERT
+  ...
+  2025-08-29  Phase2(16%)    --      --      [escalation visible to users]
+  2025-09-17  --             --      --      [official postmortem published]
+
+  Lead over escalation:  19 days
+  Lead over postmortem:  38 days
+```
+
+Reproduce: `python scripts/anthropic_backtest.py`
+Full report: `notebooks/anthropic_backtest_report.md`
+
 ---
 
 ## Repository structure
@@ -254,10 +375,15 @@ dashboard/static/
 
 scripts/
   demo_simulation.py      -- federated quorum demo (two ProbeSDK clients)
-  anthropic_backtest.py   -- Phase 0 reproducible backtest (SEED=42)
+  anthropic_backtest.py   -- Phase 0 seeded synthetic backtest (SEED=42)
+  measure_drift_floor.py  -- drift-floor measurement (run / compare)
+
+docs/evidence/
+  2026-09-15-drift-floor.md  -- drift-floor measurement writeup
+  driftfloor/run_*.csv       -- raw per-question data (hash + length only)
 
 tests/
-  test_gateway.py   -- 23 tests: ingestion, CUSUM, quorum, weather, dashboard
+  test_gateway.py   -- ingestion, CUSUM, quorum, weather, dashboard
   test_storage.py   -- storage layer: save/query LocalDriftAlert + signals
   test_sdk.py       -- probe SDK: span lifecycle, flush, DP noise, dry_run
   conftest.py       -- autouse in-memory SQLite DB fixture
@@ -291,7 +417,7 @@ Key adversarial tests:
 
 | Phase | Status | Milestone |
 |-------|--------|-----------|
-| 0 -- Validation | **COMPLETE** | 38-day backtest lead time validated |
+| 0 -- Validation | **COMPLETE** | 38-day lead time in a seeded synthetic backtest |
 | 1 -- Solo MVP | **COMPLETE** | FastAPI + SQLite + dashboard + quorum live |
 | 2 -- Network growth | **CORE COMPLETE** | Ed25519 signing, ClickHouse layer, DP noise + quorum gating live |
 | 3 -- Enterprise | In progress | Multi-tenant + audit + webhooks shipped; SOC 2, in-VPC probe, SLAs planned |
