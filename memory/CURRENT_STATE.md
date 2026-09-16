@@ -1,7 +1,15 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-09-04 (Session 049: FIRST PUBLIC ARTEFACT IN 42 DAYS.
+# Last updated: 2026-09-16 (S051-S053) — PARTIAL REFRESH: header, baseline
+# and the block below only; the 'Open now' list further down is still the
+# S049 snapshot. Current backlog: project_open_tasks.md, section S051-S053.
+#   main @48dfda0 (FLOOR-1b merge), gate GREEN 378 on 2026-09-16.
+#   Landed since S049: FLOOR-1 (signed before merge), SKILL-1, BUF-1,
+#   FLOOR-1b, README-1. mistral leg is NOT dark any more [measured
+#   2026-09-16: STABLE, window_end 2026-09-16T09:58Z].
+#   probe-weather-multi failed #121-#148 (28 runs); cause unknown.
+# Prior: 2026-09-04 (Session 049: FIRST PUBLIC ARTEFACT IN 42 DAYS.
 # Weather Report #1 written from measured data and published to dev.to +
 # LinkedIn, with an archival copy committed to docs/reports/ BEFORE
 # publication so the repository holds the earliest timestamp. Keystone
@@ -52,7 +60,8 @@
   2026-09-02 preceded the signature by two days; both dates in the report.
 
 ## Baseline (re-verify at session start — do not trust this file)
-- Tests: **325 on MAIN**. Host gate 2026-09-04: ruff check clean, ruff
+- Tests: **378 on MAIN** (host gate 2026-09-16, ruff clean). Older line:
+  325 on MAIN. Host gate 2026-09-04: ruff check clean, ruff
   format clean (62 files), pytest 325 passed, in 4.31 s.
 - **FINDING (S049, open): the gate runs on `Python 3.10.11`, but BOTH
   `pyproject.toml:8` and `pyproject_probe.toml:49` declare

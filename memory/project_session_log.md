@@ -4020,3 +4020,111 @@ the CSV did not do is confirm the diagnosis it was meant to test — the
 leg measured healthy, and the failure that started this remains
 unexplained. That is a better outcome than a confirmation would have
 been, because the confirmation on offer was the Executor's own guess.
+
+## SESSIONS 051-053 — 2026-09-14 .. 2026-09-16
+## FLOOR-1 measured and signed BEFORE merge (a first), BUF-1 landed,
+## a second-date run confirmed the floor, README reopened on the
+## measurement. Written 2026-09-16 by the Executor on Director approval.
+
+WHY THIS ENTRY IS LATE
+S051 and S052 closed on 2026-09-15 without a log entry; their state lived
+only in the Cowork project memory (project_resume_point). This entry is
+reconstructed from that record plus today's measurements. Hashes below
+are as recorded there; the S053 ones are from Director PowerShell output
+seen this session.
+
+S051 (2026-09-14/15) — FLOOR-1: DETERMINISM FLOOR MEASURED
+  Instrument scripts/measure_drift_floor.py (standalone, no gateway, no
+  window slide). Seven runs of CANARY_SUITE_V2, temperature 0,
+  max_tokens 128, 350 calls, Google OpenAI-compatible endpoint,
+  2026-09-14 22:32Z .. 00:00Z. Writeup docs/evidence/2026-09-15-drift-floor.md.
+  - gemini-3.1-flash-lite 42/42 = 100% (positive control).
+  - gemini-3.5-flash-lite 59.5-63.4% over three pairs.
+  - -latest alias NOT distinguishable from pinned 3.5 (57.1-64.3%).
+  - 3.5 -> 3.1 separates only on length (-23.2..-25.3%); hashes cannot.
+  Killed conclusion (fifth in two sessions): "stability is a property of
+  the prompt category" — refusal_tone is 8/8 on 3.1.
+  Defects: (1) per-call nonce inside the hashed tool-call JSON, also in
+  probe/canary.py — 8/50 production canaries never match themselves;
+  deliberately NOT fixed before the talk. (2) no pytest coverage for the
+  instrument. (3) same --label silently overwrote a clean run; guard
+  added (exit 3), fired twice in production the same evening.
+  Found: KEYSTONE_REPORT_FLOOR-1.md and skills/ were untracked.
+  Baseline re-measured on host: 345 (not 325).
+
+S052 (2026-09-15) — SIGNATURES FIRST, THEN MERGES
+  FLOOR-1: branch 97063de; Keystone SIGNED e40fcf0 BEFORE merge — the
+    first time in project history the signature preceded the merge;
+    merged --no-ff c614492; host gate on main GREEN 345.
+  SKILL-1: skills/measure-first; +2 Earned blocks (rules 6, 8); removed
+    "no attribution needed" (conflicts with Apache-2.0). 474a115, merged
+    a6766a7, host gate GREEN 345.
+  BUF-1 (Director decision: build now, merge before the 2026-09-17 talk;
+    Executor had recommended after — overruled): probe/spool.py disk
+    spool (30 h TTL), has_batch on BaseRepository + SQLite + ClickHouse,
+    gateway 409 on duplicate batch_id before save_batch, live_emit
+    drain-first + spool on 5xx/transport, ProbeConfig.spool_dir.
+    tests/test_spool.py +33. c97cfad; first gate RED (2 keystone,
+    unsigned by design); second RED — the Executor's own report quoted
+    the UNSIGNED marker in prose (defect 5, fixed); Keystone SIGNED
+    04e9be4 before merge; branch gate GREEN 378; merged f150025.
+    main tree == gated buf-1 tree 6e1e455 [measured].
+  Found: tests/test_gateway.py _warm_and_drift re-sent a batch_id; fixed
+    with distinct ids, guard NOT widened.
+  Talk (Claude Code Meetup #3, Aarhus, 2026-09-17 17:00): fact-check of
+    OpenAI 2026-10-23 shutdowns (snapshot gpt-4o-2024-05-13 plus ~10
+    others, NOT "GPT-4o"); unverifiable lines removed ("+12% JSON errors
+    on a Tuesday", "56 hours", "about ten models"). Latest files:
+    Claude outputs/SEISMOGRAPH_talk_v10.md, deck_offline_v17.html.
+  Session end [measured]: main, clean, HEAD f150025. No log entry written.
+
+S053 (2026-09-16) — VERIFY, SECOND DATE, README
+  device_bash "Workspace unavailable" again; stage/commit fallback used.
+  Talk: v10/v17 checked by a subagent — the spool/"results lost" slide
+    and "no attribution needed" are ALREADY gone. No edit.
+  CI: ci run #132 (title = f150025 merge) in the success list [measured,
+    github.com Actions filter via WebFetch; API blocked from sandbox].
+  ANOMALY: probe-weather-multi runs #121-#148 FAILED (28 in a row);
+    #149 (manual), #150, #151 succeeded. keep-demo-warm #542, #543 failed
+    at ~15 min. Timestamps not obtained. Cause NOT investigated.
+  Render /v1/weather [measured, Director curl]: 200 in 22.5 s (wake).
+    google  STABLE 10/10/10, window 2026-09-12T09:28Z .. 2026-09-16T10:01Z
+    mistral STABLE 10/10/10, window 2026-08-30T10:30Z .. 2026-09-16T09:58Z
+    (mistral is no longer dark.) Deployed commit NOT confirmable from the
+    response; 409 NOT verified live (no batches sent, by design).
+  FLOOR-1b: run a4, gemini-3.5-flash-lite, 2026-09-16T15:32:27Z, 50/50 ok.
+    a1/a2/a3 vs a4: 25/42, 26/41, 25/42 = 59.5-63.4%; length -2.7, -4.4,
+    -1.8%. Floor unchanged across two dates; length noise band widens to
+    -4.4..+1.8% — still far from the -23..-25% generation change.
+    Addendum appended to the writeup (original body untouched).
+    Commit 5e7331f; host gate GREEN (ruff clean, 378 passed); merged
+    --no-ff 48dfda0; pushed main + branch; status clean [measured].
+  README-1: opening rewritten around the FLOOR-1 measurement with
+    denominators, positive control, limits and a one-line compare
+    command (verified to run with stdlib-only Python in the sandbox);
+    federated plan and 38-day backtest moved lower and labelled
+    "seeded synthetic replay, not a real detection"; 2am block labelled
+    as an illustration; hardcoded "23 tests" removed. Landed on
+    seismograph/task-readme-1 together with this entry — gate result
+    and merge hash are in git, not here.
+  Talk note: "one evening" stays true for the seven runs; may add "a
+    repeat run a day later gave the same 60%".
+
+OPEN AT CLOSE
+  - probe-weather-multi 28-run failure streak: cause unknown; board
+    windows stretched (google from 09-12).
+  - Verify 409 is live on Render (needs a deliberate test batch or a
+    deploy log read — Director call).
+  - BUF-2: gateway stamps rows with ARRIVAL time; a spooled late batch
+    reads fresh (weakens DASH-3 up to ~59 h). Fix: store signed
+    window_end clamped to now. Decision open.
+  - UNIQUE constraint on batch_id; runner spool (actions/cache).
+  - live_emit spool default: CHANGELOG reads as ON (.seismograph_spool/,
+    SEISMOGRAPH_SPOOL_DIR=off disables) while ProbeConfig is OFF — check
+    code before anyone says "off by default".
+  - Nonce fix in probe/canary.py (after the talk; changes historic
+    tool-canary hashes — needs a versioned baseline).
+  - measure_drift_floor.py pytest coverage -> `seismograph compare`.
+  - Alias and 3.1 groups measured on one date only.
+  - Carried: requires-python 3.11 vs 3.10 gate; PRIV-012; quorum-gated
+    metrics; Dependabot; business/ not backed up; Director clicks.
