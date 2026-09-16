@@ -154,3 +154,35 @@ withdrawn.
 
 `compare` imports nothing from this repository, so the published CSVs
 can be checked by anyone with a standard Python.
+
+## Addendum 2026-09-16 -- a second date (run a4)
+
+One more run of the same suite on the same pinned model,
+`gemini-3.5-flash-lite`, same settings (temperature 0,
+`max_tokens=128`, `CANARY_SUITE_V2`). Run `a4` started
+2026-09-16T15:32:27Z, about 41 hours after `a1` (2026-09-14T22:32:30Z).
+50/50 calls ok. Raw data `driftfloor/run_a4.csv`,
+`driftfloor/summary_a4.json`. Compared with the unchanged
+`compare` command; `tool_calling` excluded as before.
+
+    a1 vs a4   3.5-flash-lite   25/42   59.5%   length  -2.7%
+    a2 vs a4   3.5-flash-lite   26/41   63.4%   length  -4.4%
+    a3 vs a4   3.5-flash-lite   25/42   59.5%   length  -1.8%
+
+What this adds:
+
+1. **Hash agreement across two dates is the same as inside one
+   evening** (59.5-63.4% in both). The floor for this model did not move
+   between the two dates.
+2. **The length noise band is wider than one evening showed.** Within
+   the evening it was -2.6% to +1.8%; across two dates it is -4.4% to
+   +1.8%. The generation change (3.5 -> 3.1, -23.2% to -25.3%) is still
+   far outside it, so Result 3 stands with a wider band.
+3. `tool_calling` length identity was 7/8 in a1 vs b1 (same evening) and
+   is 0/8 or 1/8 across dates. One observation per pair; no conclusion
+   is drawn from it.
+
+What it does not change: still one provider and one model family, and
+now two dates instead of one. Limitation 1 above should be read with
+"one evening" replaced by "two dates, 41 hours apart" for the pinned
+3.5 model only; the alias and 3.1 groups were not re-run.
