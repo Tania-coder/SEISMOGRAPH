@@ -4128,3 +4128,172 @@ OPEN AT CLOSE
   - Alias and 3.1 groups measured on one date only.
   - Carried: requires-python 3.11 vs 3.10 gate; PRIV-012; quorum-gated
     metrics; Dependabot; business/ not backed up; Director clicks.
+
+---
+
+## SESSION 054 — 2026-09-19
+## BENCH-1: the canary corpus becomes data, and its identity becomes
+## something the gate can check. Written 2026-09-19 by the Executor.
+## ENGINE-ONLY SESSION: nothing published, no probe run, no live number
+## moved. The second observer was not advanced (guide_pack 06, rule D4).
+
+TRIGGER
+Post-talk feedback from Augustin Gottlieb at Claude Code Meetup #3
+(2026-09-17): the 50-prompt canary suite does not look strong; build the
+infrastructure around benchmarks rather than compete with them, and let
+the user choose the corpus. He sent
+github.com/brandonhimpfen/awesome-ai-benchmarks-evaluation.
+
+WHAT THE CODE ALREADY DID [measured, reading before agreeing]
+  execute_canary and execute_canary_strict already take `suite` as a
+  parameter; CANARY_SUITE_V1 is only a default. suite_content_hash
+  already content-addresses an arbitrary corpus plus its frozen tool
+  schemas. The corpus was pluggable everywhere except at the point
+  where a corpus could arrive: it was a Python literal, so a suite
+  could not be chosen, only edited.
+
+D1 — FOUND BEFORE ANY CODE WAS WRITTEN
+  test_canary_suite_v2.py asserts the suite hash is stable and that
+  v2.0.0 differs from v1.1.0, but BOTH SIDES of every such assertion
+  are recomputed from the corpus present at run time. Prompt ids,
+  category counts, entry key shape and prefix identity were pinned;
+  the prompt TEXT was not. A silent corpus edit would have made every
+  historical time-series incomparable without failing one test. The
+  content-addressed-baseline invariant had no gate.
+
+DIGESTS PINNED [measured on main @45d7846]
+  v2.0.0 + tools d4fbb0a0ee7f704accc2b91c2832a4905cdf7b5cb175785490eabe878b9aba14
+  v2.0.0 no tools 2fa1bb7bc9c2b43636fcf80eb5b76b20ce861c24a729bac07badf4953b37422b
+  v1.1.0 + tools 62422b5875d6ec785829d715f7155305cb322bb0a85c5525ab73f20bf86808c8
+  Break-verified: rewording one prompt in probe/canary.py ("capital
+  city" -> "capital") turned the new file red (2 failed); restoring it
+  returned 7 passed. The test detects a corpus edit, not its own
+  self-consistency.
+
+WHAT LANDED
+  c2017e5  tests/test_suite_corpus_pinned.py, 7 tests. Host gate GREEN
+           385 (378 + 7), ruff clean, 69 files.
+  f880249  probe/suite_spec.py (SuiteSpec + load_suite_spec),
+           probe/suites/canary_v2.json (generated programmatically from
+           CANARY_SUITE_V2 — no prompt retyped), tests/test_suite_spec.py
+           (13 tests). 781 insertions. Host gate GREEN 398.
+  a415c6c  docs/keystone/KEYSTONE_REPORT_BENCH-1.md, SIGNED 2026-09-19
+           BEFORE the merge — third in a row after FLOOR-1 and BUF-1.
+  3d1d079  merge --no-ff to main. Host gate on main GREEN 398, ruff
+           clean, 71 files. Pushed; branch pushed; tree clean [measured,
+           Director PowerShell].
+  BASELINE 378 -> 398.
+
+THE DESIGN DECISION WORTH KEEPING
+  A suite_id recorded inside a spec file is treated as a CLAIM, not as
+  data: load_suite_spec recomputes it from the corpus and raises on a
+  mismatch. A file edited in place therefore refutes itself at load
+  time instead of silently starting a new baseline under the old
+  version string. `license` is mandatory and enforced at load, because
+  a benchmark-derived corpus carries upstream terms and a corpus whose
+  terms are unrecorded cannot be audited afterwards.
+
+EQUALITY WITH THE LITERAL, ESTABLISHED TWICE [measured, mock, offline]
+  spec.as_suite() == CANARY_SUITE_V2 field for field, and mock runs
+  compared result by result through BOTH execute_canary and the
+  production execute_canary_strict, excluding timestamp and latency.
+  Round trip through the Director's disk: the digest recomputed from
+  the bytes as they sit on D:\ equals the pin.
+
+D2 — CONTRACT CRITERION MET WITH THE WRONG RUNNER
+  Acceptance criterion 5 named execute_canary_strict; the first
+  delivery established equality through execute_canary only, which no
+  observer calls. Caught by the Executor re-reading the contract
+  against the delivery BEFORE the commit, and closed by a thirteenth
+  test. Had it passed unnoticed, the commit message would have claimed
+  production-path equality that no test established.
+
+D3 — THE BRIDGE WROTE A STALE REVISION, SILENTLY
+  device_commit_files was called twice with the same output filename.
+  The second call reported success, the file's mtime on D:\ advanced,
+  and the content did not change. Detected by comparing the size
+  reported by device_list_dir and searching the file read back for a
+  token that had to be present. Worked around with a new output
+  filename. Third member of its family after S029 and S049.
+
+D4 — A SIGNATURE LANDED ON A SUPERSEDED REVISION
+  The Director adjudicated Keystone section 8 item by item and required
+  three changes: split fact from plan in 5.2, replace the size-based
+  bridge rule with a digest-based one, give every empty checkbox a
+  reason. The Executor made all three and wrote the new revision. The
+  Director's editor still held the previous revision — opened by a
+  command the Executor supplied — and saving from that buffer restored
+  the old text under a valid signature. Measured: 11680 bytes /
+  1dc83142... on disk against the authored 14428 / 49743d19...;
+  confirmed BY CONTENT (the string "SHA-256 against the source" was
+  absent), not by size. THE SIGNATURE GATE PASSED: it matches two
+  substrings and cannot tell which revision carries them, so a report
+  was correctly signed while asserting, under that signature, the very
+  plan the Director had ruled must not be bundled. The Executor
+  declared the signature void rather than editing the body beneath it,
+  reissued with D4 recorded inside the report, and the Director signed
+  the correct revision — verified by reading it back for the header,
+  the four ticks, the two reasoned empty boxes and the digest-form rule
+  before the commit. Final signed file SHA-256 4519637f...e4d5.
+
+  The Executor's own contributing errors, recorded: it applied the
+  change-the-filename rule to its output directory and not to the file
+  on the Director's disk; it supplied the command that opened the
+  editor without saying to close it before a rewrite; and it put a
+  non-runnable signature line inside a code fence, which was pasted
+  into PowerShell (the S046 rule already forbids this; broken at S052
+  and again here).
+
+RULES ADOPTED (Keystone BENCH-1 sec 7, accepted by signature)
+  - Never reuse an output filename between revisions within a session.
+    After every bridge write, read the file back and compare SHA-256
+    against the source before running the gate. SIZE IS NOT SUFFICIENT:
+    two revisions of equal length are indistinguishable by size. The
+    first draft of this rule used size and would have passed at the
+    exact failure it exists to catch.
+  - Never rewrite a file through the bridge while the Director may have
+    it open in an editor; say so before the write and confirm the
+    editor was closed and reopened.
+  Both are in memory/CURRENT_STATE.md as of this session.
+
+OPEN PROPOSAL, DIRECTOR'S TO DECIDE — NOT TAKEN HERE
+  A signature line should carry the SHA-256 of the body it signs. Ask
+  of the present control what failure would produce a perfect score and
+  the answer is D4. A digest makes that failure visible; it costs one
+  command at signing time.
+
+ACCEPTED AND HELD OPEN IN THE SIGNATURE
+  Accepted: 5.1 (wheel ships without the default corpus until the probe
+  release, backlog D-10); 5.3 (no production consumer, no observer
+  behaviour changed, engine-only session); 5.2 (two content-addressing
+  schemes coexist — LIMITATION accepted, the rebase NOT scheduled,
+  safeguard G-23); sec 7 (the rules above, in digest form).
+  Held open ON PURPOSE, each with its reason in the document:
+  5.5 (the PRIV-011 320-char clamp would flatten avg_output_length on a
+  long-form corpus — the one feature that separated generations with no
+  overlap in FLOOR-1; UNMEASURED, so an empty box requires a
+  measurement while a tick would have made it an accepted risk; held
+  pending G-21) and BENCH-0 (an open decision, not a limitation of this
+  task; belongs in the decision register as its own entry).
+
+OPEN AT CLOSE
+  - BENCH-0: fleet-only versus fleet plus a registry of pinned public
+    suites. Naive pluggability makes M = 1 PER SUITE and destroys
+    quorum. GATES BENCH-2.
+  - Measure the PRIV-011 clamp against a long-form corpus before
+    BENCH-2.
+  - BENCH-2 (sampler + first adapter), BENCH-3 (a correctness feature
+    on CanaryResult — pass-rate answers "did it get worse", which hash
+    agreement cannot).
+  - Nonce fix, now cheaper: it rides as a new suite version.
+  - probe/suites not declared as package data (fold into D-10).
+  - Carried unchanged: probe-weather-multi 28-run failure streak;
+    409 not verified live; BUF-2; UNIQUE on batch_id; runner spool;
+    live_emit spool default; requires-python 3.11 vs a 3.10 gate;
+    PRIV-012; quorum-gated metrics; business/ not backed up; Director
+    clicks.
+  - The second observer remains the binding constraint. Strongest
+    leads, neither followed up: Augustin Gottlieb (Merkle, QA &
+    Automation — plausibly already runs an eval suite in CI, which is
+    exactly the population BENCH-1 lowers the barrier for) and Anders
+    Hansen (AgentX, unattended scheduled agents).

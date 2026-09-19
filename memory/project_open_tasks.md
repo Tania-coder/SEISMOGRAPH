@@ -1,7 +1,11 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-16 (Sessions 051-053: FLOOR-1 measured and
+# Last updated: 2026-09-19 (Session 054: BENCH-1 landed — the canary
+# corpus is pinned by digest in the gate and loadable as data; baseline
+# 378 -> 398; Keystone signed before the merge, third in a row. Engine-only
+# session: nothing published, no probe ran, second observer not advanced.)
+# Prior: 2026-09-16 (Sessions 051-053: FLOOR-1 measured and
 # signed BEFORE merge; SKILL-1 and BUF-1 landed; baseline 378; second-date
 # run a4 merged 48dfda0; README reopened on the measurement.)
 # Prior: 2026-09-04 (Session 049: FIRST PUBLIC ARTEFACT IN 42 DAYS.
@@ -28,6 +32,72 @@
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S054 — 2026-09-19 (the corpus becomes data, and its identity gated)
+Detail: project_session_log.md, entry "SESSION 054".
+Trigger: post-talk feedback from Augustin Gottlieb (2026-09-17) — build
+the infrastructure around benchmarks rather than compete with them, and
+let the user choose the corpus.
+
+### Landed
+- [x] BENCH-1 — corpus digests pinned in the gate (c2017e5), corpus
+      loadable from a data file that refutes itself when edited in place
+      (f880249), Keystone signed before the merge (a415c6c).
+      Merged --no-ff to main @3d1d079, host gate GREEN 398, pushed.
+      **Baseline 378 -> 398.**
+- [x] CURRENT_STATE.md fully refreshed, including the "Open now" list
+      that had been the S049 snapshot since 2026-09-04.
+
+### Decisions owed before more BENCH work
+- [ ] **BENCH-0 — the two-tier decision.** Fleet-only versus fleet plus
+      a registry of pinned public suites. Naive pluggability makes M = 1
+      PER SUITE and destroys quorum. GATES BENCH-2. Director/Guide.
+- [ ] **Measure the PRIV-011 clamp against a long-form corpus.**
+      Keystone BENCH-1 sec 5.5, left unaccepted ON PURPOSE so that it
+      requires a measurement rather than becoming an accepted risk.
+      Held pending G-21.
+
+### Open — engine
+- [ ] BENCH-2 — deterministic sampler (benchmark id + revision + seed +
+      n -> fixed item ids) plus the first real adapter. Blocked on the
+      two decisions above. Until it exists no public benchmark is
+      usable: a corpus over 200 prompts is rejected, not reduced.
+- [ ] BENCH-3 — a correctness feature on CanaryResult. Hash agreement
+      answers "did the output change"; pass-rate answers "did it get
+      worse". Backward-compatible default None, as tool_call_valid was.
+- [ ] Nonce fix in probe/canary.py. Cheaper now: with the corpus
+      versioned as data it rides as a new suite version rather than a
+      silent baseline discontinuity.
+- [ ] pytest for scripts/measure_drift_floor.py, then `seismograph
+      compare` as a real command.
+- [ ] Reconcile the two content-addressing schemes (BENCH-1 sec 5.2).
+      Limitation ACCEPTED; the rebase is NOT scheduled. Safeguard: G-23.
+- [ ] pyproject_probe.toml does not declare probe/suites as package
+      data — the wheel ships the loader without the default corpus.
+      Fold into D-10 / probe 1.2.0.
+
+### Carried, unchanged
+- [ ] probe-weather-multi failed #121-#148 (28 in a row); #149-#151
+      green. Cause still uninvestigated.
+- [ ] Confirm the gateway 409 change is live on Render.
+- [ ] BUF-2 (signed window_end clamped to arrival); UNIQUE on batch_id;
+      runner spool via actions/cache; live_emit spool default.
+- [ ] Re-run the alias and 3.1 groups on a second date.
+- [ ] requires-python >= 3.11 vs a gate on 3.10.11.
+
+### Process defects recorded this session
+- D3 — the bridge wrote a stale revision under a reused output filename
+  and reported success. Rule adopted (Keystone BENCH-1 sec 7, accepted):
+  never reuse an output filename; verify by SHA-256, never by size.
+- D4 — the first Keystone signature landed on a superseded revision
+  because the editor held it in a buffer. The signature gate passed:
+  it matches two substrings and cannot tell which revision carries
+  them. Rule adopted: never rewrite through the bridge while the file
+  may be open in an editor. Open proposal, Director's to decide: a
+  signature line should carry the SHA-256 of the body it signs.
+- The Executor put a non-runnable line in a code fence and it was
+  pasted into PowerShell. The S046 rule already covers this; broken at
+  S052 and again here.
 
 ## S051-S053 — 2026-09-14 .. 2026-09-16 (measure, sign first, land)
 Detail: project_session_log.md, entry "SESSIONS 051-053".
