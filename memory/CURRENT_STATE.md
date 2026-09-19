@@ -1,10 +1,12 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-09-19 (Session 055) — CLAMP measurement taken,
-# G-31 deferred, and a PROVIDER-SIDE KEY MIGRATION found that can kill
-# the google leg. Prior full refresh: Session 054, same day.
-#   main @76ffe32 (S055 close-out), host gate GREEN 398 on 2026-09-19.
+# Last updated: 2026-09-19 (Session 056) — CLAMP-1 landed: the clamp
+# measurement is now an instrument in the gate, and on its first run it
+# corrected the numbers that produced it. The S055 claim that the
+# google leg is unrecoverable is REFUTED by measurement; see below.
+#   main @8be40a8 (CLAMP-1 merge), host gate GREEN 409 on 2026-09-19.
+# Prior: Session 055, same day, main @cb1194c, baseline 398.
 #   Landed S054: BENCH-1 (corpus digests pinned; corpus loadable as data).
 #   Baseline 378 -> 398. Keystone BENCH-1 signed BEFORE the merge —
 #   third in a row, after FLOOR-1 and BUF-1.
@@ -38,8 +40,8 @@
   FLOOR-1, BUF-1, BENCH-1.
 
 ## Baseline (re-verify at session start — do not trust this file)
-- Tests: **398 on MAIN** [measured 2026-09-19, host gate, ruff clean,
-  71 files formatted]. Prior lines: 378 (2026-09-16), 345, 325.
+- Tests: **409 on MAIN** [measured 2026-09-19, host gate, ruff clean,
+  73 files formatted]. Prior: 398, 378 (2026-09-16), 345, 325.
 - Gate is always all three: `ruff check .`, `ruff format --check .`,
   `py -3.10 -m pytest -q` from the repo root. Ruff pinned 0.15.20.
 - **Corpus digests are now pinned in the gate** (S054, BENCH-1).
@@ -85,20 +87,62 @@
 Evidence: docs/evidence/driftfloor/*.csv (pinned), verified twice by
 two independent implementations.
 
-## PROVIDER RISK — the google leg cannot be restored if its key is lost
-[measured 2026-09-19] Google is migrating API keys from `AIza` to `AQ.`
-("moving away from Traffic keys towards a more secure Authentication
-Key"). AI Studio now issues ONLY `AQ.` keys, and those FAIL against the
-Gemini API: `?key=` gives 401 ACCESS_TOKEN_TYPE_UNSUPPORTED, and the
-OpenAI-compatible endpoint gives 400 on every prompt (50/50 measured).
-No `AIza` key remains in the Director's AI Studio account.
+## PROVIDER RISK — the google leg needs CODE, not a new key
+[measured 2026-09-19, four paths tested with the body read, not the
+status code alone]
 
-The live google leg runs on the `GEMINI_API_KEY` GitHub secret, which
-cannot be read back. It worked on 2026-09-16. **If that secret is ever
-rotated, expires or is revoked, the leg dies and cannot be restored**
-with any key AI Studio issues today. An observer lost to a provider-side
-change that touches neither the model nor our code — the exact class
-this project exists to detect.
+Google is migrating API keys from `AIza` to `AQ.` ("moving away from
+Traffic keys towards a more secure Authentication Key"). AI Studio now
+issues ONLY `AQ.` keys and no `AIza` key remains in the Director's
+account. What was measured:
+
+| | native endpoint | OpenAI-compatible layer |
+|---|---|---|
+| `x-goog-api-key` header | **200** | 400 "Missing or invalid Authorization header" |
+| `Authorization: Bearer` | 401 | 400 on 50/50 prompts |
+
+**The key is live and the account is live.** What is incompatible is
+the AUTH SCHEME: Google's OpenAI-compatible layer demands an
+`Authorization` header, and the new key format is rejected by that
+header. `probe/providers.py` speaks only that layer.
+
+**S055 recorded this as "the observer cannot be restored". That was an
+overgeneralisation from two tested paths and it is REFUTED.** The leg
+is restorable by code: a native Gemini provider that calls
+`v1beta/models/{model}:generateContent` with `x-goog-api-key`, beside
+the existing `probe/adapters/`. The model tuple is preserved, the
+board history is preserved, nothing is orphaned. Caught by the Guide,
+which asked what had actually been tested versus what was claimed.
+
+**The freeze still stands, for a narrower reason:** until that adapter
+exists and is verified, the `GEMINI_API_KEY` GitHub secret is the only
+working path to this leg and cannot be read back. Do not rotate it, do
+not delete keys in AI Studio, do not tidy old Cloud projects.
+
+Unknown, and not to be guessed: whether Google will add `AQ.` support
+to the compatible layer. Their own forum says the migration is
+incomplete. "Wait for Google" is not a plan.
+
+## CLAMP-1 — the measurement is now an instrument [S056]
+
+`scripts/measure_clamp_saturation.py` + 11 tests. It imports
+MAX_OUTPUT_LENGTH, EPSILON, the sensitivity function and the noise
+helper from `probe/privacy.py` rather than restating them, so a change
+to the clamp turns the gate red instead of making a report quietly
+wrong (verified: 320 -> 512 fails 5 of 11).
+
+It classifies a stream INTERPRETABLE or UNINTERPRETABLE from its
+saturation fraction and never prints the word "stable" — a saturated
+stream is not stable, it is unmeasured.
+
+**On its first run it corrected the record that produced it.** The
+S055 figure |d|/b = 9.78 took its numerator from 42 paired records and
+its denominator from a 50-record flush. Both correct; the ratio was
+assembled from two n without saying so. Both scales are now printed
+with their n, and the headline uses the production flush (3.2000)
+because that is the noise on the published metric.
+
+Evidence: docs/evidence/clamp/clamp_c1.json.
 
 ## HARD RULES — the bridge and the mount
 - (S029) After ANY write through the mount, verify via a read-back —
@@ -195,11 +239,13 @@ this project exists to detect.
 
 ## Open now (ranked; full backlog: project_open_tasks.md)
 
-**Provider risk, new and highest**
-0. **The google leg's key is irreplaceable** (see above). Options, none
-   taken: obtain an `AIza` key another way; migrate the leg to a
-   provider whose keys still work; accept and document the risk. A
-   Director decision, not an Executor one.
+**Provider risk — rescoped from a decision to a task**
+0. **A native Gemini provider** that authenticates with
+   `x-goog-api-key` against `v1beta/models/{model}:generateContent`.
+   Needs its own contract. Until it lands the google leg depends on an
+   unreadable GitHub secret; the freeze above applies. The three
+   Director options recorded in S055 (find an AIza key, migrate the
+   leg, accept the risk) are all MOOT — none is needed.
 
 **Decisions owed before more engine work**
 1. **BENCH-0 — the two-tier decision.** Fleet-only (any private corpus,
@@ -207,7 +253,7 @@ this project exists to detect.
    pinned public suites that different observers can actually be
    compared on. Naive pluggability makes M = 1 PER SUITE and destroys
    quorum, so this gates BENCH-2. Director/Guide, not Executor.
-2. **5.5 in Keystone BENCH-1 — PARTLY ANSWERED, still open.** The
+2. **5.5 in Keystone BENCH-1 — measured and now gated (CLAMP-1).** The
    clamp was measured (above): it does not flatten the signal on our
    corpus, and the failure mode is low spread, not long answers.
    G-31 remains open: the saturation fraction on the LIVE legs is NOT

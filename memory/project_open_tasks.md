@@ -1,7 +1,11 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-19 (Session 055: clamp measured, the Executor's
+# Last updated: 2026-09-19 (Session 056: CLAMP-1 landed, baseline 409;
+# the instrument corrected its own source numbers on the first run; the
+# S055 claim that the google leg is unrecoverable is REFUTED — it needs
+# a native provider, not a new key. Guide memo G-33..G-39 accepted.)
+# Prior: 2026-09-19 (Session 055: clamp measured, the Executor's
 # own 5.5 prediction refuted, G-31 deferred on a provider-side key
 # migration that can kill the google leg. No code changed.)
 # Prior: 2026-09-19 (Session 054: BENCH-1 landed — the canary
@@ -35,6 +39,54 @@
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S056 — 2026-09-19 (the instrument, and what it corrected)
+Detail: project_session_log.md, entry "SESSION 056".
+
+### Landed
+- [x] CLAMP-1 — instrument + 11 tests + signed Keystone. Commit
+      217f983, merged 8be40a8, host gate GREEN 409. Baseline 398 -> 409.
+      Bound to the live constants: 320 -> 512 fails 5 of 11.
+- [x] F4 REFUTED by measurement. `AQ.` key + `x-goog-api-key` on the
+      native Gemini endpoint returns **200**. The compatible layer
+      demands `Authorization` and rejects the new format. The leg needs
+      CODE, not a key. Caught by the Guide asking what was tested.
+- [x] Guide decision memo received and accepted: G-33 (BENCH-0 decided
+      two-tier, on the S055 evidence), G-34 credential freeze, G-35
+      recovery search, G-36 Report #2 on 09-22, G-37 read the board
+      before quoting it, G-38 provenance line, G-39 D-14 withdrawn.
+- [x] Board read 2026-09-19; both legs STABLE; mistral collects at a
+      quarter of nominal (12a).
+
+### Open — next
+- [ ] **Native Gemini provider** (`x-goog-api-key`,
+      `models/{model}:generateContent`). Own contract. Replaces the
+      three Director options recorded in S055, all now moot.
+- [ ] **G-33 into the architecture document** plus a test that a
+      `suite_id` outside the pinned registry cannot enter the
+      correlation path. Unblocks BENCH-2.
+- [ ] **Report #2** — draft to the Guide 09-21, publish 09-22 (G-36).
+- [ ] Two follow-ups: Augustin, Anders. Drafted in session, NOT sent
+      by Director decision.
+- [ ] G-31 unchanged: live-leg saturation unmeasured, bounded <= 42.1%
+      (google) / <= 28.6% (mistral).
+- [ ] Guide's proposal to 05: every published number has an instrument
+      that recomputes it in the gate (Keystone CLAMP-1 sec 7).
+
+### Process defects this session
+- The gate and the commit were handed to the Director in one paste to
+  save a round trip. The gate was RED and the commit went in anyway,
+  carrying an unsigned Keystone. Amended after signing. The two steps
+  were deliberately separated in S054 for exactly this reason.
+- The G-31 checkbox was ticked by inertia along with four others, which
+  would have converted an unmeasured quantity into an accepted one.
+  The signature gate cannot see checkbox state. Third instance in two
+  days of a control passing something wrong.
+- Three attempts to sign through Notepad left the file untouched on
+  disk each time. Resolved by a single deterministic command that made
+  exactly the two stated changes and printed them back. For a one-line
+  edit to a known file, a command is a better instrument than an
+  editor, and it is still the Director's act.
 
 ## S055 — 2026-09-19 (measure the clamp; a provider kills the plan)
 Detail: project_session_log.md, entry "SESSION 055".
