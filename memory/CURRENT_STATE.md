@@ -4,7 +4,7 @@
 # Last updated: 2026-09-19 (Session 055) — CLAMP measurement taken,
 # G-31 deferred, and a PROVIDER-SIDE KEY MIGRATION found that can kill
 # the google leg. Prior full refresh: Session 054, same day.
-#   main @3d1d079 (BENCH-1 merge), host gate GREEN 398 on 2026-09-19.
+#   main @76ffe32 (S055 close-out), host gate GREEN 398 on 2026-09-19.
 #   Landed S054: BENCH-1 (corpus digests pinned; corpus loadable as data).
 #   Baseline 378 -> 398. Keystone BENCH-1 signed BEFORE the merge —
 #   third in a row, after FLOOR-1 and BUF-1.
@@ -77,8 +77,10 @@
   45% of runs.
 - Production is NOT affected today: live_emit uses max_tokens=64, which
   is exactly what the 320 bound was derived from. Upper bound from the
-  published means: saturation <= 40.7% (google), <= 27.9% (mistral).
-  The exact live fraction is NOT measured — see Open now.
+  published means [derived, 2026-09-19 read]: saturation <= 42.1%
+  (google, 134.691/320) and <= 28.6% (mistral, 91.386/320). Near-total
+  saturation is therefore ruled out on both live legs. The exact live
+  fraction is NOT measured — see Open now.
 
 Evidence: docs/evidence/driftfloor/*.csv (pinned), verified twice by
 two independent implementations.
@@ -141,9 +143,23 @@ this project exists to detect.
   on Neon free Postgres. Cron scheduled 05:17 and 17:17 UTC, but runs
   fire **2.5-4.5 h late** [measured S049], so multiple-of-12 h arithmetic
   on gaps is unsound.
-- Last raw read [measured 2026-09-16]: google and mistral both STABLE,
-  window_end 2026-09-16. The mistral leg is NOT dark any more. NOT
-  re-read since; treat as stale at session start.
+- **Last raw read [measured 2026-09-19, Director curl]:**
+    google/gemini-3.5-flash-lite  STABLE  10/10/10
+      avg_output_length 134.691   json 0.99139
+      window 2026-09-14T21:01:19Z -> 2026-09-19T09:35:54Z
+    mistral/mistral-small-latest  STABLE  10/10/10
+      avg_output_length  91.386   json 0.97644
+      window 2026-09-02T09:38:39Z -> 2026-09-19T09:31:44Z
+  Both legs alive; rows a few hours old. **[derived] The two legs are
+  NOT comparable in freshness and the board does not say so.** google
+  spans 108.6 h for 10 samples = 12.1 h mean interval, which is
+  nominal. mistral spans 407.9 h = 45.3 h, four times slower, so its
+  "recent" average covers SEVENTEEN days against google's four and a
+  half. mistral's window_start is still 2026-09-02T09:38:39Z — the
+  frozen timestamp from the September outage, not yet evicted because
+  only ten rows accumulated in seventeen days. The collection defect on
+  that leg is not closed; it stopped being visible because
+  sample_count reads a healthy 10. Same family as DASH-2.
 - PUBLIC ARTEFACT — Weather Report #1, published 2026-09-04:
     dev.to   https://dev.to/taniacoder/i-gave-my-drift-monitor-a-denominator-the-first-thing-it-exposed-was-a-hole-in-my-own-data-5508
     LinkedIn https://www.linkedin.com/feed/update/urn:li:activity:7501709720328753152/
@@ -195,9 +211,11 @@ this project exists to detect.
    clamp was measured (above): it does not flatten the signal on our
    corpus, and the failure mode is low spread, not long answers.
    G-31 remains open: the saturation fraction on the LIVE legs is NOT
-   measured, only bounded (<= 40.7% google). Blocked by the key
-   migration above; one run of measure_drift_floor.py at
-   --max-tokens 64 closes it as soon as a working key exists.
+   measured, only bounded (<= 42.1% google, <= 28.6% mistral, from the
+   2026-09-19 read). Blocked: no working credential exists on the
+   Director's machine for EITHER leg — the stored business/*.txt copies
+   both returned 401 on 2026-09-19. One run of measure_drift_floor.py
+   at --max-tokens 64 closes it as soon as a working key exists.
 
 **Engine**
 3. BENCH-2 — deterministic sampler (benchmark id + revision + seed + n
@@ -233,6 +251,11 @@ this project exists to detect.
 12. probe-weather-multi failed runs #121-#148 (28 in a row), #149-#151
     green; cause never investigated [2026-09-16]. keep-demo-warm
     #542/#543 failed at ~15 min.
+12a. **The mistral leg collects at a quarter of nominal rate** — 45.3 h
+    mean interval against google's 12.1 h [derived, 2026-09-19]. Its
+    published "recent" average therefore spans seventeen days. Not a
+    new defect; the S049 collection problem, still open and now
+    invisible behind a healthy-looking sample_count.
 13. The gateway 409 duplicate-batch change has NOT been confirmed live
     on Render. The deployed commit is not visible from /v1/weather.
 14. probe/suites/*.json is not declared as package data in
