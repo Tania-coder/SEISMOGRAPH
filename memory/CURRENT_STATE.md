@@ -1,8 +1,9 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-09-19 (Session 054) — FULL refresh, including the
-# "Open now" list, which had been the S049 snapshot since 2026-09-04.
+# Last updated: 2026-09-19 (Session 055) — CLAMP measurement taken,
+# G-31 deferred, and a PROVIDER-SIDE KEY MIGRATION found that can kill
+# the google leg. Prior full refresh: Session 054, same day.
 #   main @3d1d079 (BENCH-1 merge), host gate GREEN 398 on 2026-09-19.
 #   Landed S054: BENCH-1 (corpus digests pinned; corpus loadable as data).
 #   Baseline 378 -> 398. Keystone BENCH-1 signed BEFORE the merge —
@@ -52,6 +53,50 @@
   pyproject.toml and pyproject_probe.toml declare
   requires-python = ">=3.11".** The whole baseline is proven only on a
   version the package disclaims. Needs its own task.
+
+## Clamp measurement [measured 2026-09-19, S055]
+
+`MAX_OUTPUT_LENGTH = 320` on the FLOOR-1 corpus (max_tokens=128):
+
+- Clamp removes **32.3%** of the reference leg's mean (166.19 -> 112.52).
+- Saturation: 9/42 paired records (21.4%), 17/50 full (34.0%), max 710.
+- **The generation signal SURVIVES the clamp**: raw -39.67 chars
+  (-23.87%), clamped -31.29 (-27.80%), Laplace scale b = 320/(50*2) =
+  3.20, so |d|/b = 9.78. The Executor's prediction that the clamp would
+  flatten the signal is REFUTED. Sixth Executor conclusion killed by
+  measurement.
+- The real driver is not mean length but the FRACTION above the clamp,
+  which depends on spread. Our corpus is heavy-tailed (median 52.5 at
+  mean 166.2, CV 1.35) so mass stays below the cap. [derived] on a
+  low-spread corpus (CV 0.10, mean 600) the clamped difference is
+  EXACTLY 0.00 while the raw difference would be -141.6 chars (44x the
+  noise).
+- **Silent-failure mode:** a fully saturated clamp reports 320 +- noise,
+  i.e. a perfectly stable model. Indistinguishable from real stability
+  in the published fields. Same family as DASH-2's 10/10 while losing
+  45% of runs.
+- Production is NOT affected today: live_emit uses max_tokens=64, which
+  is exactly what the 320 bound was derived from. Upper bound from the
+  published means: saturation <= 40.7% (google), <= 27.9% (mistral).
+  The exact live fraction is NOT measured — see Open now.
+
+Evidence: docs/evidence/driftfloor/*.csv (pinned), verified twice by
+two independent implementations.
+
+## PROVIDER RISK — the google leg cannot be restored if its key is lost
+[measured 2026-09-19] Google is migrating API keys from `AIza` to `AQ.`
+("moving away from Traffic keys towards a more secure Authentication
+Key"). AI Studio now issues ONLY `AQ.` keys, and those FAIL against the
+Gemini API: `?key=` gives 401 ACCESS_TOKEN_TYPE_UNSUPPORTED, and the
+OpenAI-compatible endpoint gives 400 on every prompt (50/50 measured).
+No `AIza` key remains in the Director's AI Studio account.
+
+The live google leg runs on the `GEMINI_API_KEY` GitHub secret, which
+cannot be read back. It worked on 2026-09-16. **If that secret is ever
+rotated, expires or is revoked, the leg dies and cannot be restored**
+with any key AI Studio issues today. An observer lost to a provider-side
+change that touches neither the model nor our code — the exact class
+this project exists to detect.
 
 ## HARD RULES — the bridge and the mount
 - (S029) After ANY write through the mount, verify via a read-back —
@@ -134,17 +179,25 @@
 
 ## Open now (ranked; full backlog: project_open_tasks.md)
 
+**Provider risk, new and highest**
+0. **The google leg's key is irreplaceable** (see above). Options, none
+   taken: obtain an `AIza` key another way; migrate the leg to a
+   provider whose keys still work; accept and document the risk. A
+   Director decision, not an Executor one.
+
 **Decisions owed before more engine work**
 1. **BENCH-0 — the two-tier decision.** Fleet-only (any private corpus,
    never promoted to a public alert) versus fleet PLUS a registry of
    pinned public suites that different observers can actually be
    compared on. Naive pluggability makes M = 1 PER SUITE and destroys
    quorum, so this gates BENCH-2. Director/Guide, not Executor.
-2. **5.5 in Keystone BENCH-1, left unaccepted on purpose.** PRIV-011
-   clamps output length at 320 chars. A long-form corpus would clamp
-   flat and destroy avg_output_length — the one feature that separated
-   generations with no overlap in FLOOR-1. UNMEASURED; a measurement is
-   required before BENCH-2, which is why the box is empty.
+2. **5.5 in Keystone BENCH-1 — PARTLY ANSWERED, still open.** The
+   clamp was measured (above): it does not flatten the signal on our
+   corpus, and the failure mode is low spread, not long answers.
+   G-31 remains open: the saturation fraction on the LIVE legs is NOT
+   measured, only bounded (<= 40.7% google). Blocked by the key
+   migration above; one run of measure_drift_floor.py at
+   --max-tokens 64 closes it as soon as a working key exists.
 
 **Engine**
 3. BENCH-2 — deterministic sampler (benchmark id + revision + seed + n

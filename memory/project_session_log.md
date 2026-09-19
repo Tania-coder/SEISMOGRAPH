@@ -4297,3 +4297,148 @@ OPEN AT CLOSE
     Automation — plausibly already runs an eval suite in CI, which is
     exactly the population BENCH-1 lowers the barrier for) and Anders
     Hansen (AgentX, unattended scheduled agents).
+
+---
+
+## SESSION 055 — 2026-09-19
+## CLAMP-1: the clamp was measured, the Executor's own prediction was
+## refuted, and the live-leg half of the question was blocked by a
+## provider changing its credential format. Written 2026-09-19.
+## ENGINE-ONLY SESSION, seventh in a row. No publication, no probe
+## delivered to the gateway, second observer not advanced.
+
+CONTRACT
+CLAMP-1 accepted by the Guide with three amendments: G-30 (print three
+numbers -- raw, clamped, clamped-plus-noise -- and name the operation
+order), G-31 (measure saturation on the LIVE legs, not only on FLOOR-1
+and synthetic shapes), G-32 (no edits to probe/, engine/, gateway/).
+G-32 held: not one line was changed in those trees this session.
+
+PRE-START CHECKS THE GUIDE REQUIRED
+  Derivation check [measured]: from -39.67 at -23.87% the implied
+  reference mean is 166.19; measured 166.1905. From -31.29 at -27.80%,
+  112.55; measured 112.5238. The Guide's reading was correct: the clamp
+  removes 32.3% of the reference leg's mean ALREADY, on today's corpus.
+  Independent recount [measured]: all six numbers recomputed by a
+  second implementation (manual CSV parsing, manual sums, no csv or
+  statistics module). Identical to four decimal places. Paired n = 42
+  confirmed as 50 prompts minus 8 tool_calling.
+
+WHAT WAS MEASURED (clamp = 320, EPSILON = 2.0, n = 50, b = 3.20)
+  Saturation on FLOOR-1 (max_tokens=128): 9/42 paired (21.4%), 17/50
+  full (34.0%), max observed 710 = 2.2x the cap.
+  Signal, 3.5 vs 3.1, paired, tool_calling excluded:
+    raw      -39.67 chars  -23.87%
+    clamped  -31.29 chars  -27.80%   |d|/b = 9.78
+  THE SIGNAL SURVIVES. The relative difference GREW, because clamping
+  removes tail mass asymmetrically and the generation difference lives
+  in that tail.
+
+THE PREDICTION THIS KILLED
+  Keystone BENCH-1 sec 5.5 said the clamp "would flatten flat and
+  destroy avg_output_length" on a long-form corpus. Refuted for our
+  corpus at any plausible scale: scaling the whole distribution 20x
+  (mean 3324 chars) still leaves |d|/b = 8.33. Sixth Executor
+  conclusion killed by measurement.
+
+WHAT THE FAILURE MODE ACTUALLY IS [derived, synthetic shapes]
+  Not mean length -- SPREAD relative to the cap. Our corpus is
+  heavy-tailed: median 52.5 at mean 166.2, CV 1.35, so mass stays below
+  the cap. A low-spread corpus saturates completely:
+    mean 400, CV 0.10 -> 98% clamped, d = -20.68, |d|/b = 6.46
+    mean 600, CV 0.10 -> 100% clamped, d =   0.00, |d|/b = 0.00
+    mean 600, CV 0.35 ->  90% clamped, d =  -8.94, |d|/b = 2.79
+  At mean 600 / CV 0.10 the unclamped difference would be -141.6 chars,
+  44x the noise. The clamp turns it into exactly nothing.
+  These shapes are [derived], not measured. Only the FLOOR-1 numbers
+  are measured.
+
+THE FINDING THAT MATTERS MORE THAN THE NUMBER
+  A fully saturated clamp emits 320 +- Laplace noise: a perfectly flat,
+  perfectly stable line. It is indistinguishable from real stability in
+  every field published today. Ask what failure would produce a perfect
+  score and the answer is a saturated clamp. Same family as DASH-2,
+  where both legs reported a clean 10-of-10 while one lost 45% of runs.
+  Remedy, NOT implemented here (G-32): emit the saturation fraction
+  alongside the metric, as DASH-2 added denominators; and make
+  MAX_OUTPUT_LENGTH a function of the suite's max_tokens, recorded in
+  the batch because it enters the DP sensitivity.
+
+OPERATION ORDER, as G-30 required it named
+  probe/privacy.py 673-690: clamp each record -> mean -> Laplace noise
+  on the mean. Noise AFTER clamp, so G-30's escape clause does not fire.
+
+PRODUCTION IS NOT AFFECTED TODAY [measured, code]
+  scripts/live_emit.py and probe_weather.yml both set max_tokens=64,
+  which is exactly what the 320 bound was derived from ("64 max_tokens
+  * 5 chars/token"). FLOOR-1 ran at 128, which is why a third of its
+  records exceed the cap. Upper bound from published means: saturation
+  <= 40.7% (google, 130.398) and <= 27.9% (mistral, 89.42). The
+  catastrophic case -- near-total saturation, zero difference -- is
+  therefore RULED OUT on the live legs. The exact fraction is not
+  measured.
+
+G-31: NOT DONE, AND WHY [measured]
+  The plan was one run of measure_drift_floor.py at --max-tokens 64
+  against the live google configuration. It failed:
+  1. Run p64: 50/50 prompts ProviderError:400, uniform, key present.
+     Not 429, not quota.
+  2. Diagnosis by one REST call (the probe's own logs carry the status
+     but not the body -- the S049 observability blocker, confirmed by a
+     second independent instance): 401 UNAUTHENTICATED, reason
+     ACCESS_TOKEN_TYPE_UNSUPPORTED.
+  3. Cause: Google is migrating API keys from `AIza` to `AQ.`; per its
+     own developer forum, "moving away from Traffic keys (AIza) and
+     towards a more secure Authentication Key (AQ)". AI Studio now
+     issues ONLY `AQ.` keys, and those do not authenticate against the
+     Gemini API by either method. No `AIza` key remains in the
+     Director's account.
+  4. Fallback to the mistral leg: the key was not to hand; a freshly
+     entered value returned HTTP 401 on an auth check, and the run was
+     refused before spending any calls.
+  G-31 therefore closes as a NAMED LIMITATION, not as a measurement.
+
+THE LARGER FINDING
+  The live google leg runs on the GEMINI_API_KEY GitHub secret, which
+  cannot be read back and which worked on 2026-09-16. If that secret
+  rotates, expires or is revoked, the leg dies and CANNOT be restored
+  with any key AI Studio issues today. An observer lost to a
+  provider-side change that touches neither the model nor our code.
+  For a project whose subject is exactly that class of change, this is
+  material for Report #2 and a Director decision: source an AIza key
+  another way, migrate the leg to a provider whose keys still work, or
+  accept and document the risk.
+
+METHOD NOTE
+  Three credential attempts were made and none burned a probe call: a
+  form check stopped the first two, an auth check stopped the third.
+  The form check was itself wrong -- it required `AIza`, which is the
+  format Google is retiring, and it blocked a key that was valid in
+  shape. Guard on the auth response, not on the shape of a credential.
+
+EVIDENCE KEPT
+  docs/evidence/clamp/run_p64.csv and summary_p64.json: 50 rows, all
+  failed, all ProviderError:400. Kept deliberately. It is the first
+  recorded instance of a leg failing because a provider changed its
+  credential format, and it is the second independent confirmation of
+  the observability blocker.
+
+DEFERRED BY DIRECTOR DECISION
+  The CLAMP-1 instrument, its tests and its Keystone report were
+  deferred to S056 (variant B). The measurement is recorded here and
+  reproducible from the pinned FLOOR-1 CSVs; the instrument turns it
+  from a log entry into a gate. Nothing in probe/, engine/ or gateway/
+  was touched, so no Keystone is owed for a code change that did not
+  happen.
+
+OPEN AT CLOSE
+  - The google leg's key is irreplaceable (above). Director decision.
+  - G-31, blocked on the above.
+  - CLAMP-1 instrument + tests + Keystone, S056.
+  - BENCH-0 (two-tier), unchanged and still gating BENCH-2.
+  - Report #2, fourth request from the Guide, still unanswered.
+  - Carried unchanged: probe-weather-multi 28-run streak; 409 not
+    verified live; BUF-2; UNIQUE on batch_id; runner spool; live_emit
+    spool default; requires-python 3.11 vs a 3.10 gate; PRIV-012;
+    quorum-gated metrics; business/ not backed up.
+  - Second observer: untouched for the seventh session running.
