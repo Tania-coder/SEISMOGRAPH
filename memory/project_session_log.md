@@ -4442,3 +4442,165 @@ OPEN AT CLOSE
     spool default; requires-python 3.11 vs a 3.10 gate; PRIV-012;
     quorum-gated metrics; business/ not backed up.
   - Second observer: untouched for the seventh session running.
+
+---
+
+## SESSION 056 — 2026-09-19
+## CLAMP-1: the measurement becomes an instrument, and the instrument
+## corrects the record that produced it. The S055 claim that the google
+## leg is unrecoverable is REFUTED by measurement.
+## Written 2026-09-19 by the Executor. Engine work plus one external
+## measurement; nothing published, no outreach sent.
+
+CONTEXT
+The Guide's decision memo on the S054/S055 packets arrived and was
+accepted: G-33 (BENCH-0 decided in favour of two tiers, on the S055
+evidence that the same real difference reads as -141.6 on one corpus
+and exactly 0.00 on another), G-34 (credential freeze), G-35 (a 30-
+minute non-destructive recovery search), G-36 (Report #2 on 09-22),
+G-37 (read the board immediately before quoting it), G-38 (the
+provenance line), G-39 (D-14 withdrawn in favour of always attaching
+CURRENT_STATE alongside the packet).
+
+The memo also made three corrections to the Executor, all accepted:
+the provenance contradiction between the S055 packet and CURRENT_STATE
+(answered: the packet was written before the board was read and never
+revised, so the 2026-09-19 read is operative); the -141.6 synthetic
+input (named: seeded Gaussian, realised mean 593.2, not the nominal
+600); and F4.
+
+F4 REFUTED [measured]
+The Guide observed that "the observer cannot be restored" was wider
+than its evidence: two auth paths had been tried, and the error text
+itself named a credential-type mismatch, which points at another path
+rather than at no path. Four paths were then tested, with the response
+body read rather than the status code alone:
+
+  AQ. key + x-goog-api-key + native endpoint          -> 200
+  AQ. key + Authorization: Bearer + native endpoint   -> 401
+  AQ. key + x-goog-api-key + OpenAI-compatible layer  -> 400
+      "Missing or invalid Authorization header"
+  AQ. key + Bearer + OpenAI-compatible layer          -> 400 x 50
+
+The key is live and the account is live. The incompatibility is the
+AUTH SCHEME: Google's compatible layer demands an Authorization header
+and rejects the new key format through it, and probe/providers.py
+speaks only that layer. The leg is restorable BY CODE -- a native
+Gemini provider using x-goog-api-key against
+models/{model}:generateContent -- with the model tuple and the board
+history preserved. The three Director options recorded in S055 (find
+an AIza key, migrate the leg, accept the risk) are all moot.
+
+The freeze still stands for a narrower reason: until that adapter
+exists, the GEMINI_API_KEY secret is the only working path and cannot
+be read back.
+
+WHAT LANDED
+  217f983  scripts/measure_clamp_saturation.py (343 lines),
+           tests/test_clamp_saturation.py (11 tests),
+           docs/keystone/KEYSTONE_REPORT_CLAMP-1.md (SIGNED
+           2026-09-19, before the merge, fourth in a row),
+           docs/evidence/clamp/clamp_c1.json.
+  8be40a8  merge --no-ff to main. Host gate GREEN 409 on main.
+  BASELINE 398 -> 409.
+
+THE INSTRUMENT
+It imports MAX_OUTPUT_LENGTH, EPSILON, _metric_sensitivity and
+_laplace_noise from probe/privacy.py rather than restating them.
+Verified binding: changing the clamp from 320 to 512 in a sandbox
+turned 5 of 11 tests red; restoring it returned 11 passed.
+
+It prints three numbers per comparison, as G-30 required -- before the
+clamp, after the clamp, after the clamp with DP noise -- and names the
+operation order (clamp each record, then mean, then Laplace noise on
+the mean; noise AFTER).
+
+It classifies a stream INTERPRETABLE or UNINTERPRETABLE from its
+saturation fraction and never prints the word "stable". A saturated
+stream is not stable, it is unmeasured, and the instrument refuses to
+emit a word a reader could mistake for a drift verdict.
+
+The adversarial demonstration, the one G-30 asked for: a low-spread
+corpus at mean 600, CV 0.10 saturates both legs completely. The
+clamped difference is EXACTLY 0.00 against a raw -141.64 -- and with
+DP noise on top the stream emits -3.12. Not nothing. A small non-zero
+number that reads as "almost stable". That is the dangerous form, and
+it is why the third column exists.
+
+D6 -- THE INSTRUMENT CORRECTED ITS OWN SOURCE, ON THE FIRST RUN
+The S055 record reports |d|/b = 9.78. That ratio took its numerator
+from 42 paired records and its denominator from a 50-record flush.
+Both figures are correct and the ratio is defensible -- 3.2000 is the
+noise on the metric the board actually publishes -- but assembling a
+ratio from two different n without saying so is what this project
+refuses in other people's work. Both scales are now computed and
+printed, each labelled with its n; the headline uses the production
+flush.
+
+This was not found by re-reading the log. The log entry had been
+reviewed, recomputed by a second implementation, quoted in a commit
+message and merged to main, and the error survived all of it, because
+none of those steps required the ratio to state the n it came from.
+It was found because the measurement had to be expressed as code, and
+code must name its inputs.
+
+D7 -- the first draft imported probe without putting the repository
+root on sys.path, so it ran only when invoked in a way nobody would
+use. Fixed with the same bootstrap measure_drift_floor.py uses.
+Recorded because an instrument that runs only under the author's
+conditions is not an instrument.
+
+PROCESS DEFECTS, ALL THREE THE EXECUTOR'S
+  1. The gate and the commit were handed over in ONE paste to save a
+     round trip. The gate came back RED -- the Keystone was unsigned --
+     and the commit ran anyway, putting an unsigned report into a
+     commit whose message claimed the task complete. Amended after
+     signing, on an unpushed branch, and recorded here rather than
+     hidden. S054 had deliberately separated these two steps for
+     exactly this reason and the Executor undid that.
+  2. The G-31 checkbox was ticked along with four others by inertia.
+     Ticking it would have converted an unmeasured quantity into an
+     accepted risk -- the precise outcome the Director had insisted be
+     prevented. The signature gate cannot see checkbox state; it
+     matches two substrings. Third instance in two days of a control
+     passing something substantively wrong. Caught by reading the file
+     back by content before the commit.
+  3. Three attempts to sign through Notepad left the file byte-
+     identical on disk, confirmed each time by size and mtime. The
+     edits were going somewhere else. Resolved by one deterministic
+     command that made exactly the two stated changes and printed them
+     back for confirmation. For a one-line change to a known file a
+     command is a better instrument than an editor, and running it is
+     still the Director's act -- the control is that the Director
+     decides, not that she uses a particular program.
+
+RULE PROPOSED (Keystone CLAMP-1 sec 7, accepted by signature)
+  A number that appears in a published artefact has an instrument that
+  recomputes it in the gate. Prose recording a measurement is a report
+  of a measurement, not the measurement. This is already what
+  measure_drift_floor.py does for FLOOR-1; it has never been stated as
+  a rule, and the gap showed the moment a measurement was recorded any
+  other way. For guide_pack/05, alongside G-37.
+
+ACCEPTED IN THE SIGNATURE
+  5.1 the 0.95 interpretability threshold is a judgement, not a
+  measurement; 5.2 the adversarial shapes are derived, not observed;
+  5.3 the silent-failure mode remains fully present in the live system
+  because G-32 forbade touching probe/ and that was correct; sec 7 the
+  rule above.
+  HELD OPEN on purpose: 5.4 / G-31, the live-leg saturation fraction,
+  still unmeasured and bounded only from the published means.
+
+OPEN AT CLOSE
+  - Native Gemini provider. Own contract. Highest value: it converts
+    the observer from "depends on an unreadable secret" to "restorable".
+  - G-33 into the architecture document plus a test that a suite_id
+    outside the pinned registry cannot enter the correlation path.
+    Unblocks BENCH-2.
+  - Report #2: draft to the Guide 09-21, publish 09-22.
+  - Augustin and Anders: letters drafted this session, NOT sent by
+    Director decision. Five days since the meetup at that point.
+  - G-31; BENCH-2; BENCH-3; the nonce fix; mistral collection rate;
+    probe 1.2.0 (the published wheel is two months stale and does not
+    contain BENCH-1, which matters the moment anyone accepts an offer
+    to try it).
