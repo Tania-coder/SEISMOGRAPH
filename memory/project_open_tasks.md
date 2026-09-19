@@ -1,7 +1,10 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-19 (Session 054: BENCH-1 landed — the canary
+# Last updated: 2026-09-19 (Session 055: clamp measured, the Executor's
+# own 5.5 prediction refuted, G-31 deferred on a provider-side key
+# migration that can kill the google leg. No code changed.)
+# Prior: 2026-09-19 (Session 054: BENCH-1 landed — the canary
 # corpus is pinned by digest in the gate and loadable as data; baseline
 # 378 -> 398; Keystone signed before the merge, third in a row. Engine-only
 # session: nothing published, no probe ran, second observer not advanced.)
@@ -32,6 +35,47 @@
 [ ] open  [~] in progress  [x] complete  [D] deferred
 
 ---
+
+## S055 — 2026-09-19 (measure the clamp; a provider kills the plan)
+Detail: project_session_log.md, entry "SESSION 055".
+Contract CLAMP-1 accepted by the Guide with amendments G-30, G-31, G-32.
+
+### Done
+- [x] Clamp measured on the FLOOR-1 corpus. 32.3% of the reference
+      mean removed; saturation 21.4% paired / 34.0% full; signal
+      SURVIVES at |d|/b = 9.78. The Executor's 5.5 prediction is
+      REFUTED; the driver is spread, not length.
+- [x] Silent-failure mode identified: a saturated clamp reports
+      perfect stability and is indistinguishable from real stability
+      in the published fields.
+- [x] Guide's derivation check and an independent recount of all six
+      pinned numbers, by a second implementation. Both passed.
+- [x] Operation order named: clamp -> mean -> Laplace noise
+      (privacy.py 673-690), so G-30's escape clause does not fire.
+
+### Not done — stated, not dropped
+- [ ] **G-31: saturation on the LIVE legs.** Blocked externally. Google
+      migrated API keys from AIza to AQ.; AQ. keys fail against the
+      Gemini API (401 / 400 on 50/50 prompts, measured); no AIza key
+      remains in the account; the Mistral key was not to hand. Upper
+      bound <= 40.7% (google) stands. One run at --max-tokens 64 closes
+      it when a working key exists.
+- [ ] **CLAMP-1 instrument, tests and Keystone.** Deferred to S056 by
+      Director decision (variant B). The numbers are recorded and
+      reproducible from the pinned CSVs; the instrument makes them a
+      gate rather than a log entry.
+
+### New, and larger than the task that found it
+- [ ] **The google leg's key is irreplaceable.** GEMINI_API_KEY in
+      GitHub cannot be read back and AI Studio no longer issues a key
+      that works. If it rotates or expires, the observer is gone.
+      Director decision: source an AIza key another way, migrate the
+      leg, or accept and document. Candidate material for Report #2.
+
+### Evidence kept
+- docs/evidence/clamp/run_p64.csv + summary_p64.json — 50/50
+  ProviderError:400. Kept deliberately: it documents the first time a
+  leg failed because a provider changed its credential format.
 
 ## S054 — 2026-09-19 (the corpus becomes data, and its identity gated)
 Detail: project_session_log.md, entry "SESSION 054".

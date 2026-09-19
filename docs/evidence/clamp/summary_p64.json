@@ -1,0 +1,19 @@
+{
+  "run_id": "p64-1789830100",
+  "label": "p64",
+  "model_tuple": "google/gemini-3.5-flash-lite",
+  "suite_version": "v2.0.0",
+  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "max_tokens": 64,
+  "pacing_ms": 4500,
+  "started_utc": "2026-09-19T15:01:40.964567+00:00",
+  "finished_utc": "2026-09-19T15:05:32.377829+00:00",
+  "n_prompts": 50,
+  "n_ok": 0,
+  "n_failed": 50,
+  "mean_output_length": null,
+  "median_output_length": null,
+  "json_valid_numerator": 0,
+  "json_valid_denominator": 0,
+  "csv": "run_p64.csv"
+}
