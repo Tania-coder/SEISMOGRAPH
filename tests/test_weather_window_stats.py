@@ -302,3 +302,70 @@ def test_snapshot_files_are_valid_published_rows():
         assert rows, f"{snap.name} is empty"
         for row in rows:
             assert required <= set(row), snap.name
+
+
+# --------------------------------------------------------------------
+# The published artefact itself
+# --------------------------------------------------------------------
+
+_REPORT_2 = _ROOT / "docs" / "reports" / "2026-09-22-weather-report-02.md"
+
+
+def test_report2_quotes_only_figures_the_instrument_reproduces():
+    """Close the loop the CLAMP-1 rule opens.
+
+    The rule accepted by signature is that a number in a published
+    artefact has an instrument that recomputes it in the gate.  The
+    tests above pin the instrument.  This one pins the ARTEFACT to the
+    instrument: if the clamp, the staleness threshold or the probe
+    schedule moves, the report stops matching its own evidence and the
+    gate names the file, rather than leaving a published number
+    quietly wrong on a platform that will not re-run anything.
+    """
+    if not _REPORT_2.is_file():
+        pytest.skip("Weather Report #2 not yet in the repository")
+    text = _REPORT_2.read_text(encoding="utf-8")
+
+    now = _by_tuple(snapshot_windows(_SNAP_0922))
+    then = _by_tuple(snapshot_windows(_SNAP_0909, _READ_0909))
+
+    expected = {
+        "mistral age, 2026-09-09": f"{then[_MISTRAL].age_hours:.2f} h",
+        "mistral age, 2026-09-22": f"{now[_MISTRAL].age_hours:.2f} h",
+        "mistral span, 2026-09-09": f"{then[_MISTRAL].span_hours:.2f} h",
+        "mistral span, 2026-09-22": f"{now[_MISTRAL].span_hours:.2f} h",
+        "mistral interval, then": (
+            f"{then[_MISTRAL].mean_interval_hours:.2f} h"
+        ),
+        "mistral interval, now": (
+            f"{now[_MISTRAL].mean_interval_hours:.2f} h"
+        ),
+        "nominal interval": (f"{now[_MISTRAL].nominal_interval_hours:.2f} h"),
+        "mistral rate, then": f"{then[_MISTRAL].collection_rate:.4f}",
+        "mistral rate, now": f"{now[_MISTRAL].collection_rate:.4f}",
+        "staleness threshold": f"{int(STALE_AFTER_HOURS)} hours",
+        "google saturation bound": (
+            f"{now[_GOOGLE].saturation_upper_bound * 100:.1f}%"
+        ),
+        "mistral saturation bound": (
+            f"{now[_MISTRAL].saturation_upper_bound * 100:.1f}%"
+        ),
+    }
+    missing = {
+        name: value for name, value in expected.items() if value not in text
+    }
+    assert not missing, (
+        "Weather Report #2 quotes figures this instrument no longer "
+        f"reproduces: {missing}. Either the report is stale or a live "
+        "constant moved; fix the report, never the pin."
+    )
+
+
+def test_report2_states_both_snapshots_it_rests_on():
+    """A reader must be able to recompute it without asking me."""
+    if not _REPORT_2.is_file():
+        pytest.skip("Weather Report #2 not yet in the repository")
+    text = _REPORT_2.read_text(encoding="utf-8")
+    assert _SNAP_0922.name in text
+    assert _SNAP_0909.name in text
+    assert "weather_window_stats.py" in text
