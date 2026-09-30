@@ -1,7 +1,12 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-09-19 (Session 056) — CLAMP-1 landed: the clamp
+# Last updated: 2026-09-30 (Session 057 close-out, reconstructed in
+#   S058). REPORT-2 landed 2026-09-22: main @2826760, baseline 431.
+#   Weather Report #2 is committed as the archival copy and is NOT
+#   published [measured 2026-09-30, dev.to API]; its figures are from
+#   the 2026-09-22 board read and must be re-read before posting (G-37).
+# Prior: 2026-09-19 (Session 056) — CLAMP-1 landed: the clamp
 # measurement is now an instrument in the gate, and on its first run it
 # corrected the numbers that produced it. The S055 claim that the
 # google leg is unrecoverable is REFUTED by measurement; see below.
@@ -40,8 +45,10 @@
   FLOOR-1, BUF-1, BENCH-1.
 
 ## Baseline (re-verify at session start — do not trust this file)
-- Tests: **409 on MAIN** [measured 2026-09-19, host gate, ruff clean,
-  73 files formatted]. Prior: 398, 378 (2026-09-16), 345, 325.
+- Tests: **431** [measured 2026-09-30, host gate on
+  seismograph/task-s057-close = main @2826760 + memory/*.md only,
+  ruff clean, 75 files formatted, py3.10.11]. Prior: 409
+  (2026-09-19, measured), 398, 378 (2026-09-16), 345, 325.
 - Gate is always all three: `ruff check .`, `ruff format --check .`,
   `py -3.10 -m pytest -q` from the repo root. Ruff pinned 0.15.20.
 - **Corpus digests are now pinned in the gate** (S054, BENCH-1).
@@ -80,7 +87,11 @@
 - Production is NOT affected today: live_emit uses max_tokens=64, which
   is exactly what the 320 bound was derived from. Upper bound from the
   published means [derived, 2026-09-19 read]: saturation <= 42.1%
-  (google, 134.691/320) and <= 28.6% (mistral, 91.386/320). Near-total
+  (google, 134.691/320) and <= 28.6% (mistral, 91.386/320).
+  On the 2026-09-22 read (Report #2, weather_window_stats.py) the
+  bounds are <= 0.4193 (google, mean 134.17486) and <= 0.2856
+  (mistral). Both sets are correct; they differ by read date only.
+  Always quote a bound with the read it came from. Near-total
   saturation is therefore ruled out on both live legs. The exact live
   fraction is NOT measured — see Open now.
 
@@ -238,6 +249,11 @@ Evidence: docs/evidence/clamp/clamp_c1.json.
   construction.** Central strategic fact, unchanged.
 
 ## Open now (ranked; full backlog: project_open_tasks.md)
+
+**Publication — owed since 2026-09-22**
+0. **Weather Report #2** — committed (docs/reports/2026-09-22-weather-
+   report-02.md), signed, NOT posted. G-36 missed. Fresh board read +
+   instrument re-run before the Director posts it.
 
 **Provider risk — rescoped from a decision to a task**
 0. **A native Gemini provider** that authenticates with
