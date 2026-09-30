@@ -4604,3 +4604,86 @@ OPEN AT CLOSE
     probe 1.2.0 (the published wheel is two months stale and does not
     contain BENCH-1, which matters the moment anyone accepts an offer
     to try it).
+
+---
+
+## SESSION 057 — 2026-09-22
+## REPORT-2: the published report is pinned to its own instrument.
+## RECONSTRUCTED 2026-09-30 by the Executor at the start of Session 058,
+## per guide_pack/06 D ("if a session ends without a closing packet, the
+## next session's first act is to reconstruct one from the machine").
+## S057 merged its work and stopped: no close-out commit, no closing
+## packet, and this log, the backlog and CURRENT_STATE were left at
+## S056. Sources for this entry: git log on main [measured, Director
+## PowerShell, 2026-09-30 21:18], the committed Keystone REPORT-2 and
+## report file [measured, read through the bridge], and the S057
+## transcript summary [assumed where it is the only source].
+
+WHAT LANDED [measured, git log]
+  79eda77  REPORT-2: the collection figures become an instrument
+           (scripts/weather_window_stats.py, 319 lines).
+  3cfb4a7  REPORT-2: Weather Report #2, pinned to its own instrument
+           (tests/test_weather_window_stats.py, 24 tests;
+           docs/reports/2026-09-22-weather-report-02.md;
+           docs/keystone/KEYSTONE_REPORT_REPORT-2.md SIGNED 2026-09-22,
+           before the merge, fifth in a row;
+           docs/evidence/weather-2026-09-22T104310Z.json, 731 bytes).
+  2826760  merge to main. Host gate GREEN 431 per the Keystone and the
+           transcript. The Keystone records only host 429 and container 431;
+           the host gate at 431 was re-run 2026-09-30 at S058 start and
+           returned 431 passed, ruff clean [measured, Director
+           PowerShell]. BASELINE 409 -> 431.
+
+WHAT IT SAYS
+Report #2's subject is that DASH-3 closed the AGE half of a defect
+Report #1 stated as one. The mistral leg was stale while collecting
+nominally (0.9627) on 2026-09-09, and is stale while collecting at
+0.2648 on 2026-09-22 -- both rows publishing sample_count 10.
+
+The CLAMP-1 rule was extended one step: the ARTEFACT text is checked
+against the instrument in the gate, verified by breaking three live
+constants (45.32 h -> 45.99 h in the text; MAX_OUTPUT_LENGTH 320 ->
+512; STALE_AFTER_HOURS 30 -> 200), each turning the report test red.
+
+DEFECTS
+  D8  a path-loaded module containing @dataclass must be registered in
+      sys.modules before exec_module; the CLAMP-1 precedent had no
+      dataclass and was silently incomplete.
+  D9  Report #1 conflated two independent defects -- row age and
+      collection rate. Found by computing both side by side.
+  P1  (process) git log output was placed inside a code fence and
+      PowerShell tried to execute it. Rule restated: code fences carry
+      only runnable commands.
+  P2  (process, found 2026-09-30) THE SESSION DID NOT CLOSE. No close-out
+      commit, no CLOSING_PACKET_S057, memory files untouched since S056
+      [measured: mtimes of all three memory files = 2026-09-19]. The
+      session-end protocol step 3 was skipped. The next session started
+      eight days later from the Executor's assumptions, and the first
+      command it handed over ran against the wrong directory.
+
+PUBLICATION -- NOT DONE [measured 2026-09-30]
+The dev.to API for taniacoder lists Report #1 (2026-09-04) as the most
+recent article. Report #2 is not on dev.to. G-36 (publish 09-22) is
+missed by eight days. The archival copy still reads "(pending)" for
+both platforms. LinkedIn not checked [assumed not published].
+Consequence: the report's figures are from a 2026-09-22 board read.
+G-37 (read the board immediately before quoting it) means publishing
+now requires a fresh read and a re-run of the instrument, not the
+8-day-old text as it stands.
+
+HELD OPEN
+  G-31 (Keystone REPORT-2 sec 5.4), left empty on purpose.
+  The saturation bound is 0.4193 on the 2026-09-22 read (mean
+  134.17486) and 42.1% on the 2026-09-19 read (mean 134.691). Both
+  correct; CURRENT_STATE now names the read each came from.
+
+OPEN AT CLOSE (unchanged from S056 except Report #2)
+  - Native Gemini provider. Own contract.
+  - G-33 into the architecture document plus the registry test.
+  - Report #2: re-read board, re-run instrument, then publish.
+  - Anders letter: drafted S056, unsent [assumed; Director to confirm].
+  - G-31; BENCH-2; BENCH-3; the nonce fix; probe 1.2.0.
+
+ENGINE-VS-PUBLICATION
+S057 produced a publishable artefact and did not publish it. The last
+public article is still Report #1, 2026-09-04 [measured, dev.to API].

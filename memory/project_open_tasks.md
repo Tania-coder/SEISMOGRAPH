@@ -1,7 +1,10 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-19 (Session 056: CLAMP-1 landed, baseline 409;
+# Last updated: 2026-09-30 (Session 057 close-out, RECONSTRUCTED at the
+# start of S058: REPORT-2 landed 2026-09-22, main @2826760, baseline
+# 409 -> 431; Report #2 NOT published, G-36 missed; S057 never closed.)
+# Prior: 2026-09-19 (Session 056: CLAMP-1 landed, baseline 409;
 # the instrument corrected its own source numbers on the first run; the
 # S055 claim that the google leg is unrecoverable is REFUTED — it needs
 # a native provider, not a new key. Guide memo G-33..G-39 accepted.)
@@ -37,6 +40,39 @@
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
+
+---
+
+## S057 — 2026-09-22 (Report #2 pinned to its instrument; not published)
+Detail: project_session_log.md, entry "SESSION 057" (reconstructed
+2026-09-30; the session did not close).
+
+### Landed
+- [x] REPORT-2 — scripts/weather_window_stats.py + 24 tests + archival
+      report + Keystone SIGNED before merge (fifth in a row). Commits
+      79eda77, 3cfb4a7, merged 2826760. Baseline 409 -> 431.
+- [x] Artefact text bound to the instrument in the gate (three live
+      constants broken, each named the report file).
+- [x] D8 (dataclass + path-loading), D9 (Report #1 conflated two
+      defects) fixed and recorded.
+
+### Open — next
+- [ ] **Report #2 PUBLISH** — not on dev.to as of 2026-09-30 [measured];
+      G-36 missed by 8 days. Before publishing: fresh board read
+      (G-37), re-run the instrument, update figures, then Director
+      posts and adds URLs to the Published block.
+- [ ] **Native Gemini provider** — own contract. (carried)
+- [ ] **G-33 into the architecture document** + registry test.
+      Unblocks BENCH-2. (carried)
+- [ ] Anders / Augustin letters — drafted S056, unsent [assumed].
+- [ ] Guide proposal for 05 (Keystone REPORT-2 sec 7): a published
+      artefact is checked against its instrument in the same gate.
+- [ ] G-31 unchanged, left empty on purpose in REPORT-2 sec 5.4.
+
+### Process defects
+- S057 did not close: no close-out commit, no closing packet, memory
+  untouched. The S058 opening then guessed the repo path. Close-out is
+  part of the session, not after it.
 
 ---
 
