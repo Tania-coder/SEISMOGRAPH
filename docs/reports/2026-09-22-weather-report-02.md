@@ -11,7 +11,7 @@ SEISMOGRAPH project. See LICENSE and COPYRIGHT at the repository root.
 |---|---|
 | Author | Tatiana Radchenko -- Independent, Aarhus, Denmark |
 | Written | 2026-09-22 |
-| Data as of | 2026-09-22 10:43:10 UTC (body); 2026-09-30 19:32:01 UTC (update) |
+| Data as of | 2026-09-22 10:43:10 UTC (body); 2026-09-30 19:32:01 and 20:54:49 UTC (updates) |
 | Project | SEISMOGRAPH (engine) / Drift Defense (service) |
 | Repository | https://github.com/Tania-coder/SEISMOGRAPH |
 | Software DOI | https://doi.org/10.5281/zenodo.21045517 |
@@ -31,8 +31,9 @@ snapshots of the public board by `scripts/weather_window_stats.py`,
 which runs in the project's test gate. The snapshots are
 `docs/evidence/weather-2026-09-09T173824Z.json` and
 `docs/evidence/weather-2026-09-22T104310Z.json`; the update block uses
-a third, `docs/evidence/weather-2026-09-30T193201Z.json`. Nothing here
-is arithmetic done once in prose.
+a third and a fourth, `docs/evidence/weather-2026-09-30T193201Z.json`
+and `docs/evidence/weather-2026-09-30T205449Z.json`. Nothing here is
+arithmetic done once in prose.
 
 **Update, 2026-09-30.** This report was written on 2026-09-22 and is
 published eight days later. The body below is unchanged, and its
@@ -49,6 +50,16 @@ board again, at 19:32 UTC, and recomputed with the same instrument:
   now at most **41.6%**.
 
 None of the findings below changed.
+
+**Later the same evening.** The cause was found: the API key had
+expired. I had created it with an expiry date and forgotten. With a new
+key the leg wrote a row at 2026-09-30T20:48:38Z, and the next read
+publishes `STABLE`. That is limitation 2 below, happening live: the
+newest row is **0.10 h** old, but the ten samples span **363.20 h** and
+the leg collects at **0.2974** of its nominal rate. Fresh, and still a
+fifteen-day average that nobody should read as recent. The logs also
+showed that the probe saw every request fail and threw the reason away
+instead of writing it down. That is the next fix.
 
 ---
 
