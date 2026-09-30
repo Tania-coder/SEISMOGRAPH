@@ -23,7 +23,7 @@ repository history carries the earliest timestamp for it. External
 publication URLs are appended below as they happen.
 
 **Published:**
-- dev.to -- (pending)
+- dev.to -- https://dev.to/taniacoder/my-drift-board-learned-to-say-i-dont-know-here-is-what-it-still-cannot-say-18i1 (2026-09-30)
 - LinkedIn -- (pending)
 
 **Provenance.** Every figure below is recomputed from two committed

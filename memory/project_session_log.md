@@ -4687,3 +4687,77 @@ OPEN AT CLOSE (unchanged from S056 except Report #2)
 ENGINE-VS-PUBLICATION
 S057 produced a publishable artefact and did not publish it. The last
 public article is still Report #1, 2026-09-04 [measured, dev.to API].
+
+---
+
+## SESSION 058 — 2026-09-30
+## Report #2 published, eight days late, after a fresh read found the
+## mistral leg dead for eleven days and the diagnosis found an expired
+## key. First public article since 2026-09-04.
+## Written 2026-09-30 by the Executor.
+
+OPENING
+Session started from the Executor's assumptions: S057 had never closed,
+and the first command handed over ran against a guessed path. The repo
+is D:\Dev\Projects\SEISMOGRAPH. Folder access to the bridge granted.
+
+WHAT LANDED [measured, git, Director PowerShell]
+  04d3a66 / eea3a1c  S057 close-out, reconstructed (see SESSION 057).
+                     Host gate 431 measured for the first time.
+  23e5e4e / 54c9321  REPORT-2b: fresh board read 19:32Z; dated update
+                     block; 4 tests; Keystone REPORT-2b SIGNED before
+                     merge. Gate 435.
+  fce1758 / b5774c5  REPORT-2c: mistral diagnosed and fixed; second
+                     update paragraph; 2 tests; Keystone REPORT-2c
+                     SIGNED before merge (seventh in a row). Gate 437.
+  + this close-out commit (Published block, log, backlog, state).
+  BASELINE 431 -> 437.
+
+PUBLISHED [measured, dev.to API]
+  2026-09-30T21:05:55Z  https://dev.to/taniacoder/my-drift-board-
+  learned-to-say-i-dont-know-here-is-what-it-still-cannot-say-18i1
+  Body loaded in the browser from raw GitHub at b5774c5 and published
+  by the Executor on the Director's explicit instruction ("нажимай").
+  12 842 characters, identical to the archival transform. No AI
+  disclosure set (Director did not choose it; recommended).
+  LinkedIn post drafted, not posted; Director to post 2026-10-01.
+
+MISTRAL DIAGNOSIS [measured, read-only in the Director's browser]
+  Actions #179: mistral "0/50 prompts completed", 11 s, no error text.
+  MISTRAL_API_KEY secret updated 2026-09-15. Mistral admin: key ...ANa3
+  created ~09-15, expired ~09-18, last used 09-19. Usage zero after
+  09-19. Plan pay-as-you-go, EUR 0.01 of 8.5 used: NOT quota.
+  Fix (Director): new key "seismograph-github-actions", no expiry, into
+  the secret, manual dispatch. All four jobs green; mistral row at
+  2026-09-30T20:48:38Z. Diagnosis confirmed by the fix.
+  Live consequence: mistral publishes STABLE while collecting at 0.2974
+  over a 363.20 h window -- report limitation 2, now observed.
+
+FINDINGS
+  F1  Report #2 was committed 09-22 and never published; G-36 missed by
+      eight days, invisible because the gate stays green on a stale
+      text. Rule proposed (Keystone REPORT-2b sec 7): the closing packet
+      lists every artefact committed but unpublished, with its date.
+  F2  D12: the probe discards the per-request error, so expiry, quota
+      and outage are indistinguishable in logs. Diagnosis needed the
+      provider console. OPEN, next engine task.
+  F3  D13: a credential with an expiry date sat in CI with no warning.
+  F4  LinkedIn review (7 posts): technical SEISMOGRAPH posts 200-400
+      impressions, 0-3 reactions, 0 comments; Startup Weekend post
+      467 / 18 / 7. Headline still reads "AI Infrastructure & Backend
+      Engineer"; the 2026-09-30 INCUBA post links FLOOR-1 to a same-name
+      model change FLOOR-1 did not show. Rewrites handed to the Director.
+  F5  Two Director decisions: no letter to Anders; Report #2 published
+      with a dated update rather than rewritten.
+
+DEFECTS, THE EXECUTOR'S
+  - Handed a command with a placeholder path inside a code fence.
+  - [IO.File] resolved a relative path against the process cwd
+    (C:\Users\User), not PowerShell's location; first signing failed
+    harmlessly. Absolute paths from now on.
+  - The bridge reported a successful write while leaving old bytes on
+    disk (same shape as S056); caught by SHA-256, fixed by a fresh
+    staging path.
+
+STANDING
+  Publication happened. The second observer was not advanced.

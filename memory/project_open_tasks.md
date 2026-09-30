@@ -1,7 +1,9 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-30 (Session 057 close-out, RECONSTRUCTED at the
+# Last updated: 2026-09-30 (Session 058: Report #2 PUBLISHED on dev.to;
+# mistral dead 11 days = expired API key, fixed; baseline 437.)
+# Prior: 2026-09-30 (Session 057 close-out, RECONSTRUCTED at the
 # start of S058: REPORT-2 landed 2026-09-22, main @2826760, baseline
 # 409 -> 431; Report #2 NOT published, G-36 missed; S057 never closed.)
 # Prior: 2026-09-19 (Session 056: CLAMP-1 landed, baseline 409;
@@ -43,6 +45,33 @@
 
 ---
 
+## S058 — 2026-09-30 (Report #2 published; mistral key expired, fixed)
+Detail: project_session_log.md, entry "SESSION 058".
+
+### Landed
+- [x] S057 close-out reconstructed (eea3a1c). Gate 431 measured.
+- [x] REPORT-2b (54c9321) + REPORT-2c (b5774c5), both Keystones signed
+      before merge. Baseline 431 -> 437.
+- [x] **Report #2 published on dev.to** 2026-09-30T21:05Z.
+- [x] Mistral leg restored: expired key replaced with a no-expiry key
+      (Director). Row at 2026-09-30T20:48:38Z.
+
+### Open — next
+- [ ] **D12 — probe records the first error per failed prompt** (status
+      + message) instead of only "0/50". Own contract. Top engine task:
+      the next stoppage must be diagnosable from the repository.
+- [ ] LinkedIn: Report #2 post (drafted), headline change, INCUBA post
+      fix, post 5 rewrite, "Drift Exposure Scan" link check. Director.
+- [ ] AI disclosure on the dev.to article. Director.
+- [ ] Add the LinkedIn URL to the report's Published block once posted.
+- [ ] Collection rate on the board (report limitation 2, now live:
+      mistral STABLE at 0.2974).
+- [ ] Native Gemini provider; G-33 + registry test. (carried)
+- [ ] G-31 unchanged.
+- [D] Anders letter — NOT sending, Director decision 2026-09-30.
+
+---
+
 ## S057 — 2026-09-22 (Report #2 pinned to its instrument; not published)
 Detail: project_session_log.md, entry "SESSION 057" (reconstructed
 2026-09-30; the session did not close).
@@ -57,14 +86,14 @@ Detail: project_session_log.md, entry "SESSION 057" (reconstructed
       defects) fixed and recorded.
 
 ### Open — next
-- [ ] **Report #2 PUBLISH** — not on dev.to as of 2026-09-30 [measured];
+- [x] **Report #2 PUBLISHED** 2026-09-30 (S058). Was: not on dev.to as of 2026-09-30 [measured];
       G-36 missed by 8 days. Before publishing: fresh board read
       (G-37), re-run the instrument, update figures, then Director
       posts and adds URLs to the Published block.
 - [ ] **Native Gemini provider** — own contract. (carried)
 - [ ] **G-33 into the architecture document** + registry test.
       Unblocks BENCH-2. (carried)
-- [ ] Anders / Augustin letters — drafted S056, unsent [assumed].
+- [D] Anders letter — not sending (Director, 2026-09-30).
 - [ ] Guide proposal for 05 (Keystone REPORT-2 sec 7): a published
       artefact is checked against its instrument in the same gate.
 - [ ] G-31 unchanged, left empty on purpose in REPORT-2 sec 5.4.
