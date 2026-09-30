@@ -1,7 +1,11 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-09-30 (Session 057 close-out, reconstructed in
+# Last updated: 2026-09-30 (Session 058). main @b5774c5 + close-out,
+#   host gate GREEN 437. Report #2 PUBLISHED on dev.to 21:05Z. Mistral
+#   leg restored (expired key -> no-expiry key "seismograph-github-
+#   actions" in MISTRAL_API_KEY, 2026-09-30). Next engine task: D12.
+# Prior: 2026-09-30 (Session 057 close-out, reconstructed in
 #   S058). REPORT-2 landed 2026-09-22: main @2826760, baseline 431.
 #   Weather Report #2 is committed as the archival copy and is NOT
 #   published [measured 2026-09-30, dev.to API]; its figures are from
@@ -45,7 +49,8 @@
   FLOOR-1, BUF-1, BENCH-1.
 
 ## Baseline (re-verify at session start — do not trust this file)
-- Tests: **431** [measured 2026-09-30, host gate on
+- Tests: **437** [measured 2026-09-30, host gate, REPORT-2c branch].
+  Prior 431 [measured 2026-09-30, host gate on
   seismograph/task-s057-close = main @2826760 + memory/*.md only,
   ruff clean, 75 files formatted, py3.10.11]. Prior: 409
   (2026-09-19, measured), 398, 378 (2026-09-16), 345, 325.
@@ -250,10 +255,14 @@ Evidence: docs/evidence/clamp/clamp_c1.json.
 
 ## Open now (ranked; full backlog: project_open_tasks.md)
 
-**Publication — owed since 2026-09-22**
-0. **Weather Report #2** — committed (docs/reports/2026-09-22-weather-
-   report-02.md), signed, NOT posted. G-36 missed. Fresh board read +
-   instrument re-run before the Director posts it.
+**Publication**
+0. Weather Report #2 PUBLISHED 2026-09-30 on dev.to (link in the
+   report's Published block). LinkedIn post drafted, Director posts.
+0a. **D12 — the probe must record WHY a run failed.** On 2026-09-30 an
+   expired key read in the logs only as "0/50 prompts completed"; the
+   cause was found in the provider console. Top engine task.
+0b. Mistral collects at 0.2974 of nominal while publishing STABLE
+   [measured 2026-09-30 20:54Z] -- the board cannot show rate yet.
 
 **Provider risk — rescoped from a decision to a task**
 0. **A native Gemini provider** that authenticates with
