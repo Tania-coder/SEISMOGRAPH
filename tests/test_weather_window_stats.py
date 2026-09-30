@@ -65,6 +65,7 @@ _EVIDENCE = _ROOT / "docs" / "evidence"
 _SNAP_0922 = _EVIDENCE / "weather-2026-09-22T104310Z.json"
 _SNAP_0909 = _EVIDENCE / "weather-2026-09-09T173824Z.json"
 _SNAP_0930 = _EVIDENCE / "weather-2026-09-30T193201Z.json"
+_SNAP_0930B = _EVIDENCE / "weather-2026-09-30T205449Z.json"
 _READ_0909 = datetime(2026, 9, 9, 17, 38, 24, tzinfo=timezone.utc)
 
 _GOOGLE = "google/gemini-3.5-flash-lite"
@@ -298,7 +299,7 @@ def test_snapshot_files_are_valid_published_rows():
         "window_start",
         "window_end",
     }
-    for snap in (_SNAP_0922, _SNAP_0909, _SNAP_0930):
+    for snap in (_SNAP_0922, _SNAP_0909, _SNAP_0930, _SNAP_0930B):
         rows = json.loads(snap.read_text(encoding="utf-8"))
         assert rows, f"{snap.name} is empty"
         for row in rows:
@@ -435,5 +436,54 @@ def test_report2b_update_block_matches_instrument():
     }
     assert not missing, (
         "The 2026-09-30 update block quotes figures its snapshot does "
+        f"not reproduce: {missing}. Fix the report, never the pin."
+    )
+
+
+# --------------------------------------------------------------------
+# REPORT-2c: the same evening, after the expired key was replaced
+# --------------------------------------------------------------------
+
+
+def test_report2c_mistral_fresh_but_still_collecting_dark():
+    """Limitation 2 of the report, observed live.
+
+    A fresh newest row publishes STABLE while the window still spans
+    fifteen days at under a third of the nominal cadence.
+
+    #SG-TRACE: REQ-REPORT2C-001 | assumption: none, all fields read
+    from the committed snapshot | test: this one
+    """
+    m = _by_tuple(snapshot_windows(_SNAP_0930B))[_MISTRAL]
+    assert m.window_end.startswith("2026-09-30T20:48:38")
+    assert m.published_status == "STABLE"
+    assert m.status_agrees_with_age is True
+    assert m.age_hours == pytest.approx(0.10, abs=0.01)
+    assert m.span_hours == pytest.approx(363.20, abs=0.01)
+    assert m.collection_rate == pytest.approx(0.2974, abs=0.0001)
+    assert m.collection_class == "DARK"
+
+
+def test_report2c_second_update_matches_instrument():
+    """The second update is pinned to its snapshot like the first.
+
+    #SG-TRACE: REQ-REPORT2C-002 | assumption: substring match, same
+    limitation as Keystone REPORT-2 sec 5.1 | test: this one
+    """
+    if not _REPORT_2.is_file():
+        pytest.skip("Weather Report #2 not yet in the repository")
+    text = _REPORT_2.read_text(encoding="utf-8")
+    m = _by_tuple(snapshot_windows(_SNAP_0930B))[_MISTRAL]
+    expected = {
+        "second update snapshot": _SNAP_0930B.name,
+        "mistral age, 20:54": f"{m.age_hours:.2f} h",
+        "mistral span, 20:54": f"{m.span_hours:.2f} h",
+        "mistral rate, 20:54": f"{m.collection_rate:.4f}",
+    }
+    missing = {
+        name: value for name, value in expected.items() if value not in text
+    }
+    assert not missing, (
+        "The second 2026-09-30 update quotes figures its snapshot does "
         f"not reproduce: {missing}. Fix the report, never the pin."
     )
