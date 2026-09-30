@@ -11,7 +11,7 @@ SEISMOGRAPH project. See LICENSE and COPYRIGHT at the repository root.
 |---|---|
 | Author | Tatiana Radchenko -- Independent, Aarhus, Denmark |
 | Written | 2026-09-22 |
-| Data as of | 2026-09-22 10:43:10 UTC |
+| Data as of | 2026-09-22 10:43:10 UTC (body); 2026-09-30 19:32:01 UTC (update) |
 | Project | SEISMOGRAPH (engine) / Drift Defense (service) |
 | Repository | https://github.com/Tania-coder/SEISMOGRAPH |
 | Software DOI | https://doi.org/10.5281/zenodo.21045517 |
@@ -30,8 +30,25 @@ publication URLs are appended below as they happen.
 snapshots of the public board by `scripts/weather_window_stats.py`,
 which runs in the project's test gate. The snapshots are
 `docs/evidence/weather-2026-09-09T173824Z.json` and
-`docs/evidence/weather-2026-09-22T104310Z.json`. Nothing here is
-arithmetic done once in prose.
+`docs/evidence/weather-2026-09-22T104310Z.json`; the update block uses
+a third, `docs/evidence/weather-2026-09-30T193201Z.json`. Nothing here
+is arithmetic done once in prose.
+
+**Update, 2026-09-30.** This report was written on 2026-09-22 and is
+published eight days later. The body below is unchanged, and its
+figures are as of the 2026-09-22 read. Before publishing I read the
+board again, at 19:32 UTC, and recomputed with the same instrument:
+
+- **mistral** has written no row since 2026-09-19T09:31:44Z. Its newest
+  row is now **274.01 h** old, eleven days, and the board publishes
+  `STALE`, which agrees. It still prints a sample count of 10 over a
+  window that opens on 2026-09-02. Why it stopped is still not
+  diagnosed.
+- **google** is collecting at **0.8926** of its nominal rate, newest
+  row **8.26 h** old, `STABLE`, which agrees. Its saturation bound is
+  now at most **41.6%**.
+
+None of the findings below changed.
 
 ---
 
