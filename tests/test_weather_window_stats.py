@@ -64,6 +64,7 @@ snapshot_windows = _M.snapshot_windows
 _EVIDENCE = _ROOT / "docs" / "evidence"
 _SNAP_0922 = _EVIDENCE / "weather-2026-09-22T104310Z.json"
 _SNAP_0909 = _EVIDENCE / "weather-2026-09-09T173824Z.json"
+_SNAP_0930 = _EVIDENCE / "weather-2026-09-30T193201Z.json"
 _READ_0909 = datetime(2026, 9, 9, 17, 38, 24, tzinfo=timezone.utc)
 
 _GOOGLE = "google/gemini-3.5-flash-lite"
@@ -297,7 +298,7 @@ def test_snapshot_files_are_valid_published_rows():
         "window_start",
         "window_end",
     }
-    for snap in (_SNAP_0922, _SNAP_0909):
+    for snap in (_SNAP_0922, _SNAP_0909, _SNAP_0930):
         rows = json.loads(snap.read_text(encoding="utf-8"))
         assert rows, f"{snap.name} is empty"
         for row in rows:
@@ -369,3 +370,70 @@ def test_report2_states_both_snapshots_it_rests_on():
     assert _SNAP_0922.name in text
     assert _SNAP_0909.name in text
     assert "weather_window_stats.py" in text
+
+
+# --------------------------------------------------------------------
+# REPORT-2b: the update block, read 2026-09-30 before publication
+# --------------------------------------------------------------------
+
+
+def test_report2b_snapshot_is_committed():
+    """G-37: the board was read immediately before quoting it."""
+    assert _SNAP_0930.is_file()
+
+
+def test_report2b_update_figures():
+    """2026-09-30: mistral still dark since 09-19, google collecting.
+
+    #SG-TRACE: REQ-REPORT2B-001 | assumption: none, all fields read
+    from the committed snapshot | test: this one
+    """
+    legs = _by_tuple(snapshot_windows(_SNAP_0930))
+    m = legs[_MISTRAL]
+    assert m.window_end.startswith("2026-09-19T09:31:44")
+    assert m.window_start.startswith("2026-09-02T09:38:39")
+    assert m.age_hours == pytest.approx(274.01, abs=0.01)
+    assert m.published_status == "STALE"
+    assert m.status_agrees_with_age is True
+    g = legs[_GOOGLE]
+    assert g.collection_rate == pytest.approx(0.8926, abs=0.0001)
+    assert g.collection_class == "NOMINAL"
+    assert g.age_hours == pytest.approx(8.26, abs=0.01)
+    assert g.published_status == "STABLE"
+    assert g.status_agrees_with_age is True
+
+
+def test_report2b_mistral_row_is_the_same_row_as_0922():
+    """No new mistral row between the two reads: the leg is dark."""
+    before = _by_tuple(snapshot_windows(_SNAP_0922))[_MISTRAL]
+    after = _by_tuple(snapshot_windows(_SNAP_0930))[_MISTRAL]
+    assert before.window_end == after.window_end
+    assert before.window_start == after.window_start
+
+
+def test_report2b_update_block_matches_instrument():
+    """The update block is pinned to its snapshot like the body is.
+
+    #SG-TRACE: REQ-REPORT2B-002 | assumption: substring match, same
+    limitation as Keystone REPORT-2 sec 5.1 | test: this one
+    """
+    if not _REPORT_2.is_file():
+        pytest.skip("Weather Report #2 not yet in the repository")
+    text = _REPORT_2.read_text(encoding="utf-8")
+    legs = _by_tuple(snapshot_windows(_SNAP_0930))
+    expected = {
+        "update snapshot": _SNAP_0930.name,
+        "mistral age, 2026-09-30": f"{legs[_MISTRAL].age_hours:.2f} h",
+        "google rate, 2026-09-30": f"{legs[_GOOGLE].collection_rate:.4f}",
+        "google age, 2026-09-30": f"{legs[_GOOGLE].age_hours:.2f} h",
+        "google saturation, 2026-09-30": (
+            f"{legs[_GOOGLE].saturation_upper_bound * 100:.1f}%"
+        ),
+    }
+    missing = {
+        name: value for name, value in expected.items() if value not in text
+    }
+    assert not missing, (
+        "The 2026-09-30 update block quotes figures its snapshot does "
+        f"not reproduce: {missing}. Fix the report, never the pin."
+    )
