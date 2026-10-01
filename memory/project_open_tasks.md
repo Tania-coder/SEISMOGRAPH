@@ -1,7 +1,9 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-09-30 (Session 058: Report #2 PUBLISHED on dev.to;
+# Last updated: 2026-10-01 (Session 059: SBOM-1 landed, baseline 446;
+# COMPARE-1 contract accepted and now the top task; D12 after it.)
+# Prior: 2026-09-30 (Session 058: Report #2 PUBLISHED on dev.to;
 # mistral dead 11 days = expired API key, fixed; baseline 437.)
 # Prior: 2026-09-30 (Session 057 close-out, RECONSTRUCTED at the
 # start of S058: REPORT-2 landed 2026-09-22, main @2826760, baseline
@@ -42,6 +44,30 @@
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
+
+---
+
+## S059 — 2026-10-01 (SBOM-1; research; COMPARE-1 accepted)
+Detail: project_session_log.md, entry "SESSION 059".
+
+### Landed
+- [x] SBOM-1 (30184fe): CycloneDX SBOMs + licence gate, 9 tests,
+      Keystone signed. Baseline 437 -> 446.
+- [x] COMPARE-1 contract accepted (docs/arch/COMPARE-1-contract.md).
+
+### Open — next, in order
+- [ ] **COMPARE-1 implementation** (2-3 sessions): probe/compare.py,
+      tests (12 acceptance cases), docs/compare.md, Keystone. Transport
+      must return finish_reason, the API model field, null content as
+      data, and handle temperature rejection.
+- [ ] D12 remainder (ops channel, key expiry) after COMPARE-1.
+- [ ] SBOM generation in the release workflow (SBOM-1 sec 7).
+- [ ] Check: do newer Claude models reject temperature=0? (affects
+      probe and compare).
+- [ ] Director: LinkedIn headline; INCUBA post fix; Niklas message;
+      replies from Camilo / Linus -> offer a free compare run.
+- [ ] NLnet NGI Zero Commons, deadline 2026-11-03 (realistic first
+      grant per research).
 
 ---
 
