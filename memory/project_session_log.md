@@ -4761,3 +4761,72 @@ DEFECTS, THE EXECUTOR'S
 
 STANDING
   Publication happened. The second observer was not advanced.
+
+---
+
+## SESSION 059 — 2026-10-01
+## SBOM-1 landed; market research changed the priority; COMPARE-1
+## contract accepted. Engine work plus outreach: three founders
+## contacted by the Director.
+## Written 2026-10-01 by the Executor.
+
+VERIFIED AT START [measured, Director PowerShell]
+  main @a27f00c, clean. Host gate 444 passed + 2 expected signature
+  failures (unsigned SBOM-1), i.e. 446 total. Board: mistral STABLE,
+  newest row 2026-10-01T11:38:07Z -- collecting on schedule after the
+  key replacement; google fresh.
+
+WHAT LANDED
+  cbf7430 / 30184fe  SBOM-1: CycloneDX 1.6 SBOMs for seismograph-probe
+                     1.1.0 (core: 10 components, [all]: 13), licence
+                     page docs/compliance/LICENSES.md, 9 gate tests
+                     (allow-list, stale-SBOM check, adversarial GPL and
+                     no-licence cases). Keystone signed before merge
+                     (eighth in a row). Baseline 437 -> 446.
+  Findings [measured]: no GPL/AGPL/LGPL; certifi MPL-2.0 (unmodified
+  dependency, accepted). D14: first SBOM included pip/setuptools from
+  the venv; regenerated from pip-less environments.
+
+MARKET RESEARCH (reports/Ниши надёжности ИИ для Европы.md, cloud
+session; five research notes + independent report writer)
+  - AI security and observability are crowded and consolidating (six
+    AI-security acquisitions 2024-25, >$1.5B reported; Langfuse ->
+    ClickHouse, Lakera -> Check Point).
+  - No funded vendor found that records, dated and neutral, what
+    changed on the MODEL PROVIDER's side (negative search result).
+  - China mandates test banks with refusal / over-refusal thresholds
+    and re-testing after model updates; no EU equivalent.
+  - EU demand now comes from DORA, NIS2, CRA reporting (since
+    2026-09-11), Art. 50 (since 2026-08-02), Product Liability
+    Directive (by 2026-12-09); AI Act high-risk monitoring from
+    2027-12-02. No explicit obligation to manage provider model changes.
+  - Recommended first product: local "old vs new model on your own
+    prompts" report with dated evidence -> COMPARE-1.
+  - Technical risk [assumed, not checked against code]: newer Claude
+    models reject non-default temperature (HTTP 400).
+  - Correction: the 2026-10-23 GPT-4o API retirement date is
+    inconsistent across sources; not to be quoted as fact.
+
+VALIDATION SIGNAL [stated by the Director]
+  Via a startup-week contact, three companies (Promte, Pentimenti,
+  Alice Labs) reportedly said "we do it ourselves, no need". Second-
+  hand, questions unknown. Treated as a negative signal, not proof.
+  Outreach sent by the Director: Camilo Botero (Tero), Linus
+  Ingemarsson (Alice Labs); Niklas Klarnskou (Pentimenti) drafted.
+
+DECISIONS [Director]
+  - Priority changed: COMPARE-1 before D12. D12 stays designed; its
+    failure classes needed by compare are inside COMPARE-1.
+  - COMPARE-1 contract ACCEPTED 2026-10-01
+    (docs/arch/COMPARE-1-contract.md).
+
+DEFECTS, THE EXECUTOR'S
+  - A future command (`python -m probe.compare ...`) was put in a
+    code fence; the Director ran it. Rule restated: fences carry only
+    commands that run today.
+  - Outreach advice initially pointed at Promte without checking that
+    a platform vendor may build the feature itself; corrected.
+
+STANDING
+  Publication: none new this session. Outreach: two messages sent.
+  Second observer not advanced.

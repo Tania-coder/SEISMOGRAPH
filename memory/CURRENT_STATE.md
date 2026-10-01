@@ -1,7 +1,11 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-09-30 (Session 058). main @b5774c5 + close-out,
+# Last updated: 2026-10-01 (Session 059). main @30184fe + close-out,
+#   host gate GREEN 446. SBOM-1 landed. COMPARE-1 contract ACCEPTED and
+#   is now the top engine task (before D12). Market research report:
+#   reports/Ниши надёжности ИИ для Европы.md (cloud session copy).
+# Prior: 2026-09-30 (Session 058). main @b5774c5 + close-out,
 #   host gate GREEN 437. Report #2 PUBLISHED on dev.to 21:05Z. Mistral
 #   leg restored (expired key -> no-expiry key "seismograph-github-
 #   actions" in MISTRAL_API_KEY, 2026-09-30). Next engine task: D12.
@@ -49,7 +53,8 @@
   FLOOR-1, BUF-1, BENCH-1.
 
 ## Baseline (re-verify at session start — do not trust this file)
-- Tests: **437** [measured 2026-09-30, host gate, REPORT-2c branch].
+- Tests: **446** [measured 2026-10-01, host gate, SBOM-1 branch].
+  Prior 437 [measured 2026-09-30, host gate, REPORT-2c branch].
   Prior 431 [measured 2026-09-30, host gate on
   seismograph/task-s057-close = main @2826760 + memory/*.md only,
   ruff clean, 75 files formatted, py3.10.11]. Prior: 409
