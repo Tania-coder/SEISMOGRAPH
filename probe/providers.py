@@ -70,7 +70,23 @@ class ProviderError(RuntimeError):
         structurally.  The status is ALSO in the message string for human
         readers, but that string is not a contract: no caller may parse
         it (contract CAN-2a C3).
+    error_code:
+        Short machine-readable error code from the provider's error body
+        (e.g. ``"insufficient_quota"``), or ``None``.  Only a sanitised
+        token of at most 64 characters from ``[A-Za-z0-9_.-]`` is kept;
+        free-text error messages are never retained, because they may
+        echo the request (contract COMPARE-1 section 8).
+    failure_kind:
+        Structural failure class set where the failure is raised:
+        ``"http"``, ``"timeout"``, ``"network"``, ``"bad_body"``,
+        ``"bad_schema"`` or ``"transport"``; ``None`` for validation
+        errors.  Lets callers tell a timeout from a DNS failure without
+        parsing the message (contract CAN-2a C3).
 
+    #SG-TRACE: REQ-COMPARE-023
+    #   | assumption: the raise site is the only place that knows the
+    #     failure class; recording it there keeps C3 intact
+    #   | test: test_transport_failure_kinds
     #SG-TRACE: REQ-CAN2A-001
     #   | assumption: an optional keyword with a None default keeps every
     #     pre-existing single-argument ProviderError(...) construction
@@ -82,9 +98,68 @@ class ProviderError(RuntimeError):
         self,
         message: str,
         status_code: int | None = None,
+        error_code: str | None = None,
+        failure_kind: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.error_code = error_code
+        self.failure_kind = failure_kind
+
+
+_ERROR_CODE_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
+)
+
+
+def _safe_code(value: object) -> str | None:
+    """Return value if it is a short token-like code, else None.
+
+    #SG-TRACE: REQ-COMPARE-020
+    #   | assumption: provider error codes are short identifiers; anything
+    #     with spaces or over 64 chars may be free text that echoes the
+    #     request and is dropped
+    #   | test: test_error_code_rejects_free_text
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        value = str(value)
+    if not isinstance(value, str) or not 0 < len(value) <= 64:
+        return None
+    if not set(value) <= _ERROR_CODE_CHARS:
+        return None
+    return value
+
+
+def _error_code_from_body(raw: bytes) -> str | None:
+    """Extract a sanitised error code from an HTTP error body.
+
+    Looks at ``error.code``, ``error.type``, ``code``, ``type`` in that
+    order (OpenAI nests under ``error``; Mistral uses the top level).
+    Never raises; never returns message text.
+
+    #SG-TRACE: REQ-COMPARE-020
+    #   | assumption: quota vs rate-limit (COMPARE-1 section 5) can be
+    #     told apart only from the provider's error code, not the status
+    #   | test: test_transport_http_error_extracts_code
+    """
+    try:
+        body = json.loads(raw.decode("utf-8", "replace"))
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(body, dict):
+        return None
+    candidates: list[object] = []
+    nested = body.get("error")
+    if isinstance(nested, dict):
+        candidates += [nested.get("code"), nested.get("type")]
+    candidates += [body.get("code"), body.get("type")]
+    for value in candidates:
+        code = _safe_code(value)
+        if code is not None:
+            return code
+    return None
 
 
 def model_name_from_tuple(model_tuple: str) -> str:
@@ -128,15 +203,28 @@ def _urllib_transport(
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        try:
+            raw = exc.read(4096) if exc.fp is not None else b""
+        except Exception:  # noqa: BLE001 -- body is best-effort only
+            raw = b""
         raise ProviderError(
-            f"provider HTTP {exc.code}", status_code=exc.code
+            f"provider HTTP {exc.code}",
+            status_code=exc.code,
+            error_code=_error_code_from_body(raw),
+            failure_kind="http",
         ) from None
     except (urllib.error.URLError, TimeoutError) as exc:
+        timed_out = isinstance(exc, TimeoutError) or isinstance(
+            getattr(exc, "reason", None), TimeoutError
+        )
         raise ProviderError(
-            f"provider unreachable: {type(exc).__name__}"
+            f"provider unreachable: {type(exc).__name__}",
+            failure_kind="timeout" if timed_out else "network",
         ) from None
     except json.JSONDecodeError:
-        raise ProviderError("provider returned non-JSON body") from None
+        raise ProviderError(
+            "provider returned non-JSON body", failure_kind="bad_body"
+        ) from None
 
 
 @dataclass(frozen=True)
@@ -164,7 +252,21 @@ class CompletionResult:
         and integral, else None.
     latency_ms:
         Wall-clock milliseconds for the API call.
+    finish_reason:
+        ``choices[0].finish_reason`` when it is a string, else None.
+    returned_model:
+        The top-level ``model`` field of the response when it is a
+        string, else None.  May be an alias (Mistral echoes
+        ``mistral-small-latest`` [measured S060]), so it is NOT proof of
+        the concrete version that answered.
+    content_null:
+        True when the API returned null content and the caller allowed
+        it; ``text`` is then ``""``.
 
+    #SG-TRACE: REQ-COMPARE-021
+    #   | assumption: new fields carry defaults at the end of the frozen
+    #     dataclass, so every existing construction stays valid
+    #   | test: test_completion_result_old_construction_still_valid
     #SG-TRACE: REQ-TOKMET-001
     #   | assumption: usage fields are optional in OpenAI-compatible
     #     responses; None-safe capture, never an exception
@@ -176,6 +278,9 @@ class CompletionResult:
     output_tokens: int | None
     reasoning_tokens: int | None
     latency_ms: int
+    finish_reason: str | None = None
+    returned_model: str | None = None
+    content_null: bool = False
 
 
 def _int_or_none(value: object) -> int | None:
@@ -280,10 +385,13 @@ class OpenAICompatibleProvider:
     def complete_ex(
         self,
         model: str,
-        system: str,
+        system: str | None,
         user: str,
         tools: list[dict] | None = None,
         max_tokens: int | None = None,
+        *,
+        send_temperature: bool = True,
+        allow_null_content: bool = False,
     ) -> CompletionResult:
         """Run one chat completion; return a structured CompletionResult.
 
@@ -303,6 +411,25 @@ class OpenAICompatibleProvider:
             Optional per-call override of the constructor cap.  Used
             by the tool canary (needs ~64 tokens for arguments) while
             keeping the plain-text canaries at the tight default.
+        send_temperature:
+            When False, ``temperature`` is omitted from the payload.
+            Used only by ``probe.compare`` for its single retry after a
+            provider rejects the parameter (COMPARE-1 section 6).
+            Canary callers never pass it: temperature stays forced to 0.
+        system:
+            System prompt.  ``None`` omits the system message entirely
+            (compare suites make it optional, COMPARE-1 section 3);
+            every canary caller passes a string, so its payload is
+            unchanged.
+        allow_null_content:
+            When True, null content is returned as data (``text=""``,
+            ``content_null=True``) instead of raising, so compare can
+            count empty answers (COMPARE-1 section 5).
+
+        #SG-TRACE: REQ-COMPARE-022
+        #   | assumption: keyword-only options with defaults leave the
+        #     wire payload byte-identical for every existing caller
+        #   | test: test_default_payload_keys_unchanged
 
         #SG-TRACE: REQ-TOOLCAN-020
         #   | assumption: adding "tools" only when not None keeps the
@@ -330,6 +457,10 @@ class OpenAICompatibleProvider:
                 {"role": "user", "content": user},
             ],
         }
+        if system is None:
+            payload["messages"] = payload["messages"][1:]
+        if not send_temperature:
+            del payload["temperature"]
         if tools is not None:
             payload["tools"] = tools
         body = json.dumps(payload).encode("utf-8")
@@ -341,16 +472,22 @@ class OpenAICompatibleProvider:
             raise
         except Exception as exc:
             raise ProviderError(
-                f"transport failed: {type(exc).__name__}"
+                f"transport failed: {type(exc).__name__}",
+                failure_kind="transport",
             ) from None
         latency_ms = int((time.perf_counter() - start) * 1000)
 
         try:
-            message = data["choices"][0]["message"]
+            choice = data["choices"][0]
+            message = choice["message"]
         except (KeyError, IndexError, TypeError):
-            raise ProviderError("unexpected completion schema") from None
+            raise ProviderError(
+                "unexpected completion schema", failure_kind="bad_schema"
+            ) from None
         if not isinstance(message, dict):
-            raise ProviderError("unexpected completion schema") from None
+            raise ProviderError(
+                "unexpected completion schema", failure_kind="bad_schema"
+            ) from None
 
         raw = message.get("content")
         tool_calls = message.get("tool_calls")
@@ -360,17 +497,26 @@ class OpenAICompatibleProvider:
                 tool_calls, sort_keys=True, ensure_ascii=True
             )
 
-        if not isinstance(raw, str):
+        content_null = False
+        if raw is None and allow_null_content:
+            raw = ""
+            content_null = True
+        elif not isinstance(raw, str):
             if tools is None:
                 # Frozen historical contract: text canaries require a
                 # string content.
                 raise ProviderError(
-                    "completion content not a string"
+                    "completion content not a string",
+                    failure_kind="bad_schema",
                 ) from None
             # Tool mode: content may legitimately be null.
             raw = ""
 
         output_tokens, reasoning_tokens = _parse_usage(data)
+        finish = (
+            choice.get("finish_reason") if isinstance(choice, dict) else None
+        )
+        returned = data.get("model")
 
         return CompletionResult(
             text=raw,
@@ -378,4 +524,7 @@ class OpenAICompatibleProvider:
             output_tokens=output_tokens,
             reasoning_tokens=reasoning_tokens,
             latency_ms=latency_ms,
+            finish_reason=finish if isinstance(finish, str) else None,
+            returned_model=returned if isinstance(returned, str) else None,
+            content_null=content_null,
         )
