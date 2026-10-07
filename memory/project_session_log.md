@@ -4830,3 +4830,70 @@ DEFECTS, THE EXECUTOR'S
 STANDING
   Publication: none new this session. Outreach: two messages sent.
   Second observer not advanced.
+
+---
+
+## SESSION 060 — 2026-10-07
+## COMPARE-1 implemented, live-run verified, Keystone signed before
+## merge (ninth in a row). Engine work; nothing published.
+## Written 2026-10-07 by the Executor.
+
+VERIFIED AT START [measured, Director PowerShell]
+  main @7bf07a3 = origin/main, clean. Host gate 446 passed. Board
+  2026-10-07 16:27Z: google and mistral both 10/10/10, newest rows
+  ~11:50Z (4.6 h old), windows 4.6 days -> no missed runs [derived:
+  10 samples at 2/day]. The 05:17 run fired ~6.5 h late, beyond the
+  2.5-4.5 h measured in S049 [derived]; noted, not acted on.
+
+PREFLIGHT [measured, scripts/compare_preflight.py, Director key]
+  mistral-small-latest and mistral-medium-latest accept temperature 0
+  (HTTP 200, finish_reason stop). Both echo the alias in `model`, not
+  a dated version. The S059 temperature-rejection risk remains
+  [assumed] for Claude / OpenAI reasoning models.
+
+WHAT LANDED (branch seismograph/task-compare-1)
+  f889e2f  step 1: transport returns finish_reason, returned model,
+           null content as data; sanitised provider error codes;
+           preflight script. 446 -> 459.
+  154c099  step 2: probe/compare.py, 29 compare tests (all 12 contract
+           acceptance cases), 2 more transport tests (failure_kind,
+           optional system), docs/compare.md, example suite,
+           .gitignore compare-*/. 459 -> 490.
+  4e6e368  Keystone COMPARE-1, signed by the Director BEFORE the merge.
+  Merge to main: see CLOSING_PACKET_S060 sec 3.
+
+METHOD [Director-approved via Keystone sec 5.3]
+  Per metric, per item: mean pairwise distance within A, within B,
+  across. CHANGED iff across > both within AND within-item label
+  permutation p <= 0.01 (999 draws, seeded). Calibration on synthetic
+  null [measured]: 1 false CHANGED in 300 runs; pooled 3/360.
+
+LIVE RUN [measured, 2026-10-07 16:59-17:02Z, Director's machine]
+  12 example prompts, small vs medium, 3 repeats, 72/72 calls, 0
+  infra failures. CHANGED: answers differ (75% vs 14%/19% within),
+  length, latency (p 0.004), output tokens. WITHIN NOISE: JSON,
+  truncated, empty, refusal. NOT MEASURED: reasoning tokens.
+  evidence sha256 c57df874...108c. Output kept local (gitignored).
+
+DEFECTS CAUGHT AND FIXED (D15-D19, Keystone sec 4)
+  D15 test asserted a CSS class string. D16 silent multi-minute run
+  -> progress lines. D17 evidence git_commit pointed at a HEAD without
+  the running code -> source_sha256. D18 mislabelled metric. D19
+  timeout vs network needed message parsing -> failure_kind.
+  D16 and D17 were found only by the live run.
+
+DECISIONS [Director, by signature]
+  repeats <= 5; bad_request / not_attempted classes and stop-after-
+  fatal; verdict rule; retries 2 (1 s, 2 s); refusal@1. Live end-to-
+  end run becomes a required step for user-facing outputs (backlog).
+
+DEFECTS, THE EXECUTOR'S
+  - First reply asked the Director to choose models instead of
+    deciding; she had to ask "what do I do". Default was available
+    (mistral key proven live by the board); should have decided.
+  - Device shell unavailable all session; files moved by stage/commit.
+
+STANDING
+  Engine-only session: nothing published, no outreach. The second
+  observer is not advanced -- but COMPARE-1 is now the thing that can
+  be offered (Linus, Alice Labs, already offered a free compare run).

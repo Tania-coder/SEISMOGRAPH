@@ -1,7 +1,9 @@
 # SEISMOGRAPH — Project Open Tasks (LEAN)
 # Quick-read backlog. Session-start summary: memory/CURRENT_STATE.md
 # Full append-only log: memory/project_session_log.md (never edit)
-# Last updated: 2026-10-01 (Session 059: SBOM-1 landed, baseline 446;
+# Last updated: 2026-10-07 (Session 060: COMPARE-1 implemented, live
+# run verified, Keystone signed before merge; baseline 490.)
+# Prior: 2026-10-01 (Session 059: SBOM-1 landed, baseline 446;
 # COMPARE-1 contract accepted and now the top task; D12 after it.)
 # Prior: 2026-09-30 (Session 058: Report #2 PUBLISHED on dev.to;
 # mistral dead 11 days = expired API key, fixed; baseline 437.)
@@ -44,6 +46,35 @@
 
 ## Legend
 [ ] open  [~] in progress  [x] complete  [D] deferred
+
+---
+
+## S060 — 2026-10-07 (COMPARE-1 implemented and merged)
+Detail: project_session_log.md, entry "SESSION 060".
+
+### Landed
+- [x] COMPARE-1: `python -m probe.compare` (f889e2f, 154c099, Keystone
+      4e6e368 signed before merge). Baseline 446 -> 490.
+- [x] Preflight: mistral small/medium accept temperature 0 [measured].
+
+### Open — next, in order
+- [ ] **First real compare run for someone else** (second observer):
+      Linus (Alice Labs) was offered one on 2026-10-01. Director: any
+      reply? Run with their prompts on their machine or with their key.
+- [ ] Live check of a provider that may reject temperature=0 (Claude,
+      OpenAI reasoning) -- fallback path is mock-tested only. Needs a key.
+- [ ] D12 remainder (ops channel, key expiry).
+- [ ] Protocol: live end-to-end run before Keystone for user-facing
+      outputs (COMPARE-1 sec 8) -> guide_pack/01.
+- [ ] COMPARE follow-ups: multiplicity across 9 metrics (sec 6.2);
+      short-answer hashes guessable -> per-run salt option (sec 6.5);
+      cost estimate from a user price table (contract sec 10).
+- [ ] Release: probe 1.2.0 with compare + SBOM -- Director/Guide
+      decision (touches public surface).
+- [ ] Board: 05:17 run fired ~6.5 h late on 2026-10-07 [derived]; watch.
+- [ ] SBOM generation in the release workflow (SBOM-1 sec 7).
+- [ ] Director: LinkedIn headline; INCUBA post fix; Niklas message;
+      replies from Camilo / Linus; NLnet NGI Zero Commons by 2026-11-03.
 
 ---
 
