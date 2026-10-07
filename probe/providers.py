@@ -76,7 +76,17 @@ class ProviderError(RuntimeError):
         token of at most 64 characters from ``[A-Za-z0-9_.-]`` is kept;
         free-text error messages are never retained, because they may
         echo the request (contract COMPARE-1 section 8).
+    failure_kind:
+        Structural failure class set where the failure is raised:
+        ``"http"``, ``"timeout"``, ``"network"``, ``"bad_body"``,
+        ``"bad_schema"`` or ``"transport"``; ``None`` for validation
+        errors.  Lets callers tell a timeout from a DNS failure without
+        parsing the message (contract CAN-2a C3).
 
+    #SG-TRACE: REQ-COMPARE-023
+    #   | assumption: the raise site is the only place that knows the
+    #     failure class; recording it there keeps C3 intact
+    #   | test: test_transport_failure_kinds
     #SG-TRACE: REQ-CAN2A-001
     #   | assumption: an optional keyword with a None default keeps every
     #     pre-existing single-argument ProviderError(...) construction
@@ -89,10 +99,12 @@ class ProviderError(RuntimeError):
         message: str,
         status_code: int | None = None,
         error_code: str | None = None,
+        failure_kind: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.error_code = error_code
+        self.failure_kind = failure_kind
 
 
 _ERROR_CODE_CHARS = frozenset(
@@ -199,13 +211,20 @@ def _urllib_transport(
             f"provider HTTP {exc.code}",
             status_code=exc.code,
             error_code=_error_code_from_body(raw),
+            failure_kind="http",
         ) from None
     except (urllib.error.URLError, TimeoutError) as exc:
+        timed_out = isinstance(exc, TimeoutError) or isinstance(
+            getattr(exc, "reason", None), TimeoutError
+        )
         raise ProviderError(
-            f"provider unreachable: {type(exc).__name__}"
+            f"provider unreachable: {type(exc).__name__}",
+            failure_kind="timeout" if timed_out else "network",
         ) from None
     except json.JSONDecodeError:
-        raise ProviderError("provider returned non-JSON body") from None
+        raise ProviderError(
+            "provider returned non-JSON body", failure_kind="bad_body"
+        ) from None
 
 
 @dataclass(frozen=True)
@@ -366,7 +385,7 @@ class OpenAICompatibleProvider:
     def complete_ex(
         self,
         model: str,
-        system: str,
+        system: str | None,
         user: str,
         tools: list[dict] | None = None,
         max_tokens: int | None = None,
@@ -397,6 +416,11 @@ class OpenAICompatibleProvider:
             Used only by ``probe.compare`` for its single retry after a
             provider rejects the parameter (COMPARE-1 section 6).
             Canary callers never pass it: temperature stays forced to 0.
+        system:
+            System prompt.  ``None`` omits the system message entirely
+            (compare suites make it optional, COMPARE-1 section 3);
+            every canary caller passes a string, so its payload is
+            unchanged.
         allow_null_content:
             When True, null content is returned as data (``text=""``,
             ``content_null=True``) instead of raising, so compare can
@@ -433,6 +457,8 @@ class OpenAICompatibleProvider:
                 {"role": "user", "content": user},
             ],
         }
+        if system is None:
+            payload["messages"] = payload["messages"][1:]
         if not send_temperature:
             del payload["temperature"]
         if tools is not None:
@@ -446,7 +472,8 @@ class OpenAICompatibleProvider:
             raise
         except Exception as exc:
             raise ProviderError(
-                f"transport failed: {type(exc).__name__}"
+                f"transport failed: {type(exc).__name__}",
+                failure_kind="transport",
             ) from None
         latency_ms = int((time.perf_counter() - start) * 1000)
 
@@ -454,9 +481,13 @@ class OpenAICompatibleProvider:
             choice = data["choices"][0]
             message = choice["message"]
         except (KeyError, IndexError, TypeError):
-            raise ProviderError("unexpected completion schema") from None
+            raise ProviderError(
+                "unexpected completion schema", failure_kind="bad_schema"
+            ) from None
         if not isinstance(message, dict):
-            raise ProviderError("unexpected completion schema") from None
+            raise ProviderError(
+                "unexpected completion schema", failure_kind="bad_schema"
+            ) from None
 
         raw = message.get("content")
         tool_calls = message.get("tool_calls")
@@ -475,7 +506,8 @@ class OpenAICompatibleProvider:
                 # Frozen historical contract: text canaries require a
                 # string content.
                 raise ProviderError(
-                    "completion content not a string"
+                    "completion content not a string",
+                    failure_kind="bad_schema",
                 ) from None
             # Tool mode: content may legitimately be null.
             raw = ""

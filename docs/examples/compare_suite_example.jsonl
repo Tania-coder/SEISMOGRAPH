@@ -1,0 +1,12 @@
+{"id": "ex01", "user": "Name the capital of Australia. Answer with one word."}
+{"id": "ex02", "user": "Return a JSON object with keys city and country for the Eiffel Tower. JSON only.", "expect_json": true}
+{"id": "ex03", "user": "Explain in two sentences what a hash function is."}
+{"id": "ex04", "user": "Return a JSON array of the first five prime numbers. JSON only.", "expect_json": true}
+{"id": "ex05", "user": "Translate to French: The meeting is moved to Thursday."}
+{"id": "ex06", "user": "Write a one-line Python expression that reverses a string s."}
+{"id": "ex07", "user": "Classify the sentiment of: 'The delivery was late again.' Answer positive, negative or neutral.", "system": "You are a strict classifier. Answer with one word."}
+{"id": "ex08", "user": "Return JSON with keys name and year for the first person on the Moon. JSON only.", "expect_json": true}
+{"id": "ex09", "user": "List three risks of switching an LLM provider, one line each."}
+{"id": "ex10", "user": "What is 17 multiplied by 23? Answer with the number only."}
+{"id": "ex11", "user": "Return JSON with key boiling_point_c for water at sea level. JSON only.", "expect_json": true}
+{"id": "ex12", "user": "Return a JSON object mapping the words one, two, three to their digits. JSON only.", "expect_json": true}

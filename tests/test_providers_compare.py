@@ -198,3 +198,44 @@ def test_error_code_length_cap() -> None:
     assert providers._safe_code("a" * 65) is None
     assert providers._safe_code(3505) == "3505"
     assert providers._safe_code(True) is None
+
+
+def test_transport_failure_kinds(monkeypatch) -> None:
+    """Each failure branch records a structural kind (no parsing)."""
+    cases = [
+        (TimeoutError("slow"), "timeout"),
+        (urllib.error.URLError(TimeoutError("connect")), "timeout"),
+        (urllib.error.URLError(OSError("dns")), "network"),
+    ]
+    for exc, kind in cases:
+
+        def urlopen(req, timeout, _exc=exc):
+            raise _exc
+
+        monkeypatch.setattr(providers.urllib.request, "urlopen", urlopen)
+        with pytest.raises(ProviderError) as info:
+            providers._urllib_transport("http://x/v1/c", {}, b"{}", 1.0)
+        assert info.value.failure_kind == kind
+        assert info.value.status_code is None
+
+    monkeypatch.setattr(
+        providers.urllib.request, "urlopen", _http_error(503, b"")
+    )
+    with pytest.raises(ProviderError) as info:
+        providers._urllib_transport("http://x/v1/c", {}, b"{}", 1.0)
+    assert info.value.failure_kind == "http"
+
+    bad = OpenAICompatibleProvider(
+        "http://x/v1", transport=_transport({"nope": 1})
+    )
+    with pytest.raises(ProviderError) as info:
+        bad.complete_ex("m", "s", "u")
+    assert info.value.failure_kind == "bad_schema"
+
+
+def test_system_none_omits_system_message() -> None:
+    tr = _transport({"choices": [{"message": {"content": "ok"}}]})
+    OpenAICompatibleProvider("http://x/v1", transport=tr).complete_ex(
+        "m", None, "u"
+    )
+    assert tr.captured[0]["messages"] == [{"role": "user", "content": "u"}]
