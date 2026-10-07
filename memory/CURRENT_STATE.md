@@ -1,7 +1,11 @@
 # SEISMOGRAPH — CURRENT STATE
 # Lean session-start read. Full history: memory/project_session_log.md
 # (append-only, never edit) + memory/archive/. Backlog: project_open_tasks.md.
-# Last updated: 2026-10-01 (Session 059). main @30184fe + close-out,
+# Last updated: 2026-10-07 (Session 060). COMPARE-1 merged to main
+#   (`python -m probe.compare`), Keystone signed before merge, host gate
+#   GREEN 490. First live run mistral small vs medium: 72/72 calls.
+#   Next: a compare run for someone else (second observer).
+# Prior: 2026-10-01 (Session 059). main @30184fe + close-out,
 #   host gate GREEN 446. SBOM-1 landed. COMPARE-1 contract ACCEPTED and
 #   is now the top engine task (before D12). Market research report:
 #   reports/Ниши надёжности ИИ для Европы.md (cloud session copy).
@@ -49,11 +53,12 @@
   measurement, until observed. business/guide_pack/05.
 - **SIGNATURE GATE (S049).** The signature precedes the merge. Enforced
   by tests/test_keystone_signed.py, so an unsigned report is a red gate.
-  Both dates always recorded, never backdated. Held three times running:
-  FLOOR-1, BUF-1, BENCH-1.
+  Both dates always recorded, never backdated. Held nine times running
+  through COMPARE-1 (S060) [derived: S059 log says eighth, +1].
 
 ## Baseline (re-verify at session start — do not trust this file)
-- Tests: **446** [measured 2026-10-01, host gate, SBOM-1 branch].
+- Tests: **490** [measured 2026-10-07, host gate, COMPARE-1 branch].
+  Prior 446 [measured 2026-10-01, host gate, SBOM-1 branch].
   Prior 437 [measured 2026-09-30, host gate, REPORT-2c branch].
   Prior 431 [measured 2026-09-30, host gate on
   seismograph/task-s057-close = main @2826760 + memory/*.md only,
